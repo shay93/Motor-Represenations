@@ -4,8 +4,16 @@ import math
 import matplotlib.pyplot as plt
 
 #first read input image into an array
+
+def rgb2gray(rgb):
+
+    r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
+    gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
+
+    return gray
+
 image_str = 'grey_cat.jpg'
-img = plt.imread('grey_cat.jpg')
+img = rgb2gray(plt.imread(image_str))
 input_data = img
 
 #set output equal to the input data
