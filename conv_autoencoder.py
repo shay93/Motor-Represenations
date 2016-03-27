@@ -88,6 +88,28 @@ init = tf.initialize_all_variables()
 sess = tf.Session()
 sess.run(init)
 
-n_rounds = 5000
+n_rounds = 1000
 
+
+
+for i in range(n_rounds):
+    #sample = np.random.randint(n_samp, size=batch_size)
+    batch_xs = x_image
+    batch_ys = x_image
+    sess.run(train_step, feed_dict={x: batch_xs, y_:batch_ys})
+    #if i % 100 == 0:
+        #print i, sess.run(cross_entropy, feed_dict={x: batch_xs, y_:batch_ys}), sess.run(meansq, feed_dict={x: batch_xs, y_:batch_ys})
+
+print "Target:"
+print output_data
+print "Final activations:"
+output_image = sess.run(y_conv, feed_dict={x: x_image})
+print output_image
+plt.imsave('output_image.jpg',255.*output_image,cmap='Greys_r')
+#print "Final weights (input => hidden layer)"
+#print sess.run(Wh_1)
+#print "Final biases (input => hidden layer)"
+#print sess.run(bh)
+print "Final biases (hidden layer => output)"
+print sess.run(bo)
 
