@@ -47,11 +47,12 @@ b_conv1 = bias_variable([32])
 
 #get dimensions of input image
 in_height,in_width = np.shape(input_data)
+x = tf.placeholder("float", [-1,in_height,in_width,1])
 #reshape input image to 4d tensor
 x_image = tf.reshape(input_data, [-1,in_height,in_width,1])
 
 #Now convolve image with weight tensor add bias and compute relu function
-h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+h_conv1 = tf.nn.relu(conv2d(x, W_conv1) + b_conv1)
 h_pool1 = max_pool_2x2(h_conv1)
 
 #Now initialize variables for second convolutional layer
