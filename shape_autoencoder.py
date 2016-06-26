@@ -7,13 +7,13 @@ import png
 
 IMG_WIDTH = 64
 DIRECTORY_NAME = 'Training_Images/'
-BATCH_SIZE = 1
-EPOCHS = 0.005
+BATCH_SIZE = 2
+EPOCHS = 3
 PIXEL_DEPTH = 255.
-KERNELS_LAYER_1 = 8
+KERNELS_LAYER_1 = 16
 KERNELS_LAYER_2 = 4
 OUTPUT_DIRECTORY = 'Output_Images/'
-EVALUATION_SIZE =  2
+EVALUATION_SIZE =  3
 
 def extract_data():
 	#initialize numpy array to hold batch of images
@@ -115,10 +115,11 @@ def train_graph():
 		data_batch = extract_data()
 		feed = {x : data_batch, y_ : data_batch}
 		if step % 10 == 0:
-			summary, _ = sess.run([merged,train_step], feed_dict = feed)
-			train_writer.add_summary(summary,step)
+			sess.run(train_step,feed_dict = feed)
+			#summary, _ = sess.run([merged,train_step], feed_dict = feed)
+			#train_writer.add_summary(summary,step)
 		else:
-			 sess.run([train_step], feed_dict = feed)
+			sess.run([train_step], feed_dict = feed)
 			print step,sess.run(meansq, feed_dict = feed)
 			
 
