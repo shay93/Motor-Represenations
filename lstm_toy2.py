@@ -2,27 +2,31 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import matplotlib
+
+#matplotlib.use('Agg')
 
 #generate some training and test data. Feed in a random sequence of numbers and specify output to be mx+c
 BATCH_SIZE = 10
-TOTAL_NUM_POINTS = 60
+TOTAL_NUM_POINTS = 20
 TIME_STEPS = TOTAL_NUM_POINTS
-NUM_HIDDEN_UNITS = 400	
-learning_rate = 1e-4
-EPOCHS = 3
+NUM_HIDDEN_UNITS = 10
+FC_UNITS = 20	
+learning_rate = 0.5 * 1e-3
+EPOCHS = 10
 NUM_OF_BATCHES = 1000
 m = 5
 c = 1
 
 def transform(x):
-	return 0.5*np.sin(x)
+	return 0.5*np.sin(x) + 0.25
 
 def generate_data(num):
 	x_data_list = [0] * num
 	y_data_list = [0] * num
 	for j in range(0,num):
 		#generate randome sequence equal to number of points
-		x_data = np.array([np.linspace(0,3*np.pi,num = TOTAL_NUM_POINTS)] * BATCH_SIZE)
+		x_data = np.array([np.linspace(0,4*np.pi,num = TOTAL_NUM_POINTS)] * BATCH_SIZE)
 		#x_data = np.random.rand(BATCH_SIZE,TOTAL_NUM_POINTS)
 		y_data = transform(x_data)
 		#y_data = np.reshape(y_data,[BATCH_SIZE,TOTAL_NUM_POINTS])
@@ -42,13 +46,19 @@ lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(NUM_HIDDEN_UNITS)
 #now define the rnn around this that outputs tensors corresponding to outputs and states
 outputs,states = tf.nn.rnn(lstm_cell, x_input,dtype = tf.float32)
 #now reshape output such that it is same shape as placeholder for y
-W_fc = tf.Variable(tf.truncated_normal(shape = [NUM_HIDDEN_UNITS,TOTAL_NUM_POINTS]))
-b_fc = tf.Variable(tf.constant(0.1, shape = [TOTAL_NUM_POINTS]))
-fc_layer = (tf.matmul(outputs[-1],W_fc) + b_fc)
-dropout_layer = tf.nn.dropout(fc_layer,keep_prob = 0.6)
-y = tf.reshape(dropout_layer,[BATCH_SIZE,TOTAL_NUM_POINTS])
+W_fc1 = tf.Variable(tf.truncated_normal(shape = [NUM_HIDDEN_UNITS, FC_UNITS],stddev = 0.1))
+b_fc1 = tf.Variable(tf.constant(0.0, shape = [FC_UNITS]))
+fc_layer_1 = tf.nn.tanh(tf.matmul(outputs[-1],W_fc1) + b_fc1)
+#Add a dropout layer
+dropout_layer = tf.nn.dropout(fc_layer_1,keep_prob = 0.5)
+#Add a second fully connected layer to the drop out layer from the layer one
+W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_UNITS,TOTAL_NUM_POINTS],stddev = 0.1))
+b_fc2 = tf.Variable(tf.constant(0.1, shape = [TOTAL_NUM_POINTS]))
+fc_layer_2 = tf.matmul(dropout_layer,W_fc2) + b_fc2
+#Reshape output from layer 2
+y = tf.reshape(fc_layer_2,[BATCH_SIZE,TOTAL_NUM_POINTS])
 #Define the loss via the L2 norm of the difference
-meansq = tf.reduce_mean(tf.square(y -y_))
+meansq = tf.reduce_mean(tf.square(y -y_)) + tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1)
 #add training nodes based on this loss
 train_step = tf.train.AdamOptimizer(learning_rate).minimize(meansq)
 #initialize a session
@@ -74,13 +84,10 @@ for step in range(0,EPOCHS):
 #now test the model
 #generate random sequence equal to number of points
 x_model,y_model = generate_data(1)
-plt.plot(y_model[0][1,:] , label = 'Model')
-y_pred = sess.run(y,feed_dict = {x : x_model[0]})
-plt.plot(y_pred[1,:], label = 'Predicted')
-plt.legend()
-plt.show()
+with open('y_model.csv','wb') as f:
+	np.savetxt(f,np.array(y_model[0]),delimiter = ",")
 
-plt.figure()
-plt.plot(loss_list, label = "loss")
-plt.legend()
-plt.show()
+y_pred = sess.run(y,feed_dict = {x : x_model[0]})
+with open('y_pred.csv','wb') as f:
+	np.savetxt(f,np.array(y_pred),delimiter = ",")
+
