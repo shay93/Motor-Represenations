@@ -5,14 +5,15 @@ import matplotlib.pyplot as plt
 import png
 import csv
 from scipy.integrate import ode
+import pickle
 
 
 class grid:
 
-	def __init__(self,file_name):
+	def __init__(self,file_name,directory_name):
 		self.grid_size = 64
 		self.grid = np.zeros((self.grid_size,self.grid_size))
-		self.save_name = "Training_Images/" + file_name + ".png"	
+		self.save_name = directory_name + file_name + ".png"	
 
 	def draw_figure(self,pos_array):
 	    #this function should take the end effector position and draw on a 64 by 64 grid
@@ -30,9 +31,10 @@ class grid:
 
 class shape_maker:
 
-	def __init__(self):
+	def __init__(self,directory_name):
 		self.std = 6
 		self.mu = 32
+		self.directory_name = directory_name
 
 	def draw_line(self,start_point,end_point,step_size,tol):
 		"""
@@ -126,6 +128,8 @@ class shape_maker:
 				pos_array.extend(self.draw_line((start_point[0],start_point[1]),end_point,0.001,0.001))
 				start_point = end_point
 			return pos_array
+		else:
+			return self.get_points(shape)
 
 
 	def check(self,control_vector,start_point):
@@ -140,9 +144,9 @@ class shape_maker:
 			if len(vector_list) > 1:
 				angle = np.arccos(np.dot(vector_list[j],vector_list[j+1])/(np.linalg.norm(vector_list[j+1])*np.linalg.norm(vector_list[j])))* 360/(2*np.pi)
 				j += 1
-			if abs(current_point[0]) > 63 or abs(current_point[1]) > 63 or current_point[0] < 0 or current_point[1] < 0 or abs(angle) < 25 or abs(angle) > 155 :
+			if abs(current_point[0]) > 62 or abs(current_point[1]) > 62 or current_point[0] < 1 or current_point[1] < 1 or abs(angle) < 25 or abs(angle) > 155 :
 				return False
-		start_point = current_point
+			start_point = current_point
 		return True
 
 
@@ -151,7 +155,7 @@ class shape_maker:
 		pos_list = [0] * num
 		for i in range(num):
 			#initialize a grid object
-			my_grid = grid(shape_str + str(num))
+			my_grid = grid(shape_str + str(i),self.directory_name)
 			#generate the point
 			points_array = self.get_points(shape_str)
 			#add points to list
@@ -164,9 +168,10 @@ class shape_maker:
 
 class two_link_arm:
 
-	def __init__(self):
+	def __init__(self,link_length):
 		self.ic = [0,0,0,0]
 		self.t_end = 5
+		self.link_length = link_length
 
 
 	def forward_dynamics(self,Torques):
@@ -208,7 +213,7 @@ class two_link_arm:
 		#use the general two link arm with theta1 and theta2
 		l = 1
 		theta_1 = state[0,:]
-		theta_2 = state[2,:]
+		theta_2 = state[1,:]
 		x = l*(np.cos(theta_1) + np.cos(theta_1 + theta_2))
 		y = l*(np.sin(theta_1) + np.sin(theta_1 + theta_2))
 		Effector_position = zip(x,y)
@@ -220,7 +225,7 @@ class two_link_arm:
 	        Returns: State -  a 2d array of positions of size [num of degrees of motion * length of time]
 	    """
 	    #given x-y cartesian coordinates is it possible to obtain the values of theta and phi that correspond to the end effector position
-	    l = 1
+	    l = 60
 	    theta_1 = [0] * len(Effector_position)
 	    theta_2 = [0] * len(Effector_position)
 	    for i,pos in enumerate(Effector_position):
@@ -230,8 +235,8 @@ class two_link_arm:
 	        k1 = l*(1 + np.cos(theta_2[i]))
 	        k2 = l*np.sin(theta_2[i])
 	        theta_1[i] = np.arctan(y/x) - np.arctan(k2/k1)
-	    #get the value of the 
-	    states = np.vstack((theta_1,self.forward_difference(theta_1),theta_2,self.forward_difference(theta_2)))
+	    #get the value of the
+	    states = np.vstack((theta_1,theta_2))
 	    return states
 
 	def inverse_dynamics(self,states):
@@ -255,6 +260,5 @@ class two_link_arm:
 		ndarray = np.concatenate(([0],ndarray))
 		derivative = np.diff(ndarray) / dt
 		return derivative
-
 
 
