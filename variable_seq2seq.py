@@ -213,7 +213,7 @@ class variable_lstm:
 			y_temp = sess.run(op_list[1],feed_dict = {self.x : x, self.termination_tstep : termination_tstep_list[batch_num]})
 			output_list[batch_num] = y_temp
 			#initialize a grid
-			my_grid = tt.grid('output' + str(batch_num) + '.png','Output_Images_LSTM/')
+			my_grid = tt.grid('output' + str(batch_num),'Output_Images_LSTM/')
 			pos_list = my_arm.forward_kinematics(y_temp[0,:,:])
 			grid_array = my_grid.draw_figure(pos_list)
 			print len(pos_list)
