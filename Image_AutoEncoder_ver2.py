@@ -14,7 +14,7 @@ CONV_KERNELS_1 = 10
 CONV_KERNELS_2 = 4
 FC_2_UNITS = 64*64*2*BATCH_SIZE
 
-EPOCHS = 1
+EPOCHS = 10
 DIRECTORY_NAME = 'Training_Images/'
 OUTPUT_DIRECTORY = 'Output_Images_ver2/'
 EVALUATION_SIZE = 200
@@ -87,13 +87,13 @@ class Shape_Autoencoder:
 			with tf.name_scope("weights"):
 				W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.img_width *self.img_width // 4 *self.conv_kernels_2*self.batch_size,FC_2_UNITS],stddev = 0.1)) 
 			with tf.name_scope("biases"):
-				b_fc1 = tf.Variable(tf.constant(0.1,shape = [FC_2_UNITS])) 
+				b_fc1 = tf.Variable(tf.constant(0.1,shape = [1,FC_2_UNITS])) 
 
 		with tf.name_scope("FC2"):
 			with tf.name_scope("weights"):
 				W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.batch_size*self.img_width*self.img_width],stddev = 0.1))
 			with tf.name_scope("biases"):
-				b_fc2 = tf.Variable(tf.constant(0.1,shape = [self.batch_size*self.img_width*self.img_width]))
+				b_fc2 = tf.Variable(tf.constant(0.1,shape = [1,self.batch_size*self.img_width*self.img_width]))
 
 		#consider first layer
 		conv1 = tf.nn.conv2d(self.op_dict['x'],W_conv1,strides = [1,1,1,1],padding = 'SAME')
