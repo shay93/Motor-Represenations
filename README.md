@@ -1,16 +1,11 @@
-# Motor-Represenations
-We aim to learn transferrable visuomotor representations by learning a transform between some combination of control spaces state spaces and action spaces. The following is a list of experiments that have been run along with a brief description of the results obtained:
+# Transferable Visuomotor Representations #
 
-The action used to study the above is the creation of geometric shapes, by n-degree of freedom arms. The geometric shapes consist of various Triangles,Squares and Rectangles. 
+We seek to investigate the computational underpinnings that facilitate imitation learning. We will do this by first constructing a toy world consisting of robotic arms which are restricted to move in 2-Dimensions over a grid. The end of each robotic arm will be able to mark its position on the grid. Furthermore, each robotic arm may consist of two or more links. A motor at the intersection of two links will be able to determine the angle between the pair. By changing the angles between each pair of links we will be able to alter the state of the arm and hence the position of its end effector. This will allow us to draw shapes on the grid!
 
-1. The first experiment is just a toy autoencoder that aims to learn the identity for random data. This experiment was primarily to learn tensorflow functionality. The file used is the autoencoder_toy.py.  
+### Task 1 ###
 
-2. The first baseline experiment aims to recreate the shapes via a convolutional autoencoder, the architecture of the above may be found in the file shape_autoencoder.py. We are however, unable to regenerate shapes using the above.
+As a Baseline we seek to simply reconstruct the output images via an Autoencoder. Two architectures are used specifically Image_AutoEncoder_ver1.py and Image_AutoEncoder_ver2.py.
 
-3. The next experiment is to figure out RNN functionality in Tensorflow. This is done by implementing an LSTM that aims to fit a sinuisoid. This is achieved for a sinuisoid with fixed frequency and amplitude, but with uniform noise added to the sinuisoid. This architecture may be found in lstm_toy2.py
+### Task 2 ###
 
-The experiments to still be performed or tested are listed below:
-
-1. A sequence to sequence mapping is implemented via a LSTM and the architecture is shown in seq2seq.py but a good test needs to be performed in order to iron out any bugs. Currently the seq2seq is carried out between the two control spaces. 
-
-2. Alternatively one may learn the control inputs of one arm given the control inputs of the other. 
+We then seek to demonstrate that an arm should be able to replicate the output image produced by another arm by simply learning the transformation between its state and the latter arm's state. We initially restrict our attention to two two link arms with different link lengths. We attempt to learn the transformation via a variable sequence to sequence mapping implemented in variable_seq2seq.py.
