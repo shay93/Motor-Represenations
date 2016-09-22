@@ -211,12 +211,11 @@ class two_link_arm:
 		                             equal to the length of time being considered.
 		"""
 		#use the general two link arm with theta1 and theta2
-		l = 1
 		theta_1 = state[0,:]
 		theta_2 = state[1,:]
-		x = l*(np.cos(theta_1) + np.cos(theta_1 + theta_2))
-		y = l*(np.sin(theta_1) + np.sin(theta_1 + theta_2))
-		Effector_position = zip(x,y)
+		x = self.link_length*(np.cos(theta_1) + np.cos(theta_1 + theta_2))
+		y = self.link_length*(np.sin(theta_1) + np.sin(theta_1 + theta_2))
+		Effector_position = zip(np.round(x),np.round(y))
 		return Effector_position
 
 	def inverse_kinematics(self,Effector_position):
@@ -225,15 +224,14 @@ class two_link_arm:
 	        Returns: State -  a 2d array of positions of size [num of degrees of motion * length of time]
 	    """
 	    #given x-y cartesian coordinates is it possible to obtain the values of theta and phi that correspond to the end effector position
-	    l = 60
 	    theta_1 = [0] * len(Effector_position)
 	    theta_2 = [0] * len(Effector_position)
 	    for i,pos in enumerate(Effector_position):
 	        x = pos[0]
 	        y = pos[1]
-	        theta_2[i] = np.arccos((x**2 + y**2 - 2*(l**2))/(2*(l**2)))
-	        k1 = l*(1 + np.cos(theta_2[i]))
-	        k2 = l*np.sin(theta_2[i])
+	        theta_2[i] = np.arccos((x**2 + y**2 - 2*(self.link_length**2))/(2*(self.link_length**2)))
+	        k1 = self.link_length*(1 + np.cos(theta_2[i]))
+	        k2 = self.link_length*np.sin(theta_2[i])
 	        theta_1[i] = np.arctan(y/x) - np.arctan(k2/k1)
 	    #get the value of the
 	    states = np.vstack((theta_1,theta_2))
