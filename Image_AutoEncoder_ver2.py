@@ -79,11 +79,11 @@ class Shape_Autoencoder:
 		b_conv2 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
 
 		#define parameters for full connected layer"
-		W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.img_width *self.img_width // 4 *self.conv_kernels_2*self.batch_size,FC_2_UNITS],stddev = 0.1)) 
-		b_fc1 = tf.Variable(tf.constant(0.1,shape = [1,FC_2_UNITS])) 
+		W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*self.conv_kernels_2 // 4,FC_2_UNITS],stddev = 0.1)) 
+		b_fc1 = tf.Variable(tf.constant(0.1,shape = [self.img_width*self.img_width,FC_2_UNITS])) 
 
-		W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.batch_size*self.img_width*self.img_width],stddev = 0.1))
-		b_fc2 = tf.Variable(tf.constant(0.1,shape = [1,self.batch_size*self.img_width*self.img_width]))
+		W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.batch_size],stddev = 0.1))
+		b_fc2 = tf.Variable(tf.constant(0.1,shape = [self.img_width*self.img_width,self.batch_size]))
 
 		#consider first layer
 		conv1 = tf.nn.conv2d(self.op_dict['x'],W_conv1,strides = [1,1,1,1],padding = 'SAME')
@@ -96,7 +96,7 @@ class Shape_Autoencoder:
 		pool2 = tf.nn.max_pool(h_conv2, ksize = [1,2,2,1],strides = [1,1,1,1], padding = 'SAME')
 		
 		#Reshape the output from pooling layers to pass to fully connected layers
-		h_conv2_flat = tf.reshape(pool2, shape = [1,self.img_width*self.img_width // 4*self.batch_size*self.conv_kernels_2])
+		h_conv2_reshape = tf.reshape(pool2, shape = [self.img_width*self.img_width, self.batch_size*self.conv_kernels_2 // 4])
 		h_fc1 = tf.sigmoid(tf.matmul(h_conv2_flat,W_fc1) + b_fc1)
 		
 		#Add the final layer 
@@ -109,7 +109,7 @@ class Shape_Autoencoder:
 		#define a learning rate with an exponential decay,a batch variable is needed in order to prevent 
 		self.op_dict['batch'] = tf.Variable(0)
 		learning_rate = tf.train.exponential_decay(
-      				1,                		# Base learning rate.
+      				1e-2,                		# Base learning rate.
       				self.op_dict['batch']*self.batch_size,  	# Current index into the dataset.
       				EPOCHS * 3000,      		# Decay step.
       				1e-4,             			# Decay rate.
