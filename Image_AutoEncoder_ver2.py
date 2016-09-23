@@ -11,11 +11,11 @@ import png
 BATCH_SIZE = 12
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
-CONV_KERNELS_1 = 10
-CONV_KERNELS_2 = 4
-FC_2_UNITS = 64*64*2*BATCH_SIZE
+CONV_KERNELS_1 = 64
+CONV_KERNELS_2 = 64
+FC_2_UNITS = 64*64*5
 
-EPOCHS = 5
+EPOCHS = 20
 DIRECTORY_NAME = 'Training_Images/'
 OUTPUT_DIRECTORY = 'Output_Images_ver2/'
 EVALUATION_SIZE = 200
@@ -97,7 +97,7 @@ class Shape_Autoencoder:
 		
 		#Reshape the output from pooling layers to pass to fully connected layers
 		h_conv2_reshape = tf.reshape(pool2, shape = [self.img_width*self.img_width, self.batch_size*self.conv_kernels_2 // 4])
-		h_fc1 = tf.sigmoid(tf.matmul(h_conv2_flat,W_fc1) + b_fc1)
+		h_fc1 = tf.sigmoid(tf.matmul(h_conv2_reshape,W_fc1) + b_fc1)
 		
 		#Add the final layer 
 		y_reshape = tf.sigmoid(tf.matmul(h_fc1,W_fc2) + b_fc2)
@@ -107,16 +107,16 @@ class Shape_Autoencoder:
 		self.op_dict['meansq'] = tf.reduce_mean(tf.square(self.op_dict['y'] - self.op_dict['y_']))
 		
 		#define a learning rate with an exponential decay,a batch variable is needed in order to prevent 
-		self.op_dict['batch'] = tf.Variable(0)
-		learning_rate = tf.train.exponential_decay(
-      				1e-2,                		# Base learning rate.
-      				self.op_dict['batch']*self.batch_size,  	# Current index into the dataset.
-      				EPOCHS * 3000,      		# Decay step.
-      				1e-4,             			# Decay rate.
+		self.op_dict['batch'] = tf.Variable(0,trainable = False)
+		self.op_dict['learning_rate'] = tf.train.exponential_decay(
+      				10.,                		# Base learning rate.
+      				self.op_dict['batch'],  	# Current index into the dataset.
+      				300,      		# Decay step.
+      				0.5,             			# Decay rate.
       				staircase=True)
 		
 		#define a training operation
-		self.op_dict['train_op'] = tf.train.MomentumOptimizer(learning_rate,0.5).minimize(self.op_dict['meansq'])
+		self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['meansq'],self.op_dict['batch'])
 		sess = tf.Session()
 		sess.run(tf.initialize_all_variables())
 		
@@ -140,9 +140,9 @@ class Shape_Autoencoder:
 			self.op_dict['batch'].assign(batch_num)
 			data_batch = extract_batch(batch_num)
 			feed = {self.op_dict['x'] : data_batch , self.op_dict['y_'] : data_batch}
-			loss, _ = sess.run([self.op_dict['meansq'],self.op_dict['train_op']], feed_dict = feed)
+			loss, _,learning = sess.run([self.op_dict['meansq'],self.op_dict['train_op'],self.op_dict['learning_rate']], feed_dict = feed)
 			if batch_num % 20 == 0:
-				print batch_num,loss
+				print batch_num,loss,learning
 			loss_array[batch_num] = loss
 		return loss_array
 
