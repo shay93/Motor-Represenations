@@ -7,7 +7,7 @@ import png
 
 
 #Globals
-BATCH_SIZE = 3
+BATCH_SIZE = 12
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 10
@@ -69,31 +69,19 @@ class Shape_Autoencoder:
 		#define a place holder for the labels
 		self.op_dict['y_'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
 		#reshape x so that you can downsample it 
-		with tf.name_scope("Conv_1"):
-			with tf.name_scope("weights"):
-				W_conv1 = tf.Variable(tf.truncated_normal([10,10,1,self.conv_kernels_1],stddev = 0.1))
-			with tf.name_scope("biases"):
-				b_conv1 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
+		W_conv1 = tf.Variable(tf.truncated_normal([5,5,1,self.conv_kernels_1],stddev = 0.1))
+		b_conv1 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
 	
 		#define parameters for the second convolutional layer
-		with tf.name_scope("Conv_2"):
-			with tf.name_scope("weights"):
-				W_conv2 = tf.Variable(tf.truncated_normal([10,10,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
-			with tf.name_scope("biases"):
-				b_conv2 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
+		W_conv2 = tf.Variable(tf.truncated_normal([5,5,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
+		b_conv2 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
 
-		with tf.name_scope("FC1"):
 		#define parameters for full connected layer"
-			with tf.name_scope("weights"):
-				W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.img_width *self.img_width // 4 *self.conv_kernels_2*self.batch_size,FC_2_UNITS],stddev = 0.1)) 
-			with tf.name_scope("biases"):
-				b_fc1 = tf.Variable(tf.constant(0.1,shape = [1,FC_2_UNITS])) 
+		W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.img_width *self.img_width // 4 *self.conv_kernels_2*self.batch_size,FC_2_UNITS],stddev = 0.1)) 
+		b_fc1 = tf.Variable(tf.constant(0.1,shape = [1,FC_2_UNITS])) 
 
-		with tf.name_scope("FC2"):
-			with tf.name_scope("weights"):
-				W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.batch_size*self.img_width*self.img_width],stddev = 0.1))
-			with tf.name_scope("biases"):
-				b_fc2 = tf.Variable(tf.constant(0.1,shape = [1,self.batch_size*self.img_width*self.img_width]))
+		W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.batch_size*self.img_width*self.img_width],stddev = 0.1))
+		b_fc2 = tf.Variable(tf.constant(0.1,shape = [1,self.batch_size*self.img_width*self.img_width]))
 
 		#consider first layer
 		conv1 = tf.nn.conv2d(self.op_dict['x'],W_conv1,strides = [1,1,1,1],padding = 'SAME')
@@ -119,10 +107,10 @@ class Shape_Autoencoder:
 		#define a learning rate with an exponential decay,a batch variable is needed in order to prevent 
 		self.op_dict['batch'] = tf.Variable(0)
 		learning_rate = tf.train.exponential_decay(
-      				10.,                		# Base learning rate.
+      				1,                		# Base learning rate.
       				self.op_dict['batch']*self.batch_size,  	# Current index into the dataset.
       				EPOCHS * 3000,      		# Decay step.
-      				1e-1,             			# Decay rate.
+      				1e-4,             			# Decay rate.
       				staircase=True)
 		
 		#define a training operation
@@ -130,10 +118,10 @@ class Shape_Autoencoder:
 		sess = tf.Session()
 		sess.run(tf.initialize_all_variables())
 		
-		return sess,self.op_dict
+		return sess
 
 
-	def train_graph(self,sess,op_dict,test_data_index):
+	def train_graph(self,sess,test_data_index):
 		"""
 		Tune the weights of the graph so that you can learn the right results
 		inputs: A sessions object and an operation dictionary along with an integer specifying the end of the training data
@@ -147,16 +135,16 @@ class Shape_Autoencoder:
 		#iterate over the steps training at each step and recording the loss
 		for batch_num in range(num_batches):
 			#get the data batch by specifying the batch index as step % BATCH_SIZE
-			op_dict['batch'].assign(batch_num)
+			self.op_dict['batch'].assign(batch_num)
 			data_batch = extract_batch(batch_num)
-			feed = {op_dict['x'] : data_batch , op_dict['y_'] : data_batch}
-			loss, _ = sess.run([op_dict['meansq'],op_dict['train_op']], feed_dict = feed)
+			feed = {self.op_dict['x'] : data_batch , self.op_dict['y_'] : data_batch}
+			loss, _ = sess.run([self.op_dict['meansq'],self.op_dict['train_op']], feed_dict = feed)
 			if batch_num % 20 == 0:
 				print batch_num,loss
 			loss_array[batch_num] = loss
 		return loss_array
 
-	def evaluate_graph(self,sess,op_dict,test_data_index):
+	def evaluate_graph(self,sess,test_data_index):
 		"""
 		Pass the testing data through the graph and save the output image for each input image
 		to the output image directory.
@@ -169,14 +157,14 @@ class Shape_Autoencoder:
 		for batch_index in range(EVALUATION_SIZE // self.batch_size):
 			#call on the batch generator
 			data_batch = extract_batch(batch_index)
-			output = np.array(sess.run(op_dict['y'],feed_dict = {op_dict['x'] : data_batch}))
+			output = np.array(sess.run(self.op_dict['y'],feed_dict = {self.op_dict['x'] : data_batch}))
 
 			for j in range(self.batch_size):
 				#in order to separate the batch into its separate shapes we need
 				#the j mod 4 gives the index of the 
-				shape_str = shape_str_array[j // 4]
+				shape_str = shape_str_array[j // (self.batch_size // 3)]
 				#once the shape name is known determine the shape index
-				shape_index = j%4 + batch_index*4
+				shape_index = j%(self.batch_size // 3) + batch_index*(self.batch_size // 3)
 				save_name = OUTPUT_DIRECTORY + shape_str + str(shape_index) + '.png'
 				temp = output[j,:,:,0] * PIXEL_DEPTH
 				png.from_array((temp).tolist(),'L').save(save_name)
@@ -185,7 +173,7 @@ class Shape_Autoencoder:
 
 test_data_index = 220
 my_autoencoder = Shape_Autoencoder()
-sess,op_dict = my_autoencoder.build_graph()
-loss = my_autoencoder.train_graph(sess,op_dict,test_data_index)
-my_autoencoder.evaluate_graph(sess,op_dict,test_data_index)
+sess = my_autoencoder.build_graph()
+loss = my_autoencoder.train_graph(sess,test_data_index)
+my_autoencoder.evaluate_graph(sess,test_data_index)
 
