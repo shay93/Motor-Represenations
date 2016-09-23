@@ -7,6 +7,7 @@ import png
 
 
 #Globals
+
 BATCH_SIZE = 12
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
@@ -14,7 +15,7 @@ CONV_KERNELS_1 = 10
 CONV_KERNELS_2 = 4
 FC_2_UNITS = 64*64*2*BATCH_SIZE
 
-EPOCHS = 10
+EPOCHS = 5
 DIRECTORY_NAME = 'Training_Images/'
 OUTPUT_DIRECTORY = 'Output_Images_ver2/'
 EVALUATION_SIZE = 200
@@ -69,6 +70,7 @@ class Shape_Autoencoder:
 		#define a place holder for the labels
 		self.op_dict['y_'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
 		#reshape x so that you can downsample it 
+
 		W_conv1 = tf.Variable(tf.truncated_normal([5,5,1,self.conv_kernels_1],stddev = 0.1))
 		b_conv1 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
 	
