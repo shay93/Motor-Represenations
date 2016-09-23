@@ -7,14 +7,14 @@ import png
 
 
 #Globals
-BATCH_SIZE = 3
+BATCH_SIZE = 6
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 10
 CONV_KERNELS_2 = 4
 FC_2_UNITS = 64*64*2*BATCH_SIZE
 
-EPOCHS = 10
+EPOCHS = 5
 DIRECTORY_NAME = 'Training_Images/'
 OUTPUT_DIRECTORY = 'Output_Images_ver2/'
 EVALUATION_SIZE = 200
@@ -71,14 +71,14 @@ class Shape_Autoencoder:
 		#reshape x so that you can downsample it 
 		with tf.name_scope("Conv_1"):
 			with tf.name_scope("weights"):
-				W_conv1 = tf.Variable(tf.truncated_normal([10,10,1,self.conv_kernels_1],stddev = 0.1))
+				W_conv1 = tf.Variable(tf.truncated_normal([2,2,1,self.conv_kernels_1],stddev = 0.1))
 			with tf.name_scope("biases"):
 				b_conv1 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
 	
 		#define parameters for the second convolutional layer
 		with tf.name_scope("Conv_2"):
 			with tf.name_scope("weights"):
-				W_conv2 = tf.Variable(tf.truncated_normal([10,10,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
+				W_conv2 = tf.Variable(tf.truncated_normal([2,2,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
 			with tf.name_scope("biases"):
 				b_conv2 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
 

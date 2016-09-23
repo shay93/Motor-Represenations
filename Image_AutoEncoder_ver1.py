@@ -7,7 +7,7 @@ import png
 
 
 #Globals
-BATCH_SIZE = 12
+BATCH_SIZE = 24
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
@@ -16,7 +16,7 @@ data_split = 0.75
 EPOCHS = 20
 DIRECTORY_NAME = 'Training_Images/'
 OUTPUT_DIRECTORY = 'Output_Images_ver1/'
-EVALUATION_SIZE = 300
+EVALUATION_SIZE = 600
 
 
 def extract_batch(batch_num):
@@ -157,7 +157,7 @@ class Shape_Autoencoder:
 		"""
 		shape_str_array = ['Rectangle', 'Square', 'Triangle']
 		#iterate over the batches
-		for batch_index in range(test_data_index, test_data_index + EVALUATION_SIZE // BATCH_SIZE):
+		for batch_index in range(EVALUATION_SIZE // self.batch_size):
 			#call on the batch generator
 			data_batch = extract_batch(batch_index)
 			output = np.array(sess.run(op_dict['y'],feed_dict = {op_dict['x'] : data_batch}))
@@ -165,9 +165,9 @@ class Shape_Autoencoder:
 			for j in range(self.batch_size):
 				#in order to separate the batch into its separate shapes we need
 				#the j mod 4 gives the index of the 
-				shape_str = shape_str_array[j // 4]
+				shape_str = shape_str_array[j // (self.batch_size // 3)]
 				#once the shape name is known determine the shape index
-				shape_index = j%4 + batch_index*4
+				shape_index = j%(self.batch_size // 3) + batch_index*(self.batch_size // 3)
 				save_name = OUTPUT_DIRECTORY + shape_str + str(shape_index) + '.png'
 				temp = output[j,:,:,0] * PIXEL_DEPTH
 				png.from_array((temp).tolist(),'L').save(save_name)
