@@ -55,6 +55,8 @@ class Shape_Autoencoder:
 		self.img_width = IMG_WIDTH
 		self.conv_kernels_1 = CONV_KERNELS_1
 		self.conv_kernels_2 = CONV_KERNELS_2
+		self.conv_kernels_3 = 32
+		self.conv_kernels_4 = 64
 		self.op_dict = {}
 	
 
@@ -71,37 +73,72 @@ class Shape_Autoencoder:
 		self.op_dict['y_'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
 		#reshape x so that you can downsample it 
 
-		W_conv1 = tf.Variable(tf.truncated_normal([5,5,1,self.conv_kernels_1],stddev = 0.1))
+		self.op_dict['W_conv1'] = tf.Variable(tf.truncated_normal([10,10,1,self.conv_kernels_1],stddev = 0.1))
 		b_conv1 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
-	
-		#define parameters for the second convolutional layer
-		W_conv2 = tf.Variable(tf.truncated_normal([5,5,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
-		b_conv2 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
-
-		#define parameters for full connected layer"
-		W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*self.conv_kernels_2 // 4,FC_2_UNITS],stddev = 0.1)) 
-		b_fc1 = tf.Variable(tf.constant(0.1,shape = [self.img_width*self.img_width,FC_2_UNITS])) 
-
-		W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.batch_size],stddev = 0.1))
-		b_fc2 = tf.Variable(tf.constant(0.1,shape = [self.img_width*self.img_width,self.batch_size]))
-
-		#consider first layer
+		
+				#consider first layer
 		conv1 = tf.nn.conv2d(self.op_dict['x'],W_conv1,strides = [1,1,1,1],padding = 'SAME')
 		h_conv1 = tf.sigmoid(tf.nn.bias_add(conv1,b_conv1))
 		pool1 = tf.nn.max_pool(h_conv1, ksize =[1,2,2,1],strides = [1,2,2,1],padding = 'SAME')
+	
+		#define parameters for the second convolutional layer
+		W_conv2 = tf.Variable(tf.truncated_normal([10,10,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
+		b_conv2 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
 
 		#consider second layer
 		conv2 = tf.nn.conv2d(pool1,W_conv2,strides = [1,1,1,1],padding = 'SAME')
 		h_conv2 = tf.sigmoid(tf.nn.bias_add(conv2,b_conv2))
 		pool2 = tf.nn.max_pool(h_conv2, ksize = [1,2,2,1],strides = [1,1,1,1], padding = 'SAME')
-		
 		#Reshape the output from pooling layers to pass to fully connected layers
 		h_conv2_reshape = tf.reshape(pool2, shape = [self.img_width*self.img_width, self.batch_size*self.conv_kernels_2 // 4])
+
+		#define parameters for full connected layer"
+		W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*self.conv_kernels_2 // 4,FC_2_UNITS],stddev = 0.1)) 
+		b_fc1 = tf.Variable(tf.constant(0.1,shape = [self.img_width*self.img_width,FC_2_UNITS])) 
 		h_fc1 = tf.sigmoid(tf.matmul(h_conv2_reshape,W_fc1) + b_fc1)
-		
+
+		W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.batch_size],stddev = 0.1))
+		b_fc2 = tf.Variable(tf.constant(0.1,shape = [self.img_width*self.img_width,self.batch_size]))
 		#Add the final layer 
-		y_reshape = tf.sigmoid(tf.matmul(h_fc1,W_fc2) + b_fc2)
-		self.op_dict['y'] = tf.reshape(y_reshape, shape = [self.batch_size,self.img_width,self.img_width,1]) #BATCH_SIZE
+		h_fc2 = tf.sigmoid(tf.matmul(h_fc1,W_fc2) + b_fc2)
+
+		#reshape h_fc2
+		h_fc2_reshape = tf.reshape(h_fc2,shape = [self.img_width*self.img_width // 16, self.batch_size*16])
+		W_fc3 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*16,self.batch_size],stddev = 0.1))
+		b_fc3 = tf.Variable(tf.constant(0.1, shape = [self.img_width*self.img_width // 16,self.batch_size]))
+		h_fc3 = tf.sigmoid(tf.matmul(h_fc2_reshape,W_fc3) + b_fc3)
+
+		#now reshape such that it may be used by the other convolutional layers
+		h_fc3_reshape = tf.reshape(h_fc3, shape = [self.batch_size,self.img_width // 4, self.img_width // 4, 1])
+		#pass this into a set of convolutional layers
+		W_conv3 = tf.Variable(tf.truncated_normal(shape = [2, 2, 1, self.conv_kernels_3], stddev = 0.1))
+		#initialize a bias variable for the convolutional layer 
+		b_conv3 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_3]))
+		conv3 = tf.nn.conv2d(h_fc3_reshape,W_conv3,strides = [1,1,1,1], padding = 'SAME')
+		#now compute output from first conv kernel
+		h_conv3 = tf.sigmoid(tf.nn.bias_add(conv3,b_conv3))
+		
+		#now pool the output of the first convolutional layer
+		pool3 = tf.nn.max_pool(h_conv3,ksize = [1,2,2,1],strides = [1,1,1,1],padding = 'SAME')
+		
+		#initialize weights for second convolutional layer
+		W_conv4 = tf.Variable(tf.truncated_normal(shape = [2,2,self.conv_kernels_3,self.conv_kernels_4] , stddev = 0.1))
+		#initialize a bias variable 
+		b_conv4 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_4]))
+		#calculate the second conv layer
+		conv4 = tf.nn.conv2d(pool3,W_conv4,strides = [1,1,1,1], padding = 'SAME')
+		h_conv4 = tf.sigmoid((tf.nn.bias_add(conv4,b_conv4)))
+		
+		#pool the output from h_conv2
+		pool4 = tf.nn.max_pool(h_conv4,ksize = [1,2,2,1], strides = [1,1,1,1], padding = 'SAME')
+		#flatten the output of pool 2
+		pool4_flat = tf.reshape(pool4, shape = [self.img_width,-1])
+		#initialize weights for last fully connected layer
+		W_fc5 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*self.img_width*self.img_width*CONV_KERNELS_2 //(self.img_width*16),self.img_width * self.batch_size],stddev = 0.1))
+		b_fc5 = tf.Variable(tf.constant(0.1,shape = [self.img_width, self.img_width*self.batch_size]))
+
+		self.op_dict['y'] = tf.reshape(tf.sigmoid(tf.matmul(pool4_flat,W_fc5) + b_fc5),shape = [self.batch_size,self.img_width,self.img_width,1])
+
 		
 		#define a loss function 
 		self.op_dict['meansq'] = tf.reduce_mean(tf.square(self.op_dict['y'] - self.op_dict['y_']))
@@ -172,10 +209,23 @@ class Shape_Autoencoder:
 				png.from_array((temp).tolist(),'L').save(save_name)
 
 
+	def save_normalized_weights(self,sess):
+		"""
+		Takes an input of weights and saves them as images so that training may be observed
+		inputs:  
+		"""
+		W_conv1 = sess.run(self.op_dict['W_conv1'])
+		for i in range(self.conv_kernels_1):
+			kernel = W_conv1[:,:,0,i]
+			kernel_normed = np.divide(kernel,np.mean(kernel))
+			plt.imsave("Kernels_Ver2/" + "kernel" + str(i) + ".png",kernel_normed)
+
+
 
 test_data_index = 220
 my_autoencoder = Shape_Autoencoder()
 sess = my_autoencoder.build_graph()
 loss = my_autoencoder.train_graph(sess,test_data_index)
 my_autoencoder.evaluate_graph(sess,test_data_index)
+my_autoencoder.save_normalized_weights(sess)
 
