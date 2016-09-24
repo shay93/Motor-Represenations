@@ -154,10 +154,10 @@ class Shape_Autoencoder:
 		#define a learning rate with an exponential decay,a batch variable is needed in order to prevent 
 		self.op_dict['batch'] = tf.Variable(0,trainable = False)
 		self.op_dict['learning_rate'] = tf.train.exponential_decay(
-      				1e-1,                		# Base learning rate.
+      				1e-3,                		# Base learning rate.
       				self.op_dict['batch'],  	# Current index into the dataset.
       				100,      		# Decay step.
-      				0.9,             			# Decay rate.
+      				0.96,             			# Decay rate.
       				staircase=False)
 		
 		#define a training operation
