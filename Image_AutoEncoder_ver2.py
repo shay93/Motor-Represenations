@@ -11,7 +11,7 @@ import png
 BATCH_SIZE = 12
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
-CONV_KERNELS_1 = 64
+CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 FC_2_UNITS = 64*64*5
 
@@ -73,11 +73,12 @@ class Shape_Autoencoder:
 		self.op_dict['y_'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
 		#reshape x so that you can downsample it 
 
+
 		self.op_dict['W_conv1'] = tf.Variable(tf.truncated_normal([10,10,1,self.conv_kernels_1],stddev = 0.1))
 		b_conv1 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
 		
-				#consider first layer
-		conv1 = tf.nn.conv2d(self.op_dict['x'],W_conv1,strides = [1,1,1,1],padding = 'SAME')
+			
+		conv1 = tf.nn.conv2d(self.op_dict['x'],self.op_dict['W_conv1'],strides = [1,1,1,1],padding = 'SAME')
 		h_conv1 = tf.sigmoid(tf.nn.bias_add(conv1,b_conv1))
 		pool1 = tf.nn.max_pool(h_conv1, ksize =[1,2,2,1],strides = [1,2,2,1],padding = 'SAME')
 	
@@ -146,14 +147,14 @@ class Shape_Autoencoder:
 		#define a learning rate with an exponential decay,a batch variable is needed in order to prevent 
 		self.op_dict['batch'] = tf.Variable(0,trainable = False)
 		self.op_dict['learning_rate'] = tf.train.exponential_decay(
-      				10.,                		# Base learning rate.
+      				1.,                		# Base learning rate.
       				self.op_dict['batch'],  	# Current index into the dataset.
-      				300,      		# Decay step.
+      				200,      		# Decay step.
       				0.5,             			# Decay rate.
       				staircase=True)
 		
 		#define a training operation
-		self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['meansq'],self.op_dict['batch'])
+		self.op_dict['train_op'] = tf.train.MomentumOptimizer(self.op_dict['learning_rate'],1.).minimize(self.op_dict['meansq'],global_step = self.op_dict['batch'])
 		sess = tf.Session()
 		sess.run(tf.initialize_all_variables())
 		

@@ -7,7 +7,7 @@ import png
 
 
 #Globals
-BATCH_SIZE = 24
+BATCH_SIZE = 18
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
@@ -114,10 +114,10 @@ class Shape_Autoencoder:
 		self.op_dict['meansq'] =  tf.reduce_mean(tf.square(self.op_dict['y_'] - self.op_dict['y']))
 		#define a learning rate this may be made adaptive later but for the moment keep it fixed
 		
-		self.op_dict['batch'] = tf.Variable(0)
+		self.op_dict['batch'] = tf.Variable(0,trainable = False)
 
-  		learning_rate = 1e-3
-		self.op_dict['train_op'] = tf.train.AdamOptimizer(learning_rate).minimize(self.op_dict['meansq'])
+  		self.op_dict['learning_rate'] = tf.train.exponential_decay(1.,self.op_dict['batch'],200,0.5,staircase = True)
+		self.op_dict['train_op'] = tf.train.AdamOptimizer(learning_rate).minimize(self.op_dict['meansq'],global_step = self.op_dict['batch'])
 		#initialize a sessions object and then all variables
 		sess = tf.Session()
 		sess.run(tf.initialize_all_variables())
@@ -140,10 +140,11 @@ class Shape_Autoencoder:
 		for batch_num in range(num_batches):
 			#get the data batch by specifying the batch index as step % BATCH_SIZE
 			data_batch = extract_batch(batch_num)
+			self.op_dict['batch'].assign(batch_num)
 			feed = {op_dict['x'] : data_batch , op_dict['y_'] : data_batch}
-			loss, _ = sess.run([op_dict['meansq'],op_dict['train_op']], feed_dict = feed)
+			loss, _,learning = sess.run([op_dict['meansq'],op_dict['train_op'],self.op_dict['learning_rate']], feed_dict = feed)
 			if batch_num % 20 == 0:
-				print batch_num,loss
+				print batch_num,loss,learning
 			loss_array[batch_num] = loss
 		return loss_array
 
