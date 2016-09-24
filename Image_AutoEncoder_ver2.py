@@ -8,14 +8,14 @@ import png
 
 #Globals
 
-BATCH_SIZE = 12
+BATCH_SIZE = 24
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 FC_2_UNITS = 64*64*5
 
-EPOCHS = 20
+EPOCHS = 50
 DIRECTORY_NAME = 'Training_Images/'
 OUTPUT_DIRECTORY = 'Output_Images_ver2/'
 EVALUATION_SIZE = 200
@@ -149,9 +149,9 @@ class Shape_Autoencoder:
 		self.op_dict['learning_rate'] = tf.train.exponential_decay(
       				1.,                		# Base learning rate.
       				self.op_dict['batch'],  	# Current index into the dataset.
-      				200,      		# Decay step.
-      				0.5,             			# Decay rate.
-      				staircase=True)
+      				100,      		# Decay step.
+      				0.9,             			# Decay rate.
+      				staircase=False)
 		
 		#define a training operation
 		self.op_dict['train_op'] = tf.train.MomentumOptimizer(self.op_dict['learning_rate'],1.).minimize(self.op_dict['meansq'],global_step = self.op_dict['batch'])
