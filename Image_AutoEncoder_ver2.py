@@ -17,7 +17,7 @@ CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 FC_2_UNITS = 64*64*5
 split_data = 0.75
-EPOCHS = 2
+EPOCHS = 20
 DIRECTORY_NAME = 'Training_Images/'
 
 
