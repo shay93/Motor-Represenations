@@ -272,7 +272,7 @@ with open(my_autoencoder.output_root_directory + "loss.npy",'w') as f:
 #plt.plot(loss)
 #f.savefig("Image_Autoencoder_Ver2_Outputs/Loss_Array.png")
 #plt.close(f)
-my_autoencoder.evaluate_graph(sess,0,int((EPOCHS * 3000) // BATCH_SIZE),False)
+my_autoencoder.evaluate_graph(sess,0,int(3000 // BATCH_SIZE),False)
 W_conv1,W_conv2 = sess.run([my_autoencoder.op_dict['W_conv1'],my_autoencoder.op_dict['W_conv2']])
 with open(my_autoencoder.output_root_directory + "W_conv1.npy",'w') as f:
 	pickle.dump(W_conv1,f)

@@ -8,13 +8,13 @@ import png
 
 
 #Globals
-BATCH_SIZE = 6
+BATCH_SIZE = 12
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 
-EPOCHS = 2
+EPOCHS = 20
 DIRECTORY_NAME = 'Training_Images/'
 EVALUATION_SIZE = 600
 
@@ -231,6 +231,6 @@ plt.title("Loss")
 plt.plot(loss)
 f.savefig("Image_Autoencoder_Ver1_Outputs/Loss_Array.png")
 plt.close(f)
-my_autoencoder.evaluate_graph(sess,0,int((EPOCHS * 3000) // BATCH_SIZE),False)
+my_autoencoder.evaluate_graph(sess,0,3000 // BATCH_SIZE,False)
 my_autoencoder.save_normalized_weights(sess)
 
