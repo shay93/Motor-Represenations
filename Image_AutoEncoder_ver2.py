@@ -10,14 +10,14 @@ import png
 
 #Globals
 
-BATCH_SIZE = 6
+BATCH_SIZE = 12
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 FC_2_UNITS = 64*64*5
 split_data = 0.75
-EPOCHS = 20
+EPOCHS = 2
 DIRECTORY_NAME = 'Training_Images/'
 
 
@@ -264,11 +264,11 @@ class Shape_Autoencoder:
 my_autoencoder = Shape_Autoencoder()
 sess = my_autoencoder.build_graph()
 loss = my_autoencoder.train_graph(sess)
-f = plt.figure()
-plt.title("Loss")
-plt.plot(loss)
-f.savefig("Image_Autoencoder_Ver2_Outputs/Loss_Array.png")
-plt.close(f)
+#f = plt.figure()
+#plt.title("Loss")
+#plt.plot(loss)
+#f.savefig("Image_Autoencoder_Ver2_Outputs/Loss_Array.png")
+#plt.close(f)
 my_autoencoder.evaluate_graph(sess,0,int((EPOCHS * 3000) // BATCH_SIZE),False)
-my_autoencoder.save_normalized_weights(sess)
+#my_autoencoder.save_normalized_weights(sess)
 
