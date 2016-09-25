@@ -4,7 +4,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import numpy as np
 import matplotlib.pyplot as plt
 import png
-
+import pickle
 
 
 
@@ -264,11 +264,22 @@ class Shape_Autoencoder:
 my_autoencoder = Shape_Autoencoder()
 sess = my_autoencoder.build_graph()
 loss = my_autoencoder.train_graph(sess)
+with open(my_autoencoder.output_root_directory + "loss.npy",'w') as f:
+	pickle.dump(loss,f)
+	f.close() 
 #f = plt.figure()
 #plt.title("Loss")
 #plt.plot(loss)
 #f.savefig("Image_Autoencoder_Ver2_Outputs/Loss_Array.png")
 #plt.close(f)
 my_autoencoder.evaluate_graph(sess,0,int((EPOCHS * 3000) // BATCH_SIZE),False)
+W_conv1,W_conv2 = sess.run([my_autoencoder.op_dict['W_conv1'],my_autoencoder.op_dict['W_conv2']])
+with open(my_autoencoder.output_root_directory + "W_conv1.npy",'w') as f:
+	pickle.dump(W_conv1,f)
+	f.close()
+
+with open(my_autoencoder.output_root_directory + "W_conv2.npy",'w') as f:
+	pickle.dump(W_conv2,f)
+	f.close()
 #my_autoencoder.save_normalized_weights(sess)
 
