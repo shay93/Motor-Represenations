@@ -177,14 +177,18 @@ class Shape_Autoencoder:
 		#using the number of EPOCHS and the batch size figure out the number of
 		#training steps that are required
 		num_batches = int((EPOCHS * 3000) // self.batch_size)
+		#num_batches_per_Epoch
+		num_batches_per_Epoch = int(3000 // self.batch_size)
 		#initialize a list to record the loss at each step
 		loss_array = [0] * num_batches
 		#iterate over the steps training at each step and recording the loss
 		for batch_num in range(num_batches):
+			#calculate the epoch number 
+			epoch_index = batch_num // num_batches_per_Epoch + 1
 			#get the data batch by specifying the batch index as step % BATCH_SIZE
 			if batch_num % 100 == 0:
 				#evaluate the batch and save the outputs
-				self.evaluate_graph(sess,batch_num % num_batches,(batch_num + 1) % num_batches,True)
+				self.evaluate_graph(sess,batch_num % num_batches,(batch_num + 1) % num_batches,True,epoch_index = epoch_index)
 			self.op_dict['batch'].assign(batch_num)
 			data_batch = extract_batch(batch_num)
 			feed = {self.op_dict['x'] : data_batch , self.op_dict['y_'] : data_batch}
@@ -194,7 +198,7 @@ class Shape_Autoencoder:
 			loss_array[batch_num] = loss
 		return loss_array
 
-	def evaluate_graph(self,sess,start_batch_index,end_batch_index,checkpoint_boolean):
+	def evaluate_graph(self,sess,start_batch_index,end_batch_index,checkpoint_boolean,epoch_index = None):
 		"""
 		Pass the testing data through the graph and save the output image for each input image
 		to the output image directory.
@@ -219,11 +223,14 @@ class Shape_Autoencoder:
 				shape_str = shape_str_array[j // (self.batch_size // 3)]
 				#once the shape name is known determine the shape index
 				shape_index = j%(self.batch_size // 3) + batch_index*(self.batch_size // 3)
-				save_name = output_directory + shape_str + str(shape_index) + '.png'
+				if checkpoint_boolean:
+					save_name = output_directory + shape_str + str(shape_index) + "_epoch_" + str(epoch_index) + '.png'
+				else:
+					save_name = output_directory + shape_str + str(shape_index) + '.png'					
 				temp = output[j,:,:,0] * PIXEL_DEPTH
 				png.from_array((temp).tolist(),'L').save(save_name)
 
-
+	
 	def save_normalized_weights(self,sess):
 		"""
 		Takes an input of weights and saves them as images so that training may be observed
@@ -240,6 +247,7 @@ class Shape_Autoencoder:
 			conv1_grid[i].imshow(kernel_normed, cmap = "Greys_r")
 		
 		conv1_fig.savefig("Image_Autoencoder_Ver2_Outputs/Conv1_Kernels.png")
+		plt.close(conv1_fig)
 		#perform the above for second conv layer as well
 		conv2_fig = plt.figure(1,(20.,20.))
 		conv2_grid = ImageGrid(conv2_fig, 111,nrows_ncols=(self.conv_kernels_2 // 8,8),axes_pad = 0.1)
@@ -249,16 +257,18 @@ class Shape_Autoencoder:
 			conv2_grid[j].imshow(kernel_normed,cmap = "Greys_r")
 
 		conv2_fig.savefig("Image_Autoencoder_Ver2_Outputs/Conv2_Kernels.png")
-
-
-
-
+		plt.close(conv2_fig)
 
 
 
 my_autoencoder = Shape_Autoencoder()
 sess = my_autoencoder.build_graph()
 loss = my_autoencoder.train_graph(sess)
-my_autoencoder.evaluate_graph(sess,0,int((EPOCHS * 3000) // self.batch_size),False)
+f = plt.figure()
+plt.title("Loss")
+plt.plot(loss)
+f.savefig("Image_Autoencoder_Ver2_Outputs/Loss_Array.png")
+plt.close(f)
+my_autoencoder.evaluate_graph(sess,0,int((EPOCHS * 3000) // BATCH_SIZE),False)
 my_autoencoder.save_normalized_weights(sess)
 
