@@ -131,13 +131,13 @@ class Shape_Autoencoder:
 				self.parameter_dict['b_conv2'] = tf.Variable(tf.constant(0.,shape = [self.conv_kernels_2]))
 			with tf.name_scope("Conv_Output") as scope:
 				#calculate the second conv layer
-				conv2 = tf.nn.conv2d(pool1,self.parameter_dict['W_conv2'],strides = [1,1,1,1], padding = 'SAME')
+				conv2 = tf.nn.conv2d(pool1,self.parameter_dict['W_conv2'],strides = [1,2,2,1], padding = 'SAME')
 			with tf.name_scope("Activations") as scope:
 				h_conv2 = tf.nn.relu((tf.nn.bias_add(conv2,self.parameter_dict['b_conv2'])))
 		
 		with tf.name_scope("Pool2") as scope:
 			#pool the output from h_conv2
-			pool2 = tf.nn.max_pool(h_conv2,ksize = [1,3,3,1], strides = [1,1,1,1], padding = 'SAME')
+			pool2 = tf.nn.max_pool(h_conv2,ksize = [1,3,3,1], strides = [1,2,2,1], padding = 'SAME')
 		
 		with tf.name_scope("Pool2_Flat") as scope:
 			#flatten the output of pool 2
