@@ -15,7 +15,7 @@ PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 
-EPOCHS = 2
+EPOCHS = 20
 DIRECTORY_NAME = 'Training_Images/'
 EVALUATION_SIZE = 600
 
@@ -55,7 +55,7 @@ class Shape_Autoencoder:
 		self.conv_kernels_1 = CONV_KERNELS_1
 		self.conv_kernels_2 = CONV_KERNELS_2
 		self.op_dict = {}
-		self.upsample_factor = 4
+		self.upsample_factor = 16
 		self.parameter_dict = {}
 
 		#initialize some directory names
@@ -161,7 +161,7 @@ class Shape_Autoencoder:
 			self.op_dict['L1_Norm'] =  tf.reduce_mean(tf.square(self.op_dict['y_'] - self.op_dict['y']))
 		
 		#define a learning rate this may be made adaptive later but for the moment keep it fixed
-		self.op_dict['learning_rate'] = 1e-3
+		self.op_dict['learning_rate'] = 1e-4
 		
 		with tf.name_scope("Train") as scope:
 			self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['L1_Norm'])
@@ -281,7 +281,7 @@ class Shape_Autoencoder:
 			with tf.name_scope('stddev'):
 				stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
 			tf.scalar_summary('stddev/' + name, stddev)
-			#tf.histogram_summary(name,var)
+			tf.histogram_summary(name,var)
 
 
 	def Add_Tensorboard_ops(self):
@@ -306,7 +306,7 @@ with open(my_autoencoder.output_root_directory + "loss.npy",'w') as f:
 	pickle.dump(loss,f)
 	f.close() 
 my_autoencoder.evaluate_graph(sess,0,int(3000 // BATCH_SIZE),False)
-W_conv1,W_conv2 = sess.run([my_autoencoder.op_dict['W_conv1'],my_autoencoder.op_dict['W_conv2']])
+W_conv1,W_conv2 = sess.run([my_autoencoder.parameter_dict['W_conv1'],my_autoencoder.parameter_dict['W_conv2']])
 with open(my_autoencoder.output_root_directory + "W_conv1.npy",'w') as f:
 	pickle.dump(W_conv1,f)
 	f.close()
