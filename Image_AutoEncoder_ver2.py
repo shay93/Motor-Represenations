@@ -60,6 +60,7 @@ class Shape_Autoencoder:
 		self.conv_kernels_3 = 32
 		self.conv_kernels_4 = 64
 		self.op_dict = {}
+		self.parameter_dict = {}
 
 		#intialize some directory names
 		self.checkpoint_images_directory = "Image_Checkpoints/"
@@ -74,95 +75,139 @@ class Shape_Autoencoder:
 
 		outputs: A session objecta and a operation dictionary
 		"""
+		
 		#first specify a placeholder for the input image which is of size 64 by 64
-		self.op_dict['x'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
-		#define a place holder for the labels
-		self.op_dict['y_'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
-		#reshape x so that you can downsample it 
-
-
-		self.op_dict['W_conv1'] = tf.Variable(tf.truncated_normal([10,10,1,self.conv_kernels_1],stddev = 0.1))
-		b_conv1 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
+		with tf.name_scope('Input_placeholder') as scope:
+			self.op_dict['x'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
 		
-			
-		conv1 = tf.nn.conv2d(self.op_dict['x'],self.op_dict['W_conv1'],strides = [1,1,1,1],padding = 'SAME')
-		h_conv1 = tf.sigmoid(tf.nn.bias_add(conv1,b_conv1))
-		pool1 = tf.nn.max_pool(h_conv1, ksize =[1,2,2,1],strides = [1,2,2,1],padding = 'SAME')
+		#define a place holder for the outputs
+		with tf.name_scope('Output_placeholder') as scope:
+			self.op_dict['y_'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
+
+		with tf.name_scope("Conv1") as scope:	
+			with tf.name_scope("Weights") as scope:
+				self.parameter_dict['W_conv1'] = tf.Variable(tf.truncated_normal([2,2,1,self.conv_kernels_1],stddev = 0.1))
+			with tf.name_scope("Biases") as scope:
+				self.parameter_dict['b_conv1'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
+			with tf.name_scope("Conv_Output") as scope:
+				conv1 = tf.nn.conv2d(self.op_dict['x'],self.parameter_dict['W_conv1'],strides = [1,1,1,1],padding = 'SAME')
+			with tf.name_scope("Activation") as scope:	
+				h_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,self.parameter_dict['b_conv1']))
+		
+		with tf.name_scope("Pool1") as scope:		
+			pool1 = tf.nn.max_pool(h_conv1, ksize =[1,3,3,1],strides = [1,2,2,1],padding = 'SAME')
+		
+		with tf.name_scope("Conv2") as scope:
+			#define parameters for the second convolutional layer
+			with tf.name_scope("Weights") as scope:
+				self.parameter_dict['W_conv2'] = tf.Variable(tf.truncated_normal([2,2,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
+			with tf.name_scope("Biases") as scope:
+				self.parameter_dict['b_conv2'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
+			with tf.name_scope("Conv_Output") as scope:	
+				#consider second layer
+				conv2 = tf.nn.conv2d(pool1,self.parameter_dict['W_conv2'],strides = [1,1,1,1],padding = 'SAME')
+			with tf.name_scope("Activation") as scope:	
+				h_conv2 = tf.nn.relu(tf.nn.bias_add(conv2,self.parameter_dict['b_conv2']))
+
+		with tf.name_scope("Pool2") as scope:		
+			pool2 = tf.nn.max_pool(h_conv2, ksize = [1,3,3,1],strides = [1,2,2,1], padding = 'SAME')
+		
+		with tf.name_scope("Reshape_h_conv2") as scope:
+			#Reshape the output from pooling layers to pass to fully connected layers
+			h_conv2_reshape = tf.reshape(pool2, shape = [self.batch_size,self.img_width*self.img_width*self.conv_kernels_2 // 16])
+
+		with tf.name_scope("FC1") as scope:
+			#define parameters for full connected layer
+			with tf.name_scope("Weights") as scope:
+				self.parameter_dict['W_fc1'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.img_width*self.conv_kernels_2 // 16,FC_2_UNITS],stddev = 0.1)) 
+			with tf.name_scope("Biases") as scope:
+				self.parameter_dict['b_fc1'] = tf.Variable(tf.constant(0.,shape = [self.batch_size,FC_2_UNITS])) 
+			with tf.name_scope("Activation") as scope:
+				h_fc1 = tf.nn.relu(tf.matmul(h_conv2_reshape, self.parameter_dict['W_fc1']) + self.parameter_dict['b_fc1'])
+
+		with tf.name_scope("FC2") as scope:
+			with tf.name_scope("Weights") as scope:
+				self.parameter_dict['W_fc2'] = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.img_width*self.img_width // 16],stddev = 0.1))
+			with tf.name_scope("Biases") as scope:	
+				self.parameter_dict['b_fc2'] = tf.Variable(tf.constant(0.,shape = [self.batch_size,self.img_width*self.img_width // 16]))
+			with tf.name_scope("Activation") as scope: 
+				h_fc2 = tf.nn.relu(tf.matmul(h_fc1,self.parameter_dict['W_fc2']) + self.parameter_dict['b_fc2'])
+
+		with tf.name_scope("Reshape_h_fc2")
+			#now reshape such that it may be used by the other convolutional layers
+			h_fc2_reshape = tf.reshape(h_fc2, shape = [self.batch_size,self.img_width // 4, self.img_width // 4, 1])
 	
-		#define parameters for the second convolutional layer
-		self.op_dict['W_conv2'] = tf.Variable(tf.truncated_normal([10,10,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
-		b_conv2 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
-
-		#consider second layer
-		conv2 = tf.nn.conv2d(pool1,self.op_dict['W_conv2'],strides = [1,1,1,1],padding = 'SAME')
-		h_conv2 = tf.sigmoid(tf.nn.bias_add(conv2,b_conv2))
-		pool2 = tf.nn.max_pool(h_conv2, ksize = [1,2,2,1],strides = [1,1,1,1], padding = 'SAME')
-		#Reshape the output from pooling layers to pass to fully connected layers
-		h_conv2_reshape = tf.reshape(pool2, shape = [self.img_width*self.img_width, self.batch_size*self.conv_kernels_2 // 4])
-
-		#define parameters for full connected layer"
-		W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*self.conv_kernels_2 // 4,FC_2_UNITS],stddev = 0.1)) 
-		b_fc1 = tf.Variable(tf.constant(0.1,shape = [self.img_width*self.img_width,FC_2_UNITS])) 
-		h_fc1 = tf.sigmoid(tf.matmul(h_conv2_reshape,W_fc1) + b_fc1)
-
-		W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_2_UNITS,self.batch_size],stddev = 0.1))
-		b_fc2 = tf.Variable(tf.constant(0.1,shape = [self.img_width*self.img_width,self.batch_size]))
-		#Add the final layer 
-		h_fc2 = tf.sigmoid(tf.matmul(h_fc1,W_fc2) + b_fc2)
-
-		#reshape h_fc2
-		h_fc2_reshape = tf.reshape(h_fc2,shape = [self.img_width*self.img_width // 16, self.batch_size*16])
-		W_fc3 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*16,self.batch_size],stddev = 0.1))
-		b_fc3 = tf.Variable(tf.constant(0.1, shape = [self.img_width*self.img_width // 16,self.batch_size]))
-		h_fc3 = tf.sigmoid(tf.matmul(h_fc2_reshape,W_fc3) + b_fc3)
-
-		#now reshape such that it may be used by the other convolutional layers
-		h_fc3_reshape = tf.reshape(h_fc3, shape = [self.batch_size,self.img_width // 4, self.img_width // 4, 1])
-		#pass this into a set of convolutional layers
-		W_conv3 = tf.Variable(tf.truncated_normal(shape = [2, 2, 1, self.conv_kernels_3], stddev = 0.1))
-		#initialize a bias variable for the convolutional layer 
-		b_conv3 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_3]))
-		conv3 = tf.nn.conv2d(h_fc3_reshape,W_conv3,strides = [1,1,1,1], padding = 'SAME')
-		#now compute output from first conv kernel
-		h_conv3 = tf.sigmoid(tf.nn.bias_add(conv3,b_conv3))
+		with tf.name_scope("Conv3") as scope:
+			with tf.name_scope("Weights") as scope:
+				#pass this into a set of convolutional layers
+				self.parameter_dict['W_conv3'] = tf.Variable(tf.truncated_normal(shape = [2, 2, 1, self.conv_kernels_3], stddev = 0.1))
+			with tf.name_scope("Biases") as scope:	
+				#initialize a bias variable for the convolutional layer 
+				self.paramter_dict['b_conv3'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_3]))
+			with tf.name_scope("Conv_Output") as scope:
+				conv3 = tf.nn.conv2d(h_fc3_reshape,self.parameter_dict['W_conv3'],strides = [1,1,1,1], padding = 'SAME')
+			with tf.name_scope("Activation") as scope:	
+				#now compute output from first conv kernel
+				h_conv3 = tf.nn.relu(tf.nn.bias_add(conv3,self.parameter_dict['b_conv3']))
 		
-		#now pool the output of the first convolutional layer
-		pool3 = tf.nn.max_pool(h_conv3,ksize = [1,2,2,1],strides = [1,1,1,1],padding = 'SAME')
+		with tf.name_scope("Pool3") as scope:
+			#now pool the output of the first convolutional layer
+			pool3 = tf.nn.max_pool(h_conv3,ksize = [1,3,3,1],strides = [1,2,2,1],padding = 'SAME')
 		
-		#initialize weights for second convolutional layer
-		W_conv4 = tf.Variable(tf.truncated_normal(shape = [2,2,self.conv_kernels_3,self.conv_kernels_4] , stddev = 0.1))
-		#initialize a bias variable 
-		b_conv4 = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_4]))
-		#calculate the second conv layer
-		conv4 = tf.nn.conv2d(pool3,W_conv4,strides = [1,1,1,1], padding = 'SAME')
-		h_conv4 = tf.sigmoid((tf.nn.bias_add(conv4,b_conv4)))
+		with tf.name_scope("Conv4") as scope:
+			with tf.name_scope("Weights") as scope:
+				#initialize weights for fourth convolutional layer
+				self.parameter_dict['W_conv4'] = tf.Variable(tf.truncated_normal(shape = [2,2,self.conv_kernels_3,self.conv_kernels_4] , stddev = 0.1))
+			with tf.name_scope("Biases") as scope:	
+				#initialize a bias variable 
+				self.parameter_dict['b_conv4'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_4]))
+			with tf.name_scope("Conv_Output") as scope:
+				#calculate the fourth conv layer
+				conv4 = tf.nn.conv2d(pool3,self.parameter_dict['W_conv4'],strides = [1,1,1,1], padding = 'SAME')
+			with tf.name_scope("Activation") as scope:
+				h_conv4 = tf.nn.relu((tf.nn.bias_add(conv4,self.parameter_dict['b_conv4'])))
 		
-		#pool the output from h_conv2
-		pool4 = tf.nn.max_pool(h_conv4,ksize = [1,2,2,1], strides = [1,1,1,1], padding = 'SAME')
-		#flatten the output of pool 2
-		pool4_flat = tf.reshape(pool4, shape = [self.img_width,-1])
-		#initialize weights for last fully connected layer
-		W_fc5 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*self.img_width*self.img_width*CONV_KERNELS_2 //(self.img_width*16),self.img_width * self.batch_size],stddev = 0.1))
-		b_fc5 = tf.Variable(tf.constant(0.1,shape = [self.img_width, self.img_width*self.batch_size]))
+		with tf.name_scope("Pool4") as scope:
+			#pool the output from h_conv4
+			pool4 = tf.nn.max_pool(h_conv4,ksize = [1,3,3,1], strides = [1,2,2,1], padding = 'SAME')
+		
+		with tf.name_scope("Reshape_pool4") as scope:
+			#flatten the output of pool 2
+			pool4_flat = tf.reshape(pool4, shape = [self.batch_size,-1])
+		
+		with tf.name_scope("FC3") as scope:
+			with tf.name_scope("Weights") as scope:
+				#initialize weights for last fully connected layer
+				self.parameter_dict['W_fc3'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.img_width*self.conv_kernels_4 // (16*16),self.img_width*self.img_width],stddev = 0.1))
+			with tf.name_scope("Biases") as scope:	
+				self.parameter_dict['b_fc3'] = tf.Variable(tf.constant(0.,shape = [self.batch_size, self.img_width*self.img_width]))
+			with tf.name_scope("Activation") as scope:
+				h_fc3 = tf.nn.relu(tf.matmul(pool4_flat,self.parameter_dict['W_fc3']) + self.parameter_dict['b_fc5'])
 
-		self.op_dict['y'] = tf.reshape(tf.sigmoid(tf.matmul(pool4_flat,W_fc5) + b_fc5),shape = [self.batch_size,self.img_width,self.img_width,1])
+		with tf.name_scope("Reshape_h_fc3") as scope:
+			self.op_dict['y_not_normed'] = tf.reshape(h_fc3,shape = [self.batch_size,self.img_width,self.img_width,1])
 
-		
+		with tf.name_scope("y") as scope:
+			self.op_dict['y'] = tf.div(self.op_dict['y_not_normed'],tf.reduce_max(self.op_dict['y_not_normed']))
 		#define a loss function 
-		self.op_dict['meansq'] = tf.reduce_mean(tf.square(self.op_dict['y'] - self.op_dict['y_']))
+		with tf.name_scope("Loss") as scope:
+			self.op_dict['meansq'] = tf.reduce_mean(tf.square(self.op_dict['y'] - self.op_dict['y_']))
 		
 		#define a learning rate with an exponential decay,a batch variable is needed in order to prevent 
-		self.op_dict['batch'] = tf.Variable(0,trainable = False)
-		self.op_dict['learning_rate'] = tf.train.exponential_decay(
-      				1e-3,                		# Base learning rate.
-      				self.op_dict['batch'],  	# Current index into the dataset.
-      				100,      		# Decay step.
-      				0.96,             			# Decay rate.
-      				staircase=False)
+		self.op_dict['learning_rate'] = 1e-3
 		
 		#define a training operation
-		self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['meansq'],global_step = self.op_dict['batch'])
+		with tf.name_scope("Train") as scope:
+			self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['meansq'])
+		
+
+		#add the tensorboard ops
+		self.Add_Tensorboard_ops()
+
+		#initialize a sessions object and then all variables
 		sess = tf.Session()
+		log_dir = self.output_root_directory + "/tmp/summary_logs"
+		self.op_dict['train_writer'] = tf.train.SummaryWriter(log_dir, sess.graph)
 		sess.run(tf.initialize_all_variables())
 		
 		return sess
@@ -188,13 +233,14 @@ class Shape_Autoencoder:
 			#get the data batch by specifying the batch index as step % BATCH_SIZE
 			if batch_num % 100 == 0:
 				#evaluate the batch and save the outputs
-				self.evaluate_graph(sess,batch_num % num_batches,(batch_num + 1) % num_batches,True,epoch_index = epoch_index)
-			self.op_dict['batch'].assign(batch_num)
+				self.evaluate_graph(sess,batch_num % num_batches_per_Epoch,(batch_num + 1) % num_batches_per_Epoch,True,epoch_index = epoch_index)
+
 			data_batch = extract_batch(batch_num)
 			feed = {self.op_dict['x'] : data_batch , self.op_dict['y_'] : data_batch}
-			loss, _,learning = sess.run([self.op_dict['meansq'],self.op_dict['train_op'],self.op_dict['learning_rate']], feed_dict = feed)
+			loss, _,summary = sess.run([self.op_dict['meansq'],self.op_dict['train_op'],self.op_dict['merged']], feed_dict = feed)
 			if batch_num % 20 == 0:
-				print batch_num,loss,learning
+				self.op_dict['train_writer'].add_summary(summary,batch_num)
+				print batch_num,loss
 			loss_array[batch_num] = loss
 		return loss_array
 
@@ -236,7 +282,7 @@ class Shape_Autoencoder:
 		Takes an input of weights and saves them as images so that training may be observed
 		inputs: A sessions object to evaluate the weights
 		"""
-		W_conv1,W_conv2 = sess.run([self.op_dict['W_conv1'],self.op_dict['W_conv2']])
+		W_conv1,W_conv2 = sess.run([self.parameter_dict['W_conv1'],self.parameter_dict['W_conv2']])
 		#initialize a figure to store the images
 		conv1_fig = plt.figure(1,(20.,20.))
 		#initialize an image grid
@@ -246,7 +292,7 @@ class Shape_Autoencoder:
 			kernel_normed = np.divide(kernel,np.mean(kernel)) * 255
 			conv1_grid[i].imshow(kernel_normed, cmap = "Greys_r")
 		
-		conv1_fig.savefig("Image_Autoencoder_Ver2_Outputs/Conv1_Kernels.png")
+		conv1_fig.savefig("Image_Autoencoder_Ver1_Outputs/Conv1_Kernels.png")
 		plt.close(conv1_fig)
 		#perform the above for second conv layer as well
 		conv2_fig = plt.figure(1,(20.,20.))
@@ -255,6 +301,23 @@ class Shape_Autoencoder:
 			kernel = W_conv2[:,:,0,j]
 			kernel_normed = np.divide(kernel,np.mean(kernel)) * 255
 			conv2_grid[j].imshow(kernel_normed,cmap = "Greys_r")
+
+		conv2_fig.savefig("Image_Autoencoder_Ver1_Outputs/Conv2_Kernels.png")
+		plt.close(conv2_fig)
+
+
+	def variable_summaries(self,var,name):
+		"""
+		Attach summaries to a tensor
+		"""
+		with tf.name_scope('summaries'):
+			mean = tf.reduce_mean(var)
+			tf.scalar_summary('mean/' + name,mean)
+			with tf.name_scope('stddev'):
+				stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+			tf.scalar_summary('stddev/' + name, stddev)
+			#tf.histogram_summary(name,var)
+
 
 		conv2_fig.savefig("Image_Autoencoder_Ver2_Outputs/Conv2_Kernels.png")
 		plt.close(conv2_fig)
@@ -267,11 +330,6 @@ loss = my_autoencoder.train_graph(sess)
 with open(my_autoencoder.output_root_directory + "loss.npy",'w') as f:
 	pickle.dump(loss,f)
 	f.close() 
-#f = plt.figure()
-#plt.title("Loss")
-#plt.plot(loss)
-#f.savefig("Image_Autoencoder_Ver2_Outputs/Loss_Array.png")
-#plt.close(f)
 my_autoencoder.evaluate_graph(sess,0,int(3000 // BATCH_SIZE),False)
 W_conv1,W_conv2 = sess.run([my_autoencoder.op_dict['W_conv1'],my_autoencoder.op_dict['W_conv2']])
 with open(my_autoencoder.output_root_directory + "W_conv1.npy",'w') as f:
