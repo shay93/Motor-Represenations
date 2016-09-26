@@ -8,7 +8,7 @@ import png
 
 
 #Globals
-BATCH_SIZE = 12
+BATCH_SIZE = 24
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
@@ -55,6 +55,7 @@ class Shape_Autoencoder:
 		self.conv_kernels_2 = CONV_KERNELS_2
 		self.op_dict = {}
 		self.upsample_factor = 16
+		self.parameter_dict = {}
 
 		#initialize some directory names
 		self.checkpoint_images_directory = "Image_Checkpoints/"
@@ -69,60 +70,75 @@ class Shape_Autoencoder:
 		outputs: A session objecta and a operation dictionary
 		"""
 		#first specify a placeholder for the input image which is of size 64 by 64
-		self.op_dict['x'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
-		#define a place holder for the labels
-		self.op_dict['y_'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
-		#reshape x so that you can downsample it 
-		x_reshape = tf.reshape(self.op_dict['x'], shape = [self.batch_size*self.img_width,self.img_width])
-		#project the input into a higher dimension first hence initialize weights
-		W_fc1 = tf.Variable(tf.truncated_normal(shape = [self.img_width,self.img_width*self.upsample_factor], stddev = 0.1))
-		b_fc1 = tf.Variable(tf.constant(0.1, shape = [self.batch_size*self.img_width,self.img_width*self.upsample_factor]))
-		h_fc1 = tf.nn.tanh(tf.matmul(x_reshape,W_fc1) + b_fc1)
+		with tf.name_scope('Input_placeholder') as scope:
+			self.op_dict['x'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
 		
-		#initialize a weight variable that will be used to down sample by a factor of 4
-		W_fc2 = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.upsample_factor,self.img_width // 16], stddev = 0.1))
-		b_fc2 = tf.Variable(tf.constant(0.1, shape = [self.batch_size*self.img_width,self.img_width // 16]))
-		#compute the output of the fully connected layer
-		h_fc2 = tf.nn.tanh(tf.matmul(h_fc1,W_fc2) + b_fc2)
+		#define a place holder for the outputs
+		with tf.name_scope('Output_placeholder') as scope:
+			self.op_dict['y_'] = tf.placeholder(tf.float32,shape = [self.batch_size,self.img_width,self.img_width,1])
+		
+		with tf.name_scope('Reshape_x') as scope:
+			#reshape x so that you can downsample it 
+			x_reshape = tf.reshape(self.op_dict['x'], shape = [self.batch_size*self.img_width,self.img_width])
+		
+		with tf.name_scope("FC1") as scope:	
+			#project the input into a higher dimension first hence initialize weights
+			self.parameter_dict['W_fc1'] = tf.Variable(tf.truncated_normal(shape = [self.img_width,self.img_width*self.upsample_factor], stddev = 0.1))
+			self.parameter_dict['b_fc1'] = tf.Variable(tf.constant(0., shape = [self.batch_size*self.img_width,self.img_width*self.upsample_factor]))
+			h_fc1 = tf.nn.relu(tf.matmul(x_reshape,self.parameter_dict['W_fc1']) + self.parameter_dict['b_fc1'])
+		
+		with tf.name_scope("FC2") as scope:
+			#initialize a weight variable that will be used to down sample by a factor of 4
+			self.parameter_dict['W_fc2'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.upsample_factor,self.img_width // 16], stddev = 0.1))
+			self.parameter_dict['b_fc2'] = tf.Variable(tf.constant(0., shape = [self.batch_size*self.img_width,self.img_width // 16]))
+			#compute the output of the fully connected layer
+			h_fc2 = tf.nn.relu(tf.matmul(h_fc1,self.parameter_dict['W_fc2'] + self.parameter_dict['b_fc2']))
 		#reshape the hidden layer so that it may be fed into a 2d convolver 
 		
 		h_fc2_reshape = tf.reshape(h_fc2,shape = [self.batch_size,self.img_width // 4,self.img_width // 4,1])
 		#now initialize some Weights for teh convolutional layer
-		self.op_dict['W_conv1'] = tf.Variable(tf.truncated_normal(shape = [2, 2, 1, CONV_KERNELS_1], stddev = 0.1))
+		self.parameter_dict['W_conv1'] = tf.Variable(tf.truncated_normal(shape = [2, 2, 1, self.conv_kernels_1], stddev = 0.1))
 		#initialize a bias variable for the convolutional layer 
-		b_conv1 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_1]))
-		conv1 = tf.nn.conv2d(h_fc2_reshape,self.op_dict['W_conv1'],strides = [1,1,1,1], padding = 'SAME')
+		self.parameter_dict['b_conv1'] = tf.Variable(tf.constant(0.,shape = [self.conv_kernels_1]))
+		conv1 = tf.nn.conv2d(h_fc2_reshape,self.parameter_dict['W_conv1'],strides = [1,1,1,1], padding = 'SAME')
 		#now compute output from first conv kernel
-		h_conv1 = tf.sigmoid(tf.nn.bias_add(conv1,b_conv1))
+		h_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,self.parameter_dict['b_conv1']))
 		
 		#now pool the output of the first convolutional layer
-		pool1 = tf.nn.max_pool(h_conv1,ksize = [1,2,2,1],strides = [1,1,1,1],padding = 'SAME')
+		pool1 = tf.nn.max_pool(h_conv1,ksize = [1,3,3,1],strides = [1,1,1,1],padding = 'SAME')
 		
 		#initialize weights for second convolutional layer
-		self.op_dict['W_conv2'] = tf.Variable(tf.truncated_normal(shape = [2,2,CONV_KERNELS_1,CONV_KERNELS_2] , stddev = 0.1))
+		self.parameter_dict['W_conv2'] = tf.Variable(tf.truncated_normal(shape = [2,2,self.conv_kernels_1,self.conv_kernels_2] , stddev = 0.1))
 		#initialize a bias variable 
-		b_conv2 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_2]))
+		self.parameter_dict['b_conv2'] = tf.Variable(tf.constant(0.,shape = [self.conv_kernels_2]))
 		#calculate the second conv layer
-		conv2 = tf.nn.conv2d(pool1,self.op_dict['W_conv2'],strides = [1,1,1,1], padding = 'SAME')
-		h_conv2 = tf.sigmoid((tf.nn.bias_add(conv2,b_conv2)))
+		conv2 = tf.nn.conv2d(pool1,self.parameter_dict['W_conv2'],strides = [1,1,1,1], padding = 'SAME')
+		h_conv2 = tf.nn.relu((tf.nn.bias_add(conv2,self.parameter_dict['b_conv2'])))
 		
 		#pool the output from h_conv2
-		pool2 = tf.nn.max_pool(h_conv2,ksize = [1,2,2,1], strides = [1,1,1,1], padding = 'SAME')
+		pool2 = tf.nn.max_pool(h_conv2,ksize = [1,3,3,1], strides = [1,1,1,1], padding = 'SAME')
 		#flatten the output of pool 2
 		pool2_flat = tf.reshape(pool2, shape = [self.img_width,-1])
 		#initialize weights for last fully connected layer
 		W_fc3 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*self.img_width*self.img_width*CONV_KERNELS_2 //(self.img_width*16),self.img_width * self.batch_size],stddev = 0.1))
-		b_fc3 = tf.Variable(tf.constant(0.1,shape = [self.img_width, self.img_width*self.batch_size]))
+		b_fc3 = tf.Variable(tf.constant(0.,shape = [self.img_width, self.img_width*self.batch_size]))
 		
-		self.op_dict['y'] = tf.reshape(tf.sigmoid(tf.matmul(pool2_flat,W_fc3) + b_fc3),shape = [self.batch_size,self.img_width,self.img_width,1])
+		self.op_dict['y_not_normed'] = tf.reshape(tf.nn.relu(tf.matmul(pool2_flat,W_fc3) + b_fc3),shape = [self.batch_size,self.img_width,self.img_width,1])
+		#take the norm of y and set as the output
+		self.op_dict['y'] = tf.div(self.op_dict['y_not_normed'],tf.reduce_max(self.op_dict['y_not_normed']))
 		#now define a loss for training purposes
 		self.op_dict['meansq'] =  tf.reduce_mean(tf.square(self.op_dict['y_'] - self.op_dict['y']))
 		#define a learning rate this may be made adaptive later but for the moment keep it fixed
 		
 		self.op_dict['batch'] = tf.Variable(0,trainable = False)
 
-  		self.op_dict['learning_rate'] = tf.train.exponential_decay(1e-3,self.op_dict['batch'],200,0.9,staircase = True)
+  		#self.op_dict['learning_rate'] = tf.train.exponential_decay(1e-3,self.op_dict['batch'],200,0.9,staircase = True)
+  		self.op_dict['learning_rate'] = 1e-3
 		self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['meansq'],global_step = self.op_dict['batch'])
+		
+		#add the tensorboard ops
+		self.Add_Tensorboard_ops()
+
 		#initialize a sessions object and then all variables
 		sess = tf.Session()
 		sess.run(tf.initialize_all_variables())
@@ -150,13 +166,14 @@ class Shape_Autoencoder:
 			#get the data batch by specifying the batch index as step % BATCH_SIZE
 			if batch_num % 100 == 0:
 				#evaluate the batch and save the outputs
-				self.evaluate_graph(sess,batch_num % num_batches,(batch_num + 1) % num_batches,True,epoch_index = epoch_index)
+				self.evaluate_graph(sess,batch_num % num_batches_per_Epoch,(batch_num + 1) % num_batches_per_Epoch,True,epoch_index = epoch_index)
 			self.op_dict['batch'].assign(batch_num)
 			data_batch = extract_batch(batch_num)
 			feed = {self.op_dict['x'] : data_batch , self.op_dict['y_'] : data_batch}
-			loss, _,learning = sess.run([self.op_dict['meansq'],self.op_dict['train_op'],self.op_dict['learning_rate']], feed_dict = feed)
+			loss, _,summary = sess.run([self.op_dict['meansq'],self.op_dict['train_op'],self.op_dict['merged']], feed_dict = feed)
 			if batch_num % 20 == 0:
-				print batch_num,loss,learning
+				self.op_dict['train_writer'].add_summary(summary,batch_num)
+				print batch_num,loss
 			loss_array[batch_num] = loss
 		return loss_array
 
@@ -198,7 +215,7 @@ class Shape_Autoencoder:
 		Takes an input of weights and saves them as images so that training may be observed
 		inputs: A sessions object to evaluate the weights
 		"""
-		W_conv1,W_conv2 = sess.run([self.op_dict['W_conv1'],self.op_dict['W_conv2']])
+		W_conv1,W_conv2 = sess.run([self.parameter_dict['W_conv1'],self.parameter_dict['W_conv2']])
 		#initialize a figure to store the images
 		conv1_fig = plt.figure(1,(20.,20.))
 		#initialize an image grid
@@ -220,6 +237,34 @@ class Shape_Autoencoder:
 
 		conv2_fig.savefig("Image_Autoencoder_Ver1_Outputs/Conv2_Kernels.png")
 		plt.close(conv2_fig)
+
+
+	def variable_summaries(self,var,name):
+		"""
+		Attach summaries to a tensor
+		"""
+		with tf.name_scope('summaries'):
+			mean = tf.reduce_mean(var)
+			tf.scalar_summary('mean/' + name,mean)
+			with tf.name_scope('stddev'):
+				stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+			tf.scalar_summary('stddev/' + name, stddev)
+			tf.histogram_summary(name,var)
+
+
+	def Add_Tensorboard_ops(self):
+		"""
+		Calls on the variable summaries helper function to generate ops for the graph in order to visualize them in tensorboard 
+		"""
+		for label,op in self.parameter_dict.items() :
+			self.variable_summaries(op,label)
+
+		#merge the summaries
+		self.op_dict['merged'] = tf.merge_all_summaries()
+		log_dir = self.output_root_directory + "/tmp/summary_logs"
+		self.op_dict['train_writer'] = tf.train.SummaryWriter(log_dir)
+
+
 
 
 
