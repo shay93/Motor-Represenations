@@ -161,7 +161,7 @@ class Shape_Autoencoder:
 			self.op_dict['L1_Norm'] =  tf.reduce_mean(tf.square(self.op_dict['y_'] - self.op_dict['y']))
 		
 		#define a learning rate this may be made adaptive later but for the moment keep it fixed
-		self.op_dict['learning_rate'] = 1e-3
+		self.op_dict['learning_rate'] = 1e-4
 		
 		with tf.name_scope("Train") as scope:
 			self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['L1_Norm'])
@@ -281,7 +281,7 @@ class Shape_Autoencoder:
 			with tf.name_scope('stddev'):
 				stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
 			tf.scalar_summary('stddev/' + name, stddev)
-			#tf.histogram_summary(name,var)
+			tf.histogram_summary(name,var)
 
 
 	def Add_Tensorboard_ops(self):
