@@ -322,6 +322,17 @@ class Shape_Autoencoder:
 		conv2_fig.savefig("Image_Autoencoder_Ver2_Outputs/Conv2_Kernels.png")
 		plt.close(conv2_fig)
 
+	def Add_Tensorboard_ops(self):
+		"""
+		Calls on the variable summaries helper function to generate ops for the graph in order to visualize them in tensorboard 
+		"""
+		for label,op in self.parameter_dict.items() :
+			self.variable_summaries(op,label)
+
+		#merge the summaries
+		self.op_dict['merged'] = tf.merge_all_summaries()
+
+
 
 
 my_autoencoder = Shape_Autoencoder()
