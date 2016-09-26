@@ -9,13 +9,13 @@ import png
 
 
 #Globals
-BATCH_SIZE = 24
+BATCH_SIZE = 48
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 
-EPOCHS = 20
+EPOCHS = 40
 DIRECTORY_NAME = 'Training_Images/'
 EVALUATION_SIZE = 600
 
@@ -55,7 +55,7 @@ class Shape_Autoencoder:
 		self.conv_kernels_1 = CONV_KERNELS_1
 		self.conv_kernels_2 = CONV_KERNELS_2
 		self.op_dict = {}
-		self.upsample_factor = 16
+		self.upsample_factor = 20
 		self.parameter_dict = {}
 
 		#initialize some directory names
@@ -120,7 +120,7 @@ class Shape_Autoencoder:
 		
 		with tf.name_scope("Pool1") as scope:
 			#now pool the output of the first convolutional layer
-			pool1 = tf.nn.max_pool(h_conv1,ksize = [1,3,3,1],strides = [1,1,1,1],padding = 'SAME')
+			pool1 = tf.nn.max_pool(h_conv1,ksize = [1,3,3,1],strides = [1,2,2,1],padding = 'SAME')
 		
 		with tf.name_scope("Conv2") as scope:
 			with tf.name_scope("Weights") as scope:
@@ -137,7 +137,7 @@ class Shape_Autoencoder:
 		
 		with tf.name_scope("Pool2") as scope:
 			#pool the output from h_conv2
-			pool2 = tf.nn.max_pool(h_conv2,ksize = [1,3,3,1], strides = [1,1,1,1], padding = 'SAME')
+			pool2 = tf.nn.max_pool(h_conv2,ksize = [1,3,3,1], strides = [1,2,2,1], padding = 'SAME')
 		
 		with tf.name_scope("Pool2_Flat") as scope:
 			#flatten the output of pool 2
@@ -146,7 +146,7 @@ class Shape_Autoencoder:
 		with tf.name_scope("FC3") as scope:
 			with tf.name_scope("Weights") as scope:
 				#initialize weights for last fully connected layer
-				self.parameter_dict['W_fc3'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.img_width*self.conv_kernels_2 // 16, self.img_width * self.img_width],stddev = 0.1))
+				self.parameter_dict['W_fc3'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.img_width*self.conv_kernels_2 // (16*16), self.img_width * self.img_width],stddev = 0.1))
 			with tf.name_scope("Biases") as scope:		
 				self.parameter_dict['b_fc3'] = tf.Variable(tf.constant(0.,shape = [self.batch_size, self.img_width*self.img_width]))
 			with tf.name_scope("Activations") as scope:
@@ -281,7 +281,7 @@ class Shape_Autoencoder:
 			with tf.name_scope('stddev'):
 				stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
 			tf.scalar_summary('stddev/' + name, stddev)
-			tf.histogram_summary(name,var)
+			#tf.histogram_summary(name,var)
 
 
 	def Add_Tensorboard_ops(self):
