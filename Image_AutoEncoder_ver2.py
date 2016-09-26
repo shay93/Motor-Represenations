@@ -17,7 +17,7 @@ CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 FC_2_UNITS = 64*64*5
 split_data = 0.75
-EPOCHS = 20
+EPOCHS = 2
 DIRECTORY_NAME = 'Training_Images/'
 
 
@@ -133,7 +133,7 @@ class Shape_Autoencoder:
 			with tf.name_scope("Activation") as scope: 
 				h_fc2 = tf.nn.relu(tf.matmul(h_fc1,self.parameter_dict['W_fc2']) + self.parameter_dict['b_fc2'])
 
-		with tf.name_scope("Reshape_h_fc2")
+		with tf.name_scope("Reshape_h_fc2") as scope:
 			#now reshape such that it may be used by the other convolutional layers
 			h_fc2_reshape = tf.reshape(h_fc2, shape = [self.batch_size,self.img_width // 4, self.img_width // 4, 1])
 	
@@ -143,9 +143,9 @@ class Shape_Autoencoder:
 				self.parameter_dict['W_conv3'] = tf.Variable(tf.truncated_normal(shape = [2, 2, 1, self.conv_kernels_3], stddev = 0.1))
 			with tf.name_scope("Biases") as scope:	
 				#initialize a bias variable for the convolutional layer 
-				self.paramter_dict['b_conv3'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_3]))
+				self.parameter_dict['b_conv3'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_3]))
 			with tf.name_scope("Conv_Output") as scope:
-				conv3 = tf.nn.conv2d(h_fc3_reshape,self.parameter_dict['W_conv3'],strides = [1,1,1,1], padding = 'SAME')
+				conv3 = tf.nn.conv2d(h_fc2_reshape,self.parameter_dict['W_conv3'],strides = [1,1,1,1], padding = 'SAME')
 			with tf.name_scope("Activation") as scope:	
 				#now compute output from first conv kernel
 				h_conv3 = tf.nn.relu(tf.nn.bias_add(conv3,self.parameter_dict['b_conv3']))
@@ -182,7 +182,7 @@ class Shape_Autoencoder:
 			with tf.name_scope("Biases") as scope:	
 				self.parameter_dict['b_fc3'] = tf.Variable(tf.constant(0.,shape = [self.batch_size, self.img_width*self.img_width]))
 			with tf.name_scope("Activation") as scope:
-				h_fc3 = tf.nn.relu(tf.matmul(pool4_flat,self.parameter_dict['W_fc3']) + self.parameter_dict['b_fc5'])
+				h_fc3 = tf.nn.relu(tf.matmul(pool4_flat,self.parameter_dict['W_fc3']) + self.parameter_dict['b_fc3'])
 
 		with tf.name_scope("Reshape_h_fc3") as scope:
 			self.op_dict['y_not_normed'] = tf.reshape(h_fc3,shape = [self.batch_size,self.img_width,self.img_width,1])
