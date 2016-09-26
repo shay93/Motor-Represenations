@@ -3,6 +3,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 import png
 
 
@@ -54,7 +55,7 @@ class Shape_Autoencoder:
 		self.conv_kernels_1 = CONV_KERNELS_1
 		self.conv_kernels_2 = CONV_KERNELS_2
 		self.op_dict = {}
-		self.upsample_factor = 16
+		self.upsample_factor = 4
 		self.parameter_dict = {}
 
 		#initialize some directory names
@@ -79,23 +80,23 @@ class Shape_Autoencoder:
 		
 		with tf.name_scope('Reshape_x') as scope:
 			#reshape x so that you can downsample it 
-			x_reshape = tf.reshape(self.op_dict['x'], shape = [self.batch_size*self.img_width,self.img_width])
+			x_reshape = tf.reshape(self.op_dict['x'], shape = [self.batch_size,self.img_width*self.img_width])
 		
 		with tf.name_scope("FC1") as scope:	
 			#project the input into a higher dimension first hence initialize weights
 			with tf.name_scope("Weights") as scope:
-				self.parameter_dict['W_fc1'] = tf.Variable(tf.truncated_normal(shape = [self.img_width,self.img_width*self.upsample_factor], stddev = 0.1))
+				self.parameter_dict['W_fc1'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.img_width,self.img_width*self.img_width*self.upsample_factor], stddev = 0.1))
 			with tf.name_scope("Biases") as scope:
-				self.parameter_dict['b_fc1'] = tf.Variable(tf.constant(0., shape = [self.batch_size*self.img_width,self.img_width*self.upsample_factor]))
+				self.parameter_dict['b_fc1'] = tf.Variable(tf.constant(0., shape = [self.batch_size,self.img_width*self.img_width*self.upsample_factor]))
 			with tf.name_scope("Activations") as scope:
 				h_fc1 = tf.nn.relu(tf.matmul(x_reshape,self.parameter_dict['W_fc1']) + self.parameter_dict['b_fc1'])
 		
 		with tf.name_scope("FC2") as scope:
 			with tf.name_scope("Weights") as scope:
 				#initialize a weight variable that will be used to down sample by a factor of 4
-				self.parameter_dict['W_fc2'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.upsample_factor,self.img_width // 16], stddev = 0.1))
+				self.parameter_dict['W_fc2'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.img_width*self.upsample_factor,self.img_width*self.img_width // 16], stddev = 0.1))
 			with tf.name_scope("Biases") as scope:
-				self.parameter_dict['b_fc2'] = tf.Variable(tf.constant(0., shape = [self.batch_size*self.img_width,self.img_width // 16]))
+				self.parameter_dict['b_fc2'] = tf.Variable(tf.constant(0., shape = [self.batch_size,self.img_width*self.img_width // 16]))
 			with tf.name_scope("Activations") as scope:
 				#compute the output of the fully connected layer
 				h_fc2 = tf.nn.relu(tf.matmul(h_fc1,self.parameter_dict['W_fc2']) + self.parameter_dict['b_fc2'])
@@ -140,16 +141,16 @@ class Shape_Autoencoder:
 		
 		with tf.name_scope("Pool2_Flat") as scope:
 			#flatten the output of pool 2
-			pool2_flat = tf.reshape(pool2, shape = [self.img_width,-1])
+			pool2_flat = tf.reshape(pool2, shape = [self.batch_size,-1])
 		
 		with tf.name_scope("FC3") as scope:
 			with tf.name_scope("Weights") as scope:
 				#initialize weights for last fully connected layer
-				W_fc3 = tf.Variable(tf.truncated_normal(shape = [self.batch_size*self.img_width*self.img_width*CONV_KERNELS_2 //(self.img_width*16),self.img_width * self.batch_size],stddev = 0.1))
+				self.parameter_dict['W_fc3'] = tf.Variable(tf.truncated_normal(shape = [self.img_width*self.img_width*self.conv_kernels_2 // 16, self.img_width * self.img_width],stddev = 0.1))
 			with tf.name_scope("Biases") as scope:		
-				b_fc3 = tf.Variable(tf.constant(0.,shape = [self.img_width, self.img_width*self.batch_size]))
+				self.parameter_dict['b_fc3'] = tf.Variable(tf.constant(0.,shape = [self.batch_size, self.img_width*self.img_width]))
 			with tf.name_scope("Activations") as scope:
-				self.op_dict['y_not_normed'] = tf.reshape(tf.nn.relu(tf.matmul(pool2_flat,W_fc3) + b_fc3),shape = [self.batch_size,self.img_width,self.img_width,1])
+				self.op_dict['y_not_normed'] = tf.reshape(tf.nn.relu(tf.matmul(pool2_flat,self.parameter_dict['W_fc3']) + self.parameter_dict['b_fc3']),shape = [self.batch_size,self.img_width,self.img_width,1])
 		
 		with tf.name_scope("y") as scope:
 			#take the norm of y and set as the output
@@ -157,13 +158,13 @@ class Shape_Autoencoder:
 		
 		with tf.name_scope("loss") as scope:
 			#now define a loss for training purposes
-			self.op_dict['L1_Norm'] =  tf.reduce_mean(tf.abs(self.op_dict['y_'] - self.op_dict['y']))
+			self.op_dict['L1_Norm'] =  tf.reduce_mean(tf.square(self.op_dict['y_'] - self.op_dict['y']))
 		
 		#define a learning rate this may be made adaptive later but for the moment keep it fixed
 		self.op_dict['learning_rate'] = 1e-3
 		
 		with tf.name_scope("Train") as scope:
-			self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['meansq'])
+			self.op_dict['train_op'] = tf.train.AdamOptimizer(self.op_dict['learning_rate']).minimize(self.op_dict['L1_Norm'])
 		
 		#add the tensorboard ops
 		self.Add_Tensorboard_ops()
@@ -198,10 +199,10 @@ class Shape_Autoencoder:
 			if batch_num % 100 == 0:
 				#evaluate the batch and save the outputs
 				self.evaluate_graph(sess,batch_num % num_batches_per_Epoch,(batch_num + 1) % num_batches_per_Epoch,True,epoch_index = epoch_index)
-			self.op_dict['batch'].assign(batch_num)
+
 			data_batch = extract_batch(batch_num)
 			feed = {self.op_dict['x'] : data_batch , self.op_dict['y_'] : data_batch}
-			loss, _,summary = sess.run([self.op_dict['meansq'],self.op_dict['train_op'],self.op_dict['merged']], feed_dict = feed)
+			loss, _,summary = sess.run([self.op_dict['L1_Norm'],self.op_dict['train_op'],self.op_dict['merged']], feed_dict = feed)
 			if batch_num % 20 == 0:
 				self.op_dict['train_writer'].add_summary(summary,batch_num)
 				print batch_num,loss
@@ -280,7 +281,7 @@ class Shape_Autoencoder:
 			with tf.name_scope('stddev'):
 				stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
 			tf.scalar_summary('stddev/' + name, stddev)
-			tf.histogram_summary(name,var)
+			#tf.histogram_summary(name,var)
 
 
 	def Add_Tensorboard_ops(self):
@@ -301,11 +302,18 @@ class Shape_Autoencoder:
 my_autoencoder = Shape_Autoencoder()
 sess = my_autoencoder.build_graph()
 loss = my_autoencoder.train_graph(sess)
-f = plt.figure()
-plt.title("Loss")
-plt.plot(loss)
-f.savefig("Image_Autoencoder_Ver1_Outputs/Loss_Array.png")
-plt.close(f)
+with open(my_autoencoder.output_root_directory + "loss.npy",'w') as f:
+	pickle.dump(loss,f)
+	f.close() 
+my_autoencoder.evaluate_graph(sess,0,int(3000 // BATCH_SIZE),False)
+W_conv1,W_conv2 = sess.run([my_autoencoder.op_dict['W_conv1'],my_autoencoder.op_dict['W_conv2']])
+with open(my_autoencoder.output_root_directory + "W_conv1.npy",'w') as f:
+	pickle.dump(W_conv1,f)
+	f.close()
+
+with open(my_autoencoder.output_root_directory + "W_conv2.npy",'w') as f:
+	pickle.dump(W_conv2,f)
+	f.close()
 my_autoencoder.evaluate_graph(sess,0,3000 // BATCH_SIZE,False)
-my_autoencoder.save_normalized_weights(sess)
+#my_autoencoder.save_normalized_weights(sess)
 
