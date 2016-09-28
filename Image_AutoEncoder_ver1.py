@@ -58,7 +58,7 @@ class Shape_Autoencoder:
 		self.op_dict = {}
 		self.upsample_factor = 20
 		self.parameter_dict = {}
-		self.dropout_prob = 0.5
+		self.dropout_prob = 0.8
 
 		#initialize some directory names
 		self.checkpoint_images_directory = "Image_Checkpoints/"
