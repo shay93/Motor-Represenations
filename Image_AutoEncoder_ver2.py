@@ -10,14 +10,14 @@ import pickle
 
 #Globals
 
-BATCH_SIZE = 12
+BATCH_SIZE = 48
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 FC_2_UNITS = 64*64*5
 split_data = 0.75
-EPOCHS = 2
+EPOCHS = 40
 DIRECTORY_NAME = 'Training_Images/'
 data_split_ratio = 0.9
 
@@ -377,4 +377,3 @@ testing_index_start = int((3000 * data_split_ratio) // BATCH_SIZE)
 end_index = int(3000 // BATCH_SIZE)
 testing_loss_array = my_autoencoder.evaluate_graph(sess,testing_index_start,end_index)
 my_autoencoder.save_as_npy(sess,training_loss_array,testing_loss_array)
-
