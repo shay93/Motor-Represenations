@@ -9,13 +9,13 @@ import png
 
 
 #Globals
-BATCH_SIZE = 6
+BATCH_SIZE = 3
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 
-EPOCHS = 2
+EPOCHS = 1
 DIRECTORY_NAME = 'Training_Images/'
 
 #define a datasplit ratio to separate training data from validation data
@@ -163,8 +163,15 @@ class Shape_Autoencoder:
 				self.op_dict['y_not_normed'] = tf.reshape(tf.nn.relu(tf.matmul(pool2_flat,self.parameter_dict['W_fc3']) + self.parameter_dict['b_fc3']),shape = [self.batch_size,self.img_width,self.img_width,1])
 		
 		with tf.name_scope("y") as scope:
+			#first calculate the max of each batch 
+			max_batch_element = tf.reduce_max(self.op_dict['y_not_normed'],[1,2,3])
+			print max_batch_element
+			#reshape max_batch element
+			max_batch_element_reshape = tf.reshape(max_batch_element, shape = [self.batch_size,1,1,1])
+			#tile the max batch element so that an element to element division may be carried out
+			max_batch_tiled = tf.tile(max_batch_element_reshape,[1,self.img_width,self.img_width,1])
 			#take the norm of y and set as the output
-			self.op_dict['y'] = tf.div(self.op_dict['y_not_normed'],tf.reduce_max(self.op_dict['y_not_normed'],[1,2,3]))
+			self.op_dict['y'] = tf.div(self.op_dict['y_not_normed'],max_batch_tiled)
 		
 		with tf.name_scope("loss") as scope:
 			#now define a loss for training purposes
@@ -206,7 +213,7 @@ class Shape_Autoencoder:
 		#iterate over the steps training at each step and recording the loss
 		for batch_num in range(num_training_batches):
 			#calculate the epoch number 
-			epoch_index = batch_num // num_batches_per_Epoch + 1
+			epoch_index = batch_num // num_training_batches_per_Epoch + 1
 			#get the data batch by specifying the batch index as step % BATCH_SIZE
 			if batch_num % 100 == 0:
 				#evaluate the batch and save the outputs
@@ -237,12 +244,12 @@ class Shape_Autoencoder:
 		else:
 			output_directory = self.output_image_directory
 			#initialize a loss array as well if not checkpointing and evaluating
-			testing_loss_array = [0] * (end_batch_index - start_batch_index)
+			testing_loss_array = [0] * int(end_batch_index - start_batch_index)
 		
 		for batch_index in range(start_batch_index,end_batch_index):
 			#call on the batch generator
 			data_batch = extract_batch(batch_index)
-			output,testing_loss,summary = np.array(sess.run([self.op_dict['y'],self.op_dict['L1_norm'],self.op_dict['merged']],feed_dict = {self.op_dict['x'] : data_batch}))
+			output,testing_loss,summary = np.array(sess.run([self.op_dict['y'],self.op_dict['L1_Norm'],self.op_dict['merged']],feed_dict = {self.op_dict['x'] : data_batch,self.op_dict['y_'] : data_batch}))
 
 			for j in range(self.batch_size):
 				#in order to separate the batch into its separate shapes we need
@@ -340,9 +347,9 @@ class Shape_Autoencoder:
 
 my_autoencoder = Shape_Autoencoder()
 sess = my_autoencoder.build_graph()
-training_loss_array = my_autoencoder.train_graph(sess)
-testing_index_start = (3000 * data_split_ratio) // batch_size
-end_index = 3000 // batch_size
+training_loss_array = my_autoencoder.train_graph(sess,data_split_ratio)
+testing_index_start = int((3000 * data_split_ratio) // BATCH_SIZE)
+end_index = int(3000 // BATCH_SIZE)
 testing_loss_array = my_autoencoder.evaluate_graph(sess,testing_index_start,end_index)
 my_autoencoder.save_as_npy(sess,training_loss_array,testing_loss_array)
 
