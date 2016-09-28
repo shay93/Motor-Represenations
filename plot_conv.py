@@ -57,3 +57,4 @@ def plot_npy(i):
 
 
 plot_npy(1)
+plot_npy(2)
