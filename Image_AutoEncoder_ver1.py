@@ -9,16 +9,17 @@ import png
 
 
 #Globals
-BATCH_SIZE = 48
+BATCH_SIZE = 6
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 
-EPOCHS = 40
+EPOCHS = 2
 DIRECTORY_NAME = 'Training_Images/'
-EVALUATION_SIZE = 600
 
+#define a datasplit ratio to separate training data from validation data
+data_split_ratio = 0.9
 
 def extract_batch(batch_num):
 	"""
@@ -57,6 +58,7 @@ class Shape_Autoencoder:
 		self.op_dict = {}
 		self.upsample_factor = 20
 		self.parameter_dict = {}
+		self.dropout_prob = 0.5
 
 		#initialize some directory names
 		self.checkpoint_images_directory = "Image_Checkpoints/"
@@ -90,6 +92,14 @@ class Shape_Autoencoder:
 				self.parameter_dict['b_fc1'] = tf.Variable(tf.constant(0., shape = [self.batch_size,self.img_width*self.img_width*self.upsample_factor]))
 			with tf.name_scope("Activations") as scope:
 				h_fc1 = tf.nn.relu(tf.matmul(x_reshape,self.parameter_dict['W_fc1']) + self.parameter_dict['b_fc1'])
+				print h_fc1
+
+
+		#add a dropout layer between FC1 and FC2
+
+		with tf.name_scope("Dropout") as scope:
+			h_dropout = tf.nn.dropout(h_fc1,self.dropout_prob)
+			print h_dropout
 		
 		with tf.name_scope("FC2") as scope:
 			with tf.name_scope("Weights") as scope:
@@ -99,7 +109,7 @@ class Shape_Autoencoder:
 				self.parameter_dict['b_fc2'] = tf.Variable(tf.constant(0., shape = [self.batch_size,self.img_width*self.img_width // 16]))
 			with tf.name_scope("Activations") as scope:
 				#compute the output of the fully connected layer
-				h_fc2 = tf.nn.relu(tf.matmul(h_fc1,self.parameter_dict['W_fc2']) + self.parameter_dict['b_fc2'])
+				h_fc2 = tf.nn.relu(tf.matmul(h_dropout,self.parameter_dict['W_fc2']) + self.parameter_dict['b_fc2'])
 		
 		with tf.name_scope("Reshape_h_fc1") as scope:
 			#reshape the hidden layer so that it may be fed into a 2d convolver 
@@ -131,7 +141,7 @@ class Shape_Autoencoder:
 				self.parameter_dict['b_conv2'] = tf.Variable(tf.constant(0.,shape = [self.conv_kernels_2]))
 			with tf.name_scope("Conv_Output") as scope:
 				#calculate the second conv layer
-				conv2 = tf.nn.conv2d(pool1,self.parameter_dict['W_conv2'],strides = [1,2,2,1], padding = 'SAME')
+				conv2 = tf.nn.conv2d(pool1,self.parameter_dict['W_conv2'],strides = [1,1,1,1], padding = 'SAME')
 			with tf.name_scope("Activations") as scope:
 				h_conv2 = tf.nn.relu((tf.nn.bias_add(conv2,self.parameter_dict['b_conv2'])))
 		
@@ -154,7 +164,7 @@ class Shape_Autoencoder:
 		
 		with tf.name_scope("y") as scope:
 			#take the norm of y and set as the output
-			self.op_dict['y'] = tf.div(self.op_dict['y_not_normed'],tf.reduce_max(self.op_dict['y_not_normed']))
+			self.op_dict['y'] = tf.div(self.op_dict['y_not_normed'],tf.reduce_max(self.op_dict['y_not_normed'],[1,2,3]))
 		
 		with tf.name_scope("loss") as scope:
 			#now define a loss for training purposes
@@ -173,12 +183,14 @@ class Shape_Autoencoder:
 		sess = tf.Session()
 		log_dir = self.output_root_directory + "/tmp/summary_logs"
 		self.op_dict['train_writer'] = tf.train.SummaryWriter(log_dir, sess.graph)
+		#initialize another operation which comprises the test time summary writer
+		self.op_dict['test_writer'] = tf.train.SummaryWriter(log_dir, sess.graph)
 		sess.run(tf.initialize_all_variables())
 		
 		return sess
 
 
-	def train_graph(self,sess):
+	def train_graph(self,sess,data_split_ratio):
 		"""
 		Tune the weights of the graph so that you can learn the right results
 		inputs: A sessions object and an operation dictionary along with an integer specifying the end of the training data
@@ -186,19 +198,20 @@ class Shape_Autoencoder:
 		"""
 		#using the number of EPOCHS and the batch size figure out the number of
 		#training steps that are required
-		num_batches = int((EPOCHS * 3000) // self.batch_size)
+		num_training_batches = int((EPOCHS * 3000 * data_split_ratio) // self.batch_size)
 		#num_batches_per_Epoch
-		num_batches_per_Epoch = int(3000 // self.batch_size)
+		num_training_batches_per_Epoch = int((3000 * data_split_ratio) // (self.batch_size))
 		#initialize a list to record the loss at each step
-		loss_array = [0] * num_batches
+		training_loss_array = [0] * num_training_batches
 		#iterate over the steps training at each step and recording the loss
-		for batch_num in range(num_batches):
+		for batch_num in range(num_training_batches):
 			#calculate the epoch number 
 			epoch_index = batch_num // num_batches_per_Epoch + 1
 			#get the data batch by specifying the batch index as step % BATCH_SIZE
 			if batch_num % 100 == 0:
 				#evaluate the batch and save the outputs
-				self.evaluate_graph(sess,batch_num % num_batches_per_Epoch,(batch_num + 1) % num_batches_per_Epoch,True,epoch_index = epoch_index)
+				batch_index = batch_num % num_training_batches_per_Epoch
+				self.evaluate_graph(sess,batch_index,(batch_num + 1) % num_training_batches_per_Epoch, checkpoint_boolean = True ,epoch_index = epoch_index)
 
 			data_batch = extract_batch(batch_num)
 			feed = {self.op_dict['x'] : data_batch , self.op_dict['y_'] : data_batch}
@@ -206,10 +219,10 @@ class Shape_Autoencoder:
 			if batch_num % 20 == 0:
 				self.op_dict['train_writer'].add_summary(summary,batch_num)
 				print batch_num,loss
-			loss_array[batch_num] = loss
-		return loss_array
+			training_loss_array[batch_num] = loss
+		return training_loss_array
 
-	def evaluate_graph(self,sess,start_batch_index,end_batch_index,checkpoint_boolean,epoch_index = None):
+	def evaluate_graph(self,sess,start_batch_index,end_batch_index,checkpoint_boolean = False,epoch_index = None):
 		"""
 		Pass the testing data through the graph and save the output image for each input image
 		to the output image directory.
@@ -223,10 +236,13 @@ class Shape_Autoencoder:
 			output_directory = self.output_root_directory + self.checkpoint_images_directory
 		else:
 			output_directory = self.output_image_directory
+			#initialize a loss array as well if not checkpointing and evaluating
+			testing_loss_array = [0] * (end_batch_index - start_batch_index)
+		
 		for batch_index in range(start_batch_index,end_batch_index):
 			#call on the batch generator
 			data_batch = extract_batch(batch_index)
-			output = np.array(sess.run(self.op_dict['y'],feed_dict = {self.op_dict['x'] : data_batch}))
+			output,testing_loss,summary = np.array(sess.run([self.op_dict['y'],self.op_dict['L1_norm'],self.op_dict['merged']],feed_dict = {self.op_dict['x'] : data_batch}))
 
 			for j in range(self.batch_size):
 				#in order to separate the batch into its separate shapes we need
@@ -240,6 +256,13 @@ class Shape_Autoencoder:
 					save_name = output_directory + shape_str + str(shape_index) + '.png'					
 				temp = output[j,:,:,0] * PIXEL_DEPTH
 				png.from_array((temp).tolist(),'L').save(save_name)
+
+			if not(checkpoint_boolean):
+				#i.e if evaluating then append to the testing loss array
+				testing_loss_array[batch_index - start_batch_index] = testing_loss
+
+		if not(checkpoint_boolean):
+			return testing_loss_array
 
 	
 	def save_normalized_weights(self,sess):
@@ -295,25 +318,32 @@ class Shape_Autoencoder:
 		self.op_dict['merged'] = tf.merge_all_summaries()
 
 
+	def save_as_npy(self,sess,training_loss_array,testing_loss_array):
+		"""
+		Saves the training loss and evaluation loss as an npy in addition to the weights prescribed as W_conv1 and W_conv2
+		inputs: training_loss and testing_loss are both numpy arrays  
+		"""
+		file_path_list = ["testing_loss.npy","training_loss.npy","W_conv1.npy","W_conv2.npy"]
+		#evaluate the weight tensors
+		W_conv1,W_conv2 = sess.run([my_autoencoder.parameter_dict['W_conv1'],my_autoencoder.parameter_dict['W_conv2']])
+		#construct value list
+		value_list = [testing_loss_array,training_loss_array,W_conv1,W_conv2]
+
+		for file_path,value in zip(file_path_list,value_list):
+			with open(self.output_root_directory + file_path,'w') as f:
+				pickle.dump(value,f)
+				f.close() 
+
 
 
 
 
 my_autoencoder = Shape_Autoencoder()
 sess = my_autoencoder.build_graph()
-loss = my_autoencoder.train_graph(sess)
-with open(my_autoencoder.output_root_directory + "loss.npy",'w') as f:
-	pickle.dump(loss,f)
-	f.close() 
-my_autoencoder.evaluate_graph(sess,0,int(3000 // BATCH_SIZE),False)
-W_conv1,W_conv2 = sess.run([my_autoencoder.parameter_dict['W_conv1'],my_autoencoder.parameter_dict['W_conv2']])
-with open(my_autoencoder.output_root_directory + "W_conv1.npy",'w') as f:
-	pickle.dump(W_conv1,f)
-	f.close()
+training_loss_array = my_autoencoder.train_graph(sess)
+testing_index_start = (3000 * data_split_ratio) // batch_size
+end_index = 3000 // batch_size
+testing_loss_array = my_autoencoder.evaluate_graph(sess,testing_index_start,end_index)
+my_autoencoder.save_as_npy(sess,training_loss_array,testing_loss_array)
 
-with open(my_autoencoder.output_root_directory + "W_conv2.npy",'w') as f:
-	pickle.dump(W_conv2,f)
-	f.close()
-my_autoencoder.evaluate_graph(sess,0,3000 // BATCH_SIZE,False)
-#my_autoencoder.save_normalized_weights(sess)
 
