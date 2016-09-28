@@ -9,17 +9,17 @@ import png
 
 
 #Globals
-BATCH_SIZE = 3
+BATCH_SIZE = 48
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 
-EPOCHS = 1
+EPOCHS = 20
 DIRECTORY_NAME = 'Training_Images/'
 
 #define a datasplit ratio to separate training data from validation data
-data_split_ratio = 0.9
+data_split_ratio = 0.8
 
 def extract_batch(batch_num):
 	"""

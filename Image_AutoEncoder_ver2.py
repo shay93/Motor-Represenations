@@ -10,14 +10,14 @@ import pickle
 
 #Globals
 
-BATCH_SIZE = 12
+BATCH_SIZE = 48
 IMG_WIDTH = 64
 PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 FC_2_UNITS = 64*64*5
 split_data = 0.75
-EPOCHS = 2
+EPOCHS = 40
 DIRECTORY_NAME = 'Training_Images/'
 
 
@@ -319,9 +319,6 @@ class Shape_Autoencoder:
 			#tf.histogram_summary(name,var)
 
 
-		conv2_fig.savefig("Image_Autoencoder_Ver2_Outputs/Conv2_Kernels.png")
-		plt.close(conv2_fig)
-
 	def Add_Tensorboard_ops(self):
 		"""
 		Calls on the variable summaries helper function to generate ops for the graph in order to visualize them in tensorboard 
@@ -342,7 +339,7 @@ with open(my_autoencoder.output_root_directory + "loss.npy",'w') as f:
 	pickle.dump(loss,f)
 	f.close() 
 my_autoencoder.evaluate_graph(sess,0,int(3000 // BATCH_SIZE),False)
-W_conv1,W_conv2 = sess.run([my_autoencoder.op_dict['W_conv1'],my_autoencoder.op_dict['W_conv2']])
+W_conv1,W_conv2 = sess.run([my_autoencoder.parameter_dict['W_conv1'],my_autoencoder.parameter_dict['W_conv2']])
 with open(my_autoencoder.output_root_directory + "W_conv1.npy",'w') as f:
 	pickle.dump(W_conv1,f)
 	f.close()
