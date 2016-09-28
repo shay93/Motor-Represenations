@@ -7,13 +7,14 @@ import png
 import pickle
 
 
-def save_normalized_weights(path_to_conv1,path_to_conv2):
+def plot_npy(i):
 	"""
 	Takes an input of weights and saves them as images so that training may be observed
 	inputs: A sessions object to evaluate the weights
 	"""
-	W_conv1 = pickle.load(open(path_to_conv1,'rb'))
-	W_conv2 = pickle.load(open(path_to_conv2,'rb'))
+	root_output_directory = "Image_Autoencoder_Ver%d_Outputs/" %(i)
+	W_conv1 = pickle.load(open(root_output_directory + "W_conv1.npy",'rb'))
+	W_conv2 = pickle.load(open(root_output_directory + "W_conv2.npy",'rb'))
 
 	#initialize a figure to store the images
 	conv1_fig = plt.figure(1,(20.,20.))
@@ -24,7 +25,7 @@ def save_normalized_weights(path_to_conv1,path_to_conv2):
 		kernel_normed = np.divide(kernel,np.mean(kernel)) * 255
 		conv1_grid[i].imshow(kernel_normed, cmap = "Greys_r")
 	
-	conv1_fig.savefig("Image_Autoencoder_Ver2_Outputs/Conv1_Kernels.png")
+	conv1_fig.savefig(root_output_directory + "Conv1_Kernels.png")
 	plt.close(conv1_fig)
 	#perform the above for second conv layer as well
 	conv2_fig = plt.figure(1,(20.,20.))
@@ -34,14 +35,25 @@ def save_normalized_weights(path_to_conv1,path_to_conv2):
 		kernel_normed = np.divide(kernel,np.mean(kernel)) * 255
 		conv2_grid[j].imshow(kernel_normed,cmap = "Greys_r")
 
-	conv2_fig.savefig("Image_Autoencoder_Ver2_Outputs/Conv2_Kernels.png")
+	conv2_fig.savefig(root_output_directory + "Conv2_Kernels.png")
 	plt.close(conv2_fig)
 
 
-save_normalized_weights("Image_Autoencoder_Ver2_Outputs/W_conv1.npy","Image_Autoencoder_Ver2_Outputs/W_conv2.npy")
 
-loss = pickle.load(open("Image_Autoencoder_Ver2_Outputs/loss.npy",'rb'))
-f = plt.figure()
-plt.plot(loss)
-plt.title('loss')
-f.savefig("Image_Autoencoder_Ver2_Outputs/loss.png")
+	training_loss = pickle.load(open(root_output_directory + "training_loss.npy",'rb'))
+	training_loss_fig = plt.figure()
+	plt.plot(training_loss)
+	plt.title('Training Loss')
+	training_loss_fig.savefig(root_output_directory + "training_loss.png")
+	plt.close(training_loss_fig)
+
+	testing_loss = pickle.load(open(root_output_directory + "testing_loss.npy",'rb'))
+	testing_loss_fig = plt.figure()
+	plt.plot(testing_loss)
+	plt.title('Testing Loss')
+	testing_loss_fig.savefig(root_output_directory + "testing_loss.png")
+	plt.close(testing_loss_fig)
+
+
+
+plot_npy(1)
