@@ -15,7 +15,7 @@ PIXEL_DEPTH = 255
 CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 
-EPOCHS = 20
+EPOCHS = 40
 DIRECTORY_NAME = 'Training_Images/'
 
 #define a datasplit ratio to separate training data from validation data
