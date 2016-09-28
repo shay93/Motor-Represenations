@@ -17,9 +17,9 @@ CONV_KERNELS_1 = 32
 CONV_KERNELS_2 = 64
 FC_2_UNITS = 64*64*5
 split_data = 0.75
-EPOCHS = 40
+EPOCHS = 60
 DIRECTORY_NAME = 'Training_Images/'
-data_split_ratio = 0.9
+data_split_ratio = 0.8
 
 
 
@@ -61,7 +61,7 @@ class Shape_Autoencoder:
 		self.conv_kernels_4 = 64
 		self.op_dict = {}
 		self.parameter_dict = {}
-		self.dropout_prob = 0.9
+		self.dropout_prob = 0.8
 
 		#intialize some directory names
 		self.checkpoint_images_directory = "Image_Checkpoints/"
@@ -87,7 +87,7 @@ class Shape_Autoencoder:
 
 		with tf.name_scope("Conv1") as scope:	
 			with tf.name_scope("Weights") as scope:
-				self.parameter_dict['W_conv1'] = tf.Variable(tf.truncated_normal([2,2,1,self.conv_kernels_1],stddev = 0.1))
+				self.parameter_dict['W_conv1'] = tf.Variable(tf.truncated_normal([6,6,1,self.conv_kernels_1],stddev = 0.1))
 			with tf.name_scope("Biases") as scope:
 				self.parameter_dict['b_conv1'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
 			with tf.name_scope("Conv_Output") as scope:
