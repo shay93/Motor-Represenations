@@ -250,7 +250,7 @@ class Shape_Autoencoder:
 
 			data_batch = extract_batch(batch_num)
 			feed = {self.op_dict['x'] : data_batch , self.op_dict['y_'] : data_batch}
-			loss, _,summary = sess.run([self.op_dict['L1_Norm'],self.op_dict['train_op'],self.op_dict['merged']], feed_dict = feed)
+			loss, _,summary = sess.run([self.op_dict['meansq'],self.op_dict['train_op'],self.op_dict['merged']], feed_dict = feed)
 			if batch_num % 20 == 0:
 				self.op_dict['train_writer'].add_summary(summary,batch_num)
 				print batch_num,loss
@@ -277,7 +277,7 @@ class Shape_Autoencoder:
 		for batch_index in range(start_batch_index,end_batch_index):
 			#call on the batch generator
 			data_batch = extract_batch(batch_index)
-			output,testing_loss,summary = np.array(sess.run([self.op_dict['y'],self.op_dict['L1_Norm'],self.op_dict['merged']],feed_dict = {self.op_dict['x'] : data_batch,self.op_dict['y_'] : data_batch}))
+			output,testing_loss,summary = np.array(sess.run([self.op_dict['y'],self.op_dict['meansq'],self.op_dict['merged']],feed_dict = {self.op_dict['x'] : data_batch,self.op_dict['y_'] : data_batch}))
 
 			for j in range(self.batch_size):
 				#in order to separate the batch into its separate shapes we need
