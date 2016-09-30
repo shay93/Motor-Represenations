@@ -10,7 +10,7 @@ NUM_CHANNELS = 1
 PIXEL_DEPTH = 255
 VALIDATION_SIZE = 180
 IMAGE_SIZE = 64
-NUM_EPOCHS =60
+NUM_EPOCHS = 60
 EVAL_BATCH_SIZE = 9
 BATCH_SIZE = 256
 EVAL_FREQUENCY = 20 #num of steps between evaluations
@@ -85,9 +85,9 @@ def model(data,train = False):
 	hidden = tf.nn.relu(tf.matmul(reshape,fc1_weights) + fc1_biases)
 
 	if train:
-		hidden = tf.nn.dropout(hidden,0.5)
+		hidden = tf.nn.dropout(hidden,0.9)
 
-	return tf.reshape(tf.abs(tf.matmul(hidden,fc2_weights) + fc2_biases),shape = [-1,IMAGE_SIZE,IMAGE_SIZE,1])
+	return tf.reshape(tf.nn.relu(tf.matmul(hidden,fc2_weights) + fc2_biases),shape = [-1,IMAGE_SIZE,IMAGE_SIZE,1])
 
 
 def normalize_by_max(data):
@@ -110,7 +110,7 @@ regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
 				tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases))
 
 #Add the regularization term to the loss
-loss += 5e-4 * regularizers
+loss += 5e-3 * regularizers
 
 #Optimizer: set up a variable that's incremented once per batch and controls the learning rate decay
 batch = tf.Variable(0)
