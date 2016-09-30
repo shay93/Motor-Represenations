@@ -8,11 +8,11 @@ import os
 
 NUM_CHANNELS = 1
 PIXEL_DEPTH = 255
-VALIDATION_SIZE = 20
+VALIDATION_SIZE = 180
 IMAGE_SIZE = 64
-NUM_EPOCHS =1
-EVAL_BATCH_SIZE = 1
-BATCH_SIZE = 1
+NUM_EPOCHS =60
+EVAL_BATCH_SIZE = 9
+BATCH_SIZE = 256
 EVAL_FREQUENCY = 20 #num of steps between evaluations
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
 ROOT_DIR = "Modified_Mnist_Outputs/"
@@ -40,7 +40,7 @@ def extract_data(data_directory,num_of_images):
 	return image_array
 
 
-train_data = extract_data("Training_Images/", 600)
+train_data = extract_data("Training_Images/", 3000)
 
 #generate a validation set
 validation_data = train_data[:VALIDATION_SIZE, ...]
@@ -103,7 +103,7 @@ def normalize_by_max(data):
 
 output_image_node = normalize_by_max(model(train_data_node,True))
 diff = tf.sub(output_image_node,train_data_node)
-loss = tf.reduce_sum(tf.abs(diff)) #take an L1 loss of the tensor
+loss = tf.reduce_mean(tf.square(diff)) #take an L1 loss of the tensor
 
 #l2 regularization for the fully connected parameters
 regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
@@ -116,7 +116,7 @@ loss += 5e-4 * regularizers
 batch = tf.Variable(0)
 
 learning_rate = tf.train.exponential_decay(
-	0.01,
+	10.,
 	batch * BATCH_SIZE,
 	train_size,
 	0.95,
@@ -136,21 +136,21 @@ def eval_in_batches(data,sess):
 	#initialize a batch number
 
 	size = data.shape[0]
-	print size
+
 	if size < EVAL_BATCH_SIZE:
 		raise ValueError("batch size for evals larger than dataset: %d" % size)
 
 	predictions = np.ndarray(shape = (size,IMAGE_SIZE,IMAGE_SIZE,NUM_CHANNELS), dtype = np.float32)
 	for begin in xrange(0,size,EVAL_BATCH_SIZE):
 		end = begin + EVAL_BATCH_SIZE
-		print begin,end
+		
 		if end <= size:
 			predictions[begin:end, ...] = sess.run(eval_prediction,feed_dict={eval_data: data[begin:end, ...]})
 		else:
 			batch_prediction = sess.run(eval_prediction,feed_dict = {eval_data : data[-EVAL_BATCH_SIZE:, ...]})
 			predictions[begin:, ...] = batch_prediction
 
-	print np.shape(predictions)
+	
 	return predictions
 
 
@@ -192,7 +192,7 @@ with tf.Session() as sess:
 		if step % EVAL_FREQUENCY == 0:
 			predictions = eval_in_batches(validation_data, sess)
 			unwrap_eval_prediction(predictions,step // EVAL_FREQUENCY)
-			print step,l,learning_rate
+			print step,l,lr
 
 
 
