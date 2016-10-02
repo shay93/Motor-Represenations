@@ -8,11 +8,11 @@ import os
 
 NUM_CHANNELS = 1
 PIXEL_DEPTH = 255
-VALIDATION_SIZE = 12
+VALIDATION_SIZE = 256
 IMAGE_SIZE = 64
-NUM_EPOCHS = 40
-EVAL_BATCH_SIZE = 12
-BATCH_SIZE = 12
+NUM_EPOCHS = 120
+EVAL_BATCH_SIZE = 256
+BATCH_SIZE = 256
 EVAL_FREQUENCY = 20 #num of steps between evaluations
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
 ROOT_DIR = "Simple_Autoencoder_Outputs/"
@@ -50,10 +50,10 @@ train_size = train_data.shape[0]
 
 
 #Network Parameters
-n_kernels_1 = 64
-kernel_width_1 = 10
-n_hidden_fc1 =  256 # 1st layer num features
-n_hidden_fc2 = 128 # 2nd layer num features
+n_kernels_1 = 32
+kernel_width_1 = 3
+n_hidden_fc1 =  2000 # 1st layer num features
+n_hidden_fc2 = 1000 # 2nd layer num features
 n_input = 64*64 # num of pixels of single image input
 
 weights = {
@@ -71,6 +71,23 @@ biases = {
 	'decoder_fc1': tf.Variable(tf.random_normal([n_hidden_fc1])),
 	'decoder_fc2': tf.Variable(tf.random_normal([n_input]))
 }
+
+
+def save_as_npy(sess,training_loss_array,W_conv1_op):
+	"""
+	Saves the training loss and evaluation loss as an npy in addition to the weights prescribed as W_conv1 and W_conv2
+	inputs: training_loss and testing_loss are both numpy arrays  
+	"""
+	file_path_list = ["training_loss.npy","W_conv1.npy"]
+	#evaluate the weight tensors
+	W_conv1 = sess.run(W_conv1_op)
+	#construct value list
+	value_list = [training_loss_array,W_conv1]
+
+	for file_path,value in zip(file_path_list,value_list):
+		with open(ROOT_DIR + file_path,'w') as f:
+			pickle.dump(value,f)
+			f.close() 
 
 #Build the encoder
 def encoder(x):
@@ -177,9 +194,10 @@ def unwrap_eval_prediction(predictions,eval_num):
 
 #initialize a numpy array to store loss
 loss_array = np.ndarray(shape = [int(num_epochs * train_size) // BATCH_SIZE], dtype = np.float32)
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
 
-
-with tf.Session() as sess:
+with tf.Session(config = config) as sess:
 	#initialize the variables
 	log_dir = ROOT_DIR + "/tmp/summary_logs"
 	train_writer = tf.train.SummaryWriter(log_dir, sess.graph)
@@ -203,23 +221,8 @@ with tf.Session() as sess:
 			unwrap_eval_prediction(predictions,step // EVAL_FREQUENCY)
 			print step,l
 
-	save_as_npy(sess,loss_array,weigts['encoder_conv1'])
+	save_as_npy(sess,loss_array,weights['encoder_conv1'])
 
-def save_as_npy(sess,training_loss_array,W_conv1_op):
-	"""
-	Saves the training loss and evaluation loss as an npy in addition to the weights prescribed as W_conv1 and W_conv2
-	inputs: training_loss and testing_loss are both numpy arrays  
-	"""
-	file_path_list = ["training_loss.npy","W_conv1.npy"]
-	#evaluate the weight tensors
-	W_conv1 = sess.run(W_conv1_op)
-	#construct value list
-	value_list = [training_loss_array,W_conv1]
-
-	for file_path,value in zip(file_path_list,value_list):
-		with open(self.output_root_directory + file_path,'w') as f:
-			pickle.dump(value,f)
-			f.close() 
 
 
 
