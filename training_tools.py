@@ -35,6 +35,7 @@ class shape_maker:
 		self.std = 6
 		self.mu = 32
 		self.directory_name = directory_name
+		self.pixel_width = 3
 
 	def draw_line(self,start_point,end_point,step_size,tol):
 		"""
@@ -44,6 +45,11 @@ class shape_maker:
 		#first unpack the tuples 
 		end_point_x,end_point_y = end_point
 		start_point_x,start_point_y = start_point
+		#convert the numpy floats to integers
+		end_point_x = int(end_point_x)
+		end_point_y = int(end_point_y)
+		start_point_x = int(start_point_x)
+		start_point_y = int(start_point_y)
 		#initialize an output array
 		output_array = [start_point]
 		#initialize current point
@@ -55,7 +61,7 @@ class shape_maker:
 			    output_array_y = range(start_point_y,end_point_y + 1)
 			    output_array_x = [start_point_x] * len(output_array_y)
 			else:
-			    output_array_y = range(end_point_y,start_point_y + 1)
+			    output_array_y = range(start_point_y, end_point_y-1, -1)
 			    output_array_x = [start_point_x] * len(output_array_y)
 			return zip(output_array_x,output_array_y)
 
@@ -75,6 +81,23 @@ class shape_maker:
 			if np.round(current_point_x) != output_array[-1][0] or np.round(current_point_y) != output_array[-1][1]:
 			    output_array.append((np.round(current_point_x), np.round(current_point_y)))
 		return output_array
+
+
+	def thicken_line(self,line_segment_list):
+		"""
+		Takes the line segments and their gradients and uses this information to generate more lines to thicken
+		the shapes
+		"""
+		thicken_pos_array = []
+		for width_offset in range(1,self.pixel_width + 1):
+			for i in range(len(line_segment_list)):
+				current_segment = np.round(line_segment_list[i])
+				previous_segment = np.round(line_segment_list[i-2])
+				start_point = current_segment[width_offset]
+				end_point = previous_segment[-(width_offset + 1)]
+				right_segment = self.draw_line(start_point,end_point,0.01,0.01)
+				thicken_pos_array.extend(right_segment) 
+		return thicken_pos_array
 
 
 	def get_vertices(self,shape):
@@ -98,6 +121,7 @@ class shape_maker:
 			d = np.floor(self.sample_truncated_normal(9,10,30,2))
 			vertices = [(-d[0],0),(0,d[1]),(d[0],0),(0,-d[1])]
 
+		
 		return vertices
 
 
@@ -118,6 +142,7 @@ class shape_maker:
 		an array of tuples with each tuple denoting a pixel to be filled in the grid
 		"""
 		pos_array = []
+		line_segment_list = []
 		#generate a random start point for the grid
 		start_point = np.round(self.std*np.random.randn(2) + self.mu)
 		#then get the vertices of the shape required
@@ -125,9 +150,11 @@ class shape_maker:
 		if self.check(vertices,start_point):
 			for point in vertices:
 				end_point = (int(start_point[0] + point[0]),int(start_point[1] + point[1]))
-				pos_array.extend(self.draw_line((start_point[0],start_point[1]),end_point,0.001,0.001))
+				line_segment = self.draw_line((start_point[0],start_point[1]),end_point,0.001,0.001)
+				line_segment_list.append(line_segment)
+				pos_array.extend(line_segment)
 				start_point = end_point
-			return pos_array
+			return pos_array,self.thicken_line(line_segment_list)
 		else:
 			return self.get_points(shape)
 
@@ -157,11 +184,12 @@ class shape_maker:
 			#initialize a grid object
 			my_grid = grid(shape_str + str(i),self.directory_name)
 			#generate the point
-			points_array = self.get_points(shape_str)
+			points_array,thicken_points_array = self.get_points(shape_str)
 			#add points to list
 			pos_list[i] = points_array
 			#pass the points to the grid
 			my_grid.draw_figure(points_array)
+			my_grid.draw_figure(thicken_points_array)
 			#now save the figure
 			my_grid.save_image()
 		return pos_list

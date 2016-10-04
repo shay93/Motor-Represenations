@@ -21,28 +21,27 @@ DIRECTORY_NAME = 'Training_Images/'
 #define a datasplit ratio to separate training data from validation data
 data_split_ratio = 0.8
 
-def extract_batch(batch_num):
-	"""
-	Reads into directory containing training images and reads a number of them (specified by batch size)
-	into a numpy array so that it may be then be fed into the tensorflow graph
-	inputs: batch_num an integer specifying what the batch number is
-	outputs:data_batch a 4d numpy array of size [BATCH_SIZE,IMG_WIDTH,IMG_WIDTH,1]
-	"""
-	#initialize numpy array to hold batch of images
-	data_batch = np.zeros([BATCH_SIZE,IMG_WIDTH,IMG_WIDTH,1])
-	shape_str_array = ['Rectangle', 'Square', 'Triangle']
-	#the number of batches in one Epoch may be used to calculate a batch index
-	batches_in_Epoch = (len(shape_str_array) * 1000) // BATCH_SIZE
-	#batch index is used to index the batch wrt to the data available
-	batch_index = batch_num % batches_in_Epoch
-	#it is also useful to know the number of each shape per batch since this is the same for all shapes just call it squares per batch
-	squares_per_batch = BATCH_SIZE // len(shape_str_array)
-	for j,shape_str in enumerate(shape_str_array):
-		for i in range(squares_per_batch):
-			shape_index = batch_index*squares_per_batch + i
-			data_batch[i + squares_per_batch*j,:,:,0] = plt.imread(DIRECTORY_NAME + shape_str + str(shape_index) + '.png')
 
-	return data_batch
+def extract_data(data_directory,num_of_images):
+	"""
+	extract the specified number of Images into a numpy array
+
+	"""
+	
+	#initialize a numpy array to hold the data
+	image_array = np.zeros([num_of_images,IMAGE_SIZE,IMAGE_SIZE,1])
+	for image_num in xrange(num_of_images):
+		#figure out which shape needs to be loaded
+		shape_name_index = image_num % len(shape_str_array)
+		#next figure out the index of the shape being read in i.e. is it Triangle1 or Triangle100
+		shape_index = image_num // len(shape_str_array)
+		#this information may now be combined to designate a file path and load the right image
+		image_path = data_directory + shape_str_array[shape_name_index] + str(shape_index) + ".png"
+		#load a single image and add it to image array
+		image_array[image_num,:,:,0] = plt.imread(image_path)
+
+
+	return image_array
 
 
 class Shape_Autoencoder:
@@ -270,6 +269,47 @@ class Shape_Autoencoder:
 
 		if not(checkpoint_boolean):
 			return testing_loss_array
+
+
+	def eval_in_batches(data,sess):
+		"""Get combined loss for dataset by running in batches"""
+		size = data.shape[0]
+
+		if size < EVAL_BATCH_SIZE:
+			raise ValueError("batch size for evals larger than dataset: %d" % size)
+
+		predictions = np.ndarray(shape = (size,IMAGE_SIZE*IMAGE_SIZE), dtype = np.float32)
+		for begin in xrange(0,size,EVAL_BATCH_SIZE):
+			end = begin + EVAL_BATCH_SIZE
+			
+			if end <= size:
+				predictions[begin:end, ...] = sess.run(y_pred,feed_dict={X: data[begin:end, ...]})
+			else:
+				batch_prediction = sess.run(y_pred,feed_dict = {X : data[-EVAL_BATCH_SIZE:, ...]})
+				predictions[begin:, ...] = batch_prediction[-(size - begin):,...]
+
+		
+		return predictions
+
+
+	def unwrap_eval_prediction(predictions,eval_num):
+		for image_num in xrange(VALIDATION_SIZE):
+			#figure out which shape needs to be loaded
+			shape_name_index = image_num % len(shape_str_array)
+			#next figure out the index of the shape being read in i.e. is it Triangle1 or Triangle100
+			shape_index = image_num // len(shape_str_array)
+			#this information may now be combined to designate a file path and load the right image
+			my_dir = ROOT_DIR 
+			try:
+				os.stat(my_dir)
+			except:
+				os.mkdir(my_dir)
+			image_path = my_dir + shape_str_array[shape_name_index] + str(shape_index) + "_evalnum_%d" %(eval_num) + ".png"
+			#reshape the image and scale it 
+			image = np.reshape(predictions[image_num,:],[IMAGE_SIZE,IMAGE_SIZE])
+			temp = np.round(image * PIXEL_DEPTH)
+			png.from_array(temp.tolist(),'L').save(image_path)
+
 
 	
 	def save_normalized_weights(self,sess):
