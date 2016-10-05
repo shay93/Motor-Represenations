@@ -13,13 +13,13 @@ BATCH_SIZE = 256
 IMAGE_SIZE = 64
 PIXEL_DEPTH = 255
 EVAL_BATCH_SIZE = 12
-EPOCHS = 100
+EPOCHS = 500
 FC_2_UNITS = 2000
 EVAL_FREQUENCY = 50
 NUM_CHANNELS = 1
 VALIDATION_SIZE = 256
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
-ROOT_DIR = "Image_Autoencoder_Ver2_Outputs/Output_Images/"
+ROOT_DIR = "Image_Autoencoder_Ver2_Outputs/"
 
 
 def extract_data(data_directory,num_of_images):
