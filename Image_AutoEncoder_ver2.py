@@ -12,10 +12,10 @@ import os
 BATCH_SIZE = 256
 IMAGE_SIZE = 64
 PIXEL_DEPTH = 255
-EVAL_BATCH_SIZE = 256
-EPOCHS = 500
+EVAL_BATCH_SIZE = 12
+EPOCHS = 100
 FC_2_UNITS = 2000
-EVAL_FREQUENCY = 200
+EVAL_FREQUENCY = 50
 NUM_CHANNELS = 1
 VALIDATION_SIZE = 256
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
@@ -89,7 +89,7 @@ class Shape_Autoencoder:
 
 		with tf.name_scope("Conv1") as scope:	
 			with tf.name_scope("Weights") as scope:
-				self.parameter_dict['W_conv1'] = tf.Variable(tf.truncated_normal([10,10,1,self.conv_kernels_1],stddev = 0.1))
+				self.parameter_dict['W_conv1'] = tf.Variable(tf.truncated_normal([5,5,1,self.conv_kernels_1],stddev = 0.1))
 			with tf.name_scope("Biases") as scope:
 				self.parameter_dict['b_conv1'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
 			with tf.name_scope("Conv_Output") as scope:
@@ -103,7 +103,7 @@ class Shape_Autoencoder:
 		with tf.name_scope("Conv2") as scope:
 			#define parameters for the second convolutional layer
 			with tf.name_scope("Weights") as scope:
-				self.parameter_dict['W_conv2'] = tf.Variable(tf.truncated_normal([10,10,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
+				self.parameter_dict['W_conv2'] = tf.Variable(tf.truncated_normal([5,5,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
 			with tf.name_scope("Biases") as scope:
 				self.parameter_dict['b_conv2'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
 			with tf.name_scope("Conv_Output") as scope:	
@@ -157,7 +157,7 @@ class Shape_Autoencoder:
 		# 		#now compute output from first conv kernel
 		# 		h_conv3 = tf.nn.relu(tf.nn.bias_add(conv3,self.parameter_dict['b_conv3']))
 		
-		# with tf.name_scope("Pool3") as scope:
+		# with tf.name_scope("Pool3") as scope
 		# 	#now pool the output of the first convolutional layer
 		# 	pool3 = tf.nn.max_pool(h_conv3,ksize = [1,3,3,1],strides = [1,2,2,1],padding = 'SAME')
 		
@@ -249,10 +249,14 @@ class Shape_Autoencoder:
 
 
 				if step % EVAL_FREQUENCY == 0:
-					predictions = self.eval_in_batches(validation_data, sess)
-					self.unwrap_eval_prediction(predictions,step // EVAL_FREQUENCY)
+					predictions,test_loss_array = self.eval_in_batches(validation_data, sess)
+					self.unwrap_eval_prediction(predictions,step // EVAL_FREQUENCY,"Checkpoints/")
 					print step,l
-			self.save_as_npy(sess,loss_array)
+			predictions,test_loss_array = self.eval_in_batches(validation_data,sess)
+			self.unwrap_eval_prediction(predictions,step // EVAL_FREQUENCY,"Validation_on_Test/")
+			predictions, _ = self.eval_in_batches(train_data,sess)
+			self.unwrap_eval_prediction(predictions,step // EVAL_FREQUENCY,"Validation_on_Train/")
+			self.save_as_npy(sess,loss_array,test_loss_array)
 		
 
 
@@ -265,27 +269,30 @@ class Shape_Autoencoder:
 			raise ValueError("batch size for evals larger than dataset: %d" % size)
 
 		predictions = np.ndarray(shape = (size,IMAGE_SIZE,IMAGE_SIZE,1), dtype = np.float32)
+		test_loss_array = [0] * ((size // EVAL_BATCH_SIZE) + 1)
+		i = 0
 		for begin in xrange(0,size,EVAL_BATCH_SIZE):
 			end = begin + EVAL_BATCH_SIZE
 			
 			if end <= size:
-				predictions[begin:end, ...] = sess.run(self.op_dict['y'],feed_dict={self.op_dict['x']: data[begin:end, ...]})
+				predictions[begin:end, ...],l = sess.run([self.op_dict['y'],self.op_dict['meansq']],feed_dict={self.op_dict['x']: data[begin:end, ...], self.op_dict['y_'] : data[begin:end, ...]})
 			else:
-				batch_prediction = sess.run(self.op_dict['y'],feed_dict = {self.op_dict['x'] : data[-EVAL_BATCH_SIZE:, ...]})
+				batch_prediction,l = sess.run([self.op_dict['y'],self.op_dict['meansq']],feed_dict = {self.op_dict['x'] : data[-EVAL_BATCH_SIZE:, ...],self.op_dict['y_']:data[-EVAL_BATCH_SIZE:,...]})
 				predictions[begin:, ...] = batch_prediction[-(size - begin):,...]
 
-		
-		return predictions
+			test_loss_array[i] = l
+			i += 1
+		return predictions,test_loss_array
 
 
-	def unwrap_eval_prediction(self,predictions,eval_num):
+	def unwrap_eval_prediction(self,predictions,eval_num,lower_dir):
 		for image_num in xrange(VALIDATION_SIZE):
 			#figure out which shape needs to be loaded
 			shape_name_index = image_num % len(shape_str_array)
 			#next figure out the index of the shape being read in i.e. is it Triangle1 or Triangle100
 			shape_index = image_num // len(shape_str_array)
 			#this information may now be combined to designate a file path and load the right image
-			my_dir = ROOT_DIR 
+			my_dir = ROOT_DIR + lower_dir
 			try:
 				os.stat(my_dir)
 			except:
@@ -322,16 +329,16 @@ class Shape_Autoencoder:
 		self.op_dict['merged'] = tf.merge_all_summaries()
 
 
-	def save_as_npy(self,sess,training_loss_array):
+	def save_as_npy(self,sess,training_loss_array,testing_loss_array):
 		"""
 		Saves the training loss and evaluation loss as an npy in addition to the weights prescribed as W_conv1 and W_conv2
 		inputs: training_loss and testing_loss are both numpy arrays  
 		"""
-		file_path_list = ["training_loss.npy","W_conv1.npy","W_conv2.npy"]
+		file_path_list = ["training_loss.npy","W_conv1.npy","W_conv2.npy","testing_loss.npy"]
 		#evaluate the weight tensors
 		W_conv1,W_conv2 = sess.run([self.parameter_dict['W_conv1'],self.parameter_dict['W_conv2']])
 		#construct value list
-		value_list = [training_loss_array,W_conv1,W_conv2]
+		value_list = [training_loss_array,W_conv1,W_conv2,testing_loss_array]
 
 		for file_path,value in zip(file_path_list,value_list):
 			with open(self.output_root_directory + file_path,'w') as f:
