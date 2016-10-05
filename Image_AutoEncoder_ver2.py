@@ -13,13 +13,13 @@ BATCH_SIZE = 256
 IMAGE_SIZE = 64
 PIXEL_DEPTH = 255
 EVAL_BATCH_SIZE = 256
-EPOCHS = 200
+EPOCHS = 500
 FC_2_UNITS = 2000
-EVAL_FREQUENCY = 40
+EVAL_FREQUENCY = 200
 NUM_CHANNELS = 1
 VALIDATION_SIZE = 256
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
-ROOT_DIR = "Image_AutoEncoder_Ver1_Outputs/Output_Images/"
+ROOT_DIR = "Image_Autoencoder_Ver2_Outputs/Output_Images/"
 
 
 def extract_data(data_directory,num_of_images):
@@ -65,7 +65,7 @@ class Shape_Autoencoder:
 		self.conv_kernels_2 = 32
 		self.op_dict = {}
 		self.parameter_dict = {}
-		self.dropout_prob = 0.9
+		self.dropout_prob = 0.95
 		#intialize some directory names
 		self.output_root_directory = "Image_Autoencoder_Ver2_Outputs/"
 		self.output_image_directory = self.output_root_directory + "Output_Images/"
@@ -89,7 +89,7 @@ class Shape_Autoencoder:
 
 		with tf.name_scope("Conv1") as scope:	
 			with tf.name_scope("Weights") as scope:
-				self.parameter_dict['W_conv1'] = tf.Variable(tf.truncated_normal([2,2,1,self.conv_kernels_1],stddev = 0.1))
+				self.parameter_dict['W_conv1'] = tf.Variable(tf.truncated_normal([10,10,1,self.conv_kernels_1],stddev = 0.1))
 			with tf.name_scope("Biases") as scope:
 				self.parameter_dict['b_conv1'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_1]))
 			with tf.name_scope("Conv_Output") as scope:
@@ -103,7 +103,7 @@ class Shape_Autoencoder:
 		with tf.name_scope("Conv2") as scope:
 			#define parameters for the second convolutional layer
 			with tf.name_scope("Weights") as scope:
-				self.parameter_dict['W_conv2'] = tf.Variable(tf.truncated_normal([2,2,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
+				self.parameter_dict['W_conv2'] = tf.Variable(tf.truncated_normal([10,10,self.conv_kernels_1,self.conv_kernels_2],stddev = 0.1))
 			with tf.name_scope("Biases") as scope:
 				self.parameter_dict['b_conv2'] = tf.Variable(tf.constant(0.1,shape = [self.conv_kernels_2]))
 			with tf.name_scope("Conv_Output") as scope:	
