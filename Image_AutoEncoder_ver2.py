@@ -5,19 +5,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import png
 import pickle
-
+import os
 
 
 #Globals
-BATCH_SIZE = 10
+BATCH_SIZE = 256
 IMAGE_SIZE = 64
 PIXEL_DEPTH = 255
-EVAL_BATCH_SIZE = 10
-EPOCHS = 1
-FC_2_UNITS = 64*64*5
-EVAL_FREQUENCY = 5
+EVAL_BATCH_SIZE = 256
+EPOCHS = 200
+FC_2_UNITS = 2000
+EVAL_FREQUENCY = 40
 NUM_CHANNELS = 1
-VALIDATION_SIZE =5
+VALIDATION_SIZE = 256
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
 ROOT_DIR = "Image_AutoEncoder_Ver1_Outputs/Output_Images/"
 
@@ -44,7 +44,7 @@ def extract_data(data_directory,num_of_images):
 	return image_array
 
 
-train_data = extract_data("Training_Images/", 60)
+train_data = extract_data("Training_Images_Thick_Lines/", 3000)
 
 #generate a validation set
 validation_data = train_data[:VALIDATION_SIZE, ...]
@@ -61,13 +61,11 @@ class Shape_Autoencoder:
 		"""
 		self.batch_size = BATCH_SIZE
 		self.img_width = IMAGE_SIZE
-		self.conv_kernels_1 = 4
-		self.conv_kernels_2 = 8
-		self.conv_kernels_3 = 4
-		self.conv_kernels_4 = 8
+		self.conv_kernels_1 = 32
+		self.conv_kernels_2 = 32
 		self.op_dict = {}
 		self.parameter_dict = {}
-
+		self.dropout_prob = 0.9
 		#intialize some directory names
 		self.output_root_directory = "Image_Autoencoder_Ver2_Outputs/"
 		self.output_image_directory = self.output_root_directory + "Output_Images/"
@@ -236,7 +234,7 @@ class Shape_Autoencoder:
 
 			tf.initialize_all_variables().run()
 			#initialize a training loss array
-			loss_array = [] * (int(num_epochs * train_size) // BATCH_SIZE)
+			loss_array = [0] * (int(num_epochs * train_size) // BATCH_SIZE)
 			for step in xrange(int(num_epochs * train_size) // BATCH_SIZE):
 				#compute the offset of the current minibatch in the data
 				offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
@@ -254,8 +252,8 @@ class Shape_Autoencoder:
 					predictions = self.eval_in_batches(validation_data, sess)
 					self.unwrap_eval_prediction(predictions,step // EVAL_FREQUENCY)
 					print step,l
-
-			return loss_array,sess
+			self.save_as_npy(sess,loss_array)
+		
 
 
 
@@ -266,14 +264,14 @@ class Shape_Autoencoder:
 		if size < EVAL_BATCH_SIZE:
 			raise ValueError("batch size for evals larger than dataset: %d" % size)
 
-		predictions = np.ndarray(shape = (size,IMAGE_SIZE*IMAGE_SIZE), dtype = np.float32)
+		predictions = np.ndarray(shape = (size,IMAGE_SIZE,IMAGE_SIZE,1), dtype = np.float32)
 		for begin in xrange(0,size,EVAL_BATCH_SIZE):
 			end = begin + EVAL_BATCH_SIZE
 			
 			if end <= size:
-				predictions[begin:end, ...] = sess.run(y_pred,feed_dict={X: data[begin:end, ...]})
+				predictions[begin:end, ...] = sess.run(self.op_dict['y'],feed_dict={self.op_dict['x']: data[begin:end, ...]})
 			else:
-				batch_prediction = sess.run(y_pred,feed_dict = {X : data[-EVAL_BATCH_SIZE:, ...]})
+				batch_prediction = sess.run(self.op_dict['y'],feed_dict = {self.op_dict['x'] : data[-EVAL_BATCH_SIZE:, ...]})
 				predictions[begin:, ...] = batch_prediction[-(size - begin):,...]
 
 		
@@ -345,7 +343,5 @@ class Shape_Autoencoder:
 
 
 my_autoencoder = Shape_Autoencoder()
-#my_autoencoder.build_graph()
-#training_loss_array = my_autoencoder.train_graph()
-
-#my_autoencoder.save_as_npy(sess,training_loss_array)
+my_autoencoder.build_graph()
+my_autoencoder.train_graph()
