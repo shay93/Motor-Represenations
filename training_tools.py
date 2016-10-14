@@ -18,7 +18,7 @@ class grid:
 	def draw_figure(self,pos_array):
 	    #this function should take the end effector position and draw on a 64 by 64 grid
 	    for pos in pos_array:
-	        self.grid[pos[0],pos[1]] = 255
+	        self.grid[pos[0] % 64,pos[1] % 64] = 255
 	    return self.grid
 
 	def save_image(self):
@@ -288,3 +288,38 @@ class two_link_arm:
 		return derivative
 
 
+class three_link_arm:
+
+		def __init__(self,link_length):
+			self.link_length = link_length
+			self.phi_e = np.pi / 2
+
+		def forward_kinematics(self,state):
+			""" Args: State -  a 3d array of positions of size [num of degrees of motion * length of time]
+    			Returns: Effector_Position - a list of tuples consisting of (x,y) position of arm effector and with number of entrie
+    			equal to the length of time being considered.
+			"""
+			theta_1 = state[0,:]
+			theta_2 = state[1,:]
+			theta_3 = state[2,:]
+			x_e = self.link_length*(np.cos(theta_1) + np.cos(theta_1 + theta_2) + np.cos(theta_1 + theta_2 + theta_3))
+			y_e = self.link_length*(np.sin(theta_1) + np.sin(theta_1 + theta_2) + np.sin(theta_1 + theta_2 + theta_3))
+			effector_position = zip(np.round(x_e),np.round(y_e))
+			return effector_position
+
+		def inverse_kinematics(self,effector_position):
+			theta_1 = [0] * len(effector_position)
+			theta_2 = [0] * len(effector_position)
+			theta_3 = [0] * len(effector_position)
+			for i,pos in enumerate(effector_position):
+				x_e,y_e = pos
+				x_w = x_e - self.link_length*np.cos(self.phi_e)
+				y_w = y_e - self.link_length*np.sin(self.phi_e)
+				alpha = np.arctan(y_w / x_w)
+				beta = np.arccos((2*self.link_length**2 - x_w**2 - y_w**2)/(2*self.link_length**2))
+				theta_2[i] = np.pi - beta
+				gamma = np.arccos((x_w**2 + y_w**2)/(2*self.link_length*(x_w**2 + y_w**2)**0.5))
+				theta_1[i] = alpha - gamma
+				theta_3[i] = self.phi_e - theta_1[i] - theta_2[i]
+			states = np.vstack((theta_1,theta_2,theta_3))
+			return states
