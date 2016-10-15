@@ -29,8 +29,8 @@ def plot_npy(i):
 	plt.close(conv1_fig)
 	#perform the above for second conv layer as well
 	conv2_fig = plt.figure(1,(20.,20.))
-	conv2_grid = ImageGrid(conv2_fig, 111,nrows_ncols=(64 // 8,8),axes_pad = 0.1)
-	for j in range(64):
+	conv2_grid = ImageGrid(conv2_fig, 111,nrows_ncols=(32 // 8,8),axes_pad = 0.1)
+	for j in range(32):
 		kernel = W_conv2[:,:,0,j]
 		kernel_normed = np.divide(kernel,np.mean(kernel)) * 255
 		conv2_grid[j].imshow(kernel_normed,cmap = "Greys_r")
@@ -56,5 +56,5 @@ def plot_npy(i):
 
 
 
-plot_npy(1)
+
 plot_npy(2)

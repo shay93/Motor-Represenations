@@ -14,7 +14,7 @@ def generate_training_data(num,link_length_1,link_length_2):
 	"""
 	shape_name_array = ['Rectangle', 'Square', 'Triangle']
 	for shape_name in shape_name_array:
-		my_shape_maker = tt.shape_maker("Training_Images/")
+		my_shape_maker = tt.shape_maker("Training_Images_Thick_Lines/")
 		pos_list = my_shape_maker.gen_shapes(shape_name, num)
 		
 		#initialize two arms that will be used  
@@ -28,15 +28,13 @@ def generate_training_data(num,link_length_1,link_length_2):
 			state_list_first_arm[i] = first_arm.inverse_kinematics(pos_array)
 			state_list_second_arm[i] = second_arm.inverse_kinematics(pos_array)
 	
-		with open("Training_Data_First_Arm/" + 'saved_state' + '_' + shape_name + '_' + str(link_length_1) + '.npy','w') as f:
+		with open("Training_Data_First_Arm/" + 'saved_state' + '_' + shape_name + '_' + str(link_length_1) + '.npy','wb') as f:
 			pickle.dump(state_list_first_arm,f)
 			f.close()
 
-		with open("Training_Data_Second_Arm/" + 'saved_state' + '_' + shape_name + '_' + str(link_length_2) + '.npy','w') as f:
+		with open("Training_Data_Second_Arm/" + 'saved_state' + '_' + shape_name + '_' + str(link_length_2) + '.npy','wb') as f:
 			pickle.dump(state_list_second_arm,f)
 			f.close()
-
-
 
 
 #saved_array = pickle.load(open('saved_state', 'rb')

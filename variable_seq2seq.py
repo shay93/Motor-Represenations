@@ -114,16 +114,15 @@ class variable_lstm:
 
 
 	def body(self,tstep,old_m_state,old_c_state):
-		new_tstep = tf.add(tstep,tf.constant([1]))
+		
 		#concatentate the new tstep with the
-		index = tf.concat(0,[tf.constant([0]),new_tstep])
-		print index
+		#index = tf.concat(0,[tf.constant([0]),new_tstep])
+		#print index
 		size = tf.constant([-1,1])
-		x_sliced = tf.slice(self.op_dict['x'],index,size)
+		x_sliced = self.op_dict['x'][:,1]
 		x_reshape = tf.reshape(x_sliced,shape = [-1,1])
-		print "x_reshape",x_reshape
-		#now feed this into lstm
 		output,state = self.lstm_cell(x_reshape,(old_m_state,old_c_state))
+		new_tstep = tstep + 1
 		return new_tstep,state[0],state[1]
 
 	

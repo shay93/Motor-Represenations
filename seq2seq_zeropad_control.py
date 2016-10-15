@@ -10,26 +10,26 @@ import training_tools as tt
 
 #generate time array
 
-BATCH_SIZE = 256
+BATCH_SIZE = 50
 HIDDEN_UNITS = 100
-EVAL_BATCH_SIZE = 256
+EVAL_BATCH_SIZE = 50
 
 OUTPUT_FEATURES = 3
 INPUT_FEATURES = 2
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 1e-3
 
 VALIDATION_SIZE = 200
-EPOCHS = 15
+EPOCHS = 100
 ROOT_DIR = "/home/shayaan/Research/Redwood/Motor-Represenations/Seq2Seq_Outputs/"
 
 EVAL_FREQUENCY = 20
-Layers = 5
+Layers = 3
 
 
 link_length_2 = 60
 link_length_1 = 50
-arm1 = "/home/shayaan/Research/Redwood/Motor-Represenations/Training_Data_First_Arm/"
-arm2 = "/home/shayaan/Research/Redwood/Motor-Represenations/Training_Data_Second_Arm/"
+arm1_path = "/home/shayaan/Research/Redwood/Motor-Represenations/Training_Data_First_Arm/"
+arm2_path = "/home/shayaan/Research/Redwood/Motor-Represenations/Training_Data_Second_Arm/"
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
 
 data_dict = {}
@@ -227,13 +227,27 @@ def visualize_predictions(predictions,arm2):
 		state_sequence = np.squeeze(np.transpose(predictions[i,:,:]))
 		#cut off the state sequence before the zeros
 		state_sequence = state_sequence[:,:length_array[i]]
-		print np.shape(state_sequence)
 		pos_array = arm2.forward_kinematics(state_sequence)
 		#get the shape index and shape name using i
 		shape_index = i // len(shape_str_array)
 		shape_name = shape_str_array[i % 3]
 		#use this information to initialize a grid using training tools
 		my_grid = tt.grid(shape_name + str(shape_index), ROOT_DIR)
+		my_grid.draw_figure(pos_array)
+		my_grid.save_image()
+
+def visualize_validation_data(validation_data,arm):
+	size = np.shape(validation_data)[0]
+	for i in range(size):
+		state_sequence = np.squeeze(np.transpose(validation_data[i,:,:]))
+		#cut off the state sequence before the zeros
+		state_sequence = state_sequence[:,:length_array[i]]
+		pos_array = arm.forward_kinematics(state_sequence)
+		#get the shape index and shape name using i
+		shape_index = i // len(shape_str_array)
+		shape_name = shape_str_array[i % 3]
+		#use this information to initialize a grid using training tools
+		my_grid = tt.grid(shape_name + str(shape_index) + "_label", ROOT_DIR)
 		my_grid.draw_figure(pos_array)
 		my_grid.save_image()
 
@@ -244,9 +258,10 @@ def visualize_predictions(predictions,arm2):
 
 loss_array,predictions = train_graph()
 #initialize arm2
-arm2 = tt.two_link_arm(link_length_2)
+arm2 = tt.three_link_arm(link_length_2)
 visualize_predictions(predictions,arm2)
-# plt.plot(loss_array)
-# plt.xlabel("batch")
-# plt.ylabel("meansq loss")
-# plt.show()
+visualize_validation_data(validation_y_data,arm2)
+plt.plot(loss_array)
+plt.xlabel("batch")
+plt.ylabel("meansq loss")
+plt.show()
