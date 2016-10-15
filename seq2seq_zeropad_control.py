@@ -11,19 +11,19 @@ import training_tools as tt
 #generate time array
 
 BATCH_SIZE = 256
-HIDDEN_UNITS = 100
+HIDDEN_UNITS = 200
 EVAL_BATCH_SIZE = 256
 
 OUTPUT_FEATURES = 3
 INPUT_FEATURES = 2
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-4
 
 VALIDATION_SIZE = 256
-EPOCHS = 100
-ROOT_DIR = "~/Motor-Represenations/Seq2Seq_Outputs/"
+EPOCHS = 200
+ROOT_DIR = "home/shay93/Motor-Represenations/Seq2Seq_Outputs/"
 
 EVAL_FREQUENCY = 20
-Layers = 10
+Layers = 5
 
 
 link_length_2 = 60
