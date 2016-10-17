@@ -10,20 +10,20 @@ import training_tools as tt
 
 #generate time array
 
-BATCH_SIZE = 50
-HIDDEN_UNITS = 100
-EVAL_BATCH_SIZE = 50
+BATCH_SIZE = 256
+HIDDEN_UNITS = 200
+EVAL_BATCH_SIZE = 256
 
 OUTPUT_FEATURES = 3
 INPUT_FEATURES = 2
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-4
 
-VALIDATION_SIZE = 200
-EPOCHS = 100
-ROOT_DIR = "/home/shayaan/Research/Redwood/Motor-Represenations/Seq2Seq_Outputs/"
+VALIDATION_SIZE = 256
+EPOCHS = 200
+ROOT_DIR = "home/shay93/Motor-Represenations/Seq2Seq_Outputs/"
 
 EVAL_FREQUENCY = 20
-Layers = 3
+Layers = 5
 
 
 link_length_2 = 60
@@ -261,7 +261,7 @@ loss_array,predictions = train_graph()
 arm2 = tt.three_link_arm(link_length_2)
 visualize_predictions(predictions,arm2)
 visualize_validation_data(validation_y_data,arm2)
-plt.plot(loss_array)
-plt.xlabel("batch")
-plt.ylabel("meansq loss")
-plt.show()
+#plt.plot(loss_array)
+#plt.xlabel("batch")
+#plt.ylabel("meansq loss")
+#plt.show()
