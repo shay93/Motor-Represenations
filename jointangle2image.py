@@ -3,27 +3,27 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
-
+import pickle
 
 #define a max sequence length
 DOF = 2
-GAUSS_STD = 1.5
+GAUSS_STD = 3
 link_length = 35
 #model globals
-CONV_KERNELS_1 = 5
-CONV_KERNELS_2 = 5
-FC_UNITS = 500
-FC_UNITS_IMAGE = 500
-FC_UNITS_JOINTS = 500
+CONV_KERNELS_1 = 64
+CONV_KERNELS_2 = 32
+FC_UNITS = 6000
+FC_UNITS_IMAGE = 64*4*CONV_KERNELS_2 
+FC_UNITS_JOINTS = 5000
 
 #model globals
 NUM_SAMPLES = 2000
 IMAGE_SIZE = 64
-BATCH_SIZE = 100
+BATCH_SIZE = 200
 learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 50
-EPOCHS = 1
+EPOCHS = 200
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 10
@@ -264,3 +264,7 @@ for i in range(TRAIN_SIZE):
 	plt.imsave(ROOT_DIR + "Output_Images/" + "output_image" + str(i) + ".png", predictions[i,...], cmap = "Greys_r")
 	plt.imsave(ROOT_DIR + "Output_Images/" + "target_image" + str(i) + ".png", target_image_array_eval[i,...], cmap = "Greys_r")
 	plt.imsave(ROOT_DIR + "Output_Images/" + "input_image" + str(i) + ".png", input_image_array_eval[i,...], cmap = "Greys_r")
+
+#save testing loss array with pickle
+with open(ROOT_DIR + "training_loss.npy","wb") as f:
+	pickle.dump(training_loss_array,f)
