@@ -12,10 +12,15 @@ link_length = 35
 #model globals
 CONV_KERNELS_1 = 64
 CONV_KERNELS_2 = 32
-FC_UNITS = 6000
-FC_UNITS_IMAGE = 64*4*CONV_KERNELS_2 
-FC_UNITS_JOINTS = 5000
+CONV_KERNELS_3 = 16
+DECONV_OUTPUT_CHANNELS_1 = 32
+DECONV_OUTPUT_CHANNELS_2 = 64
+DECONV_OUTPUT_CHANNELS_3 = 1
+DECONV_KERNELS_1 = 8
 
+FC_UNITS = 100
+FC_UNITS_IMAGE = 200
+FC_UNITS_JOINTS = 56
 #model globals
 NUM_SAMPLES = 2000
 IMAGE_SIZE = 64
@@ -120,27 +125,31 @@ def encode_input_image(x_image):
 	x_image = tf.expand_dims(x_image, -1)
 	W_conv1 = tf.Variable(tf.truncated_normal([5,5,1,CONV_KERNELS_1],stddev = 0.1))
 	b_conv1 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_1]))
-	conv1 = tf.nn.conv2d(x_image,W_conv1,strides = [1,1,1,1],padding = 'SAME')
+	conv1 = tf.nn.conv2d(x_image,W_conv1,strides = [1,2,2,1],padding = 'SAME')
 	h_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))
 		
-	pool1 = tf.nn.max_pool(h_conv1, ksize =[1,3,3,1],strides = [1,2,2,1],padding = 'SAME')
 	
 	#define parameters for the second convolutional layer
-	W_conv2 = tf.Variable(tf.truncated_normal([5,5,CONV_KERNELS_1,CONV_KERNELS_2],stddev = 0.1))
+	W_conv2 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_1,CONV_KERNELS_2],stddev = 0.1))
 	b_conv2 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_2]))
-	conv2 = tf.nn.conv2d(pool1,W_conv2,strides = [1,1,1,1],padding = 'SAME')
+	conv2 = tf.nn.conv2d(h_conv1,W_conv2,strides = [1,2,2,1],padding = 'SAME')
 	h_conv2 = tf.nn.relu(tf.nn.bias_add(conv2,b_conv2))
 
-	pool2 = tf.nn.max_pool(h_conv2, ksize = [1,3,3,1],strides = [1,2,2,1], padding = 'SAME')
+	#define a third convolutional layer
+	W_conv3 = tf.Variable(tf.truncated_normal([2,2,CONV_KERNELS_2,CONV_KERNELS_3],stddev = 0.1))
+	b_conv3 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_3]))
+	conv3 = tf.nn.conv2d(h_conv2,W_conv3,strides = [1,2,2,1],padding = 'SAME')
+	h_conv3 = tf.nn.relu(tf.nn.bias_add(conv3,b_conv3))
+
 	
 	#Reshape the output from pooling layers to pass to fully connected layers
-	h_conv2_reshape = tf.reshape(pool2, shape = [-1,64*64*CONV_KERNELS_2 // 16])
+	h_conv3_reshape = tf.reshape(h_conv3, shape = [-1,64*CONV_KERNELS_3])
 
 	
 	#define parameters for full connected layer
-	W_fc1 = tf.Variable(tf.truncated_normal(shape = [64*64*CONV_KERNELS_2 // 16,FC_UNITS_IMAGE],stddev = 0.1)) 
+	W_fc1 = tf.Variable(tf.truncated_normal(shape = [64*CONV_KERNELS_3,FC_UNITS_IMAGE],stddev = 0.1)) 
 	b_fc1 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_IMAGE])) 
-	h_fc1 = tf.nn.relu(tf.matmul(h_conv2_reshape, W_fc1) + b_fc1)
+	h_fc1 = tf.nn.relu(tf.matmul(h_conv3_reshape, W_fc1) + b_fc1)
 	return h_fc1
 
 def encode_joints(x_joints):
@@ -158,6 +167,34 @@ def encode_joints(x_joints):
 	return h_fc2
 
 
+def decode_outputs(hidden_vector):
+	"""
+	Take in a tensor of size [None, FC_UNITS_JOINTS + FC_UNITS_IMAGE]
+	and generate an image of size [None,64,64,1], do this via 
+	"""	
+	#Assume FC_UNITS_JOINTS + FC_UNITS_IMAGE is 256
+	#then reshape tensor from 2d to 4d to be compatible with deconvoh_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))lution
+	batch_size = tf.shape(hidden_vector)[0]
+	hidden_image = tf.reshape(hidden_vector, shape = [batch_size,4,4,16])
+	W_deconv1 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_1,16], stddev = 0.1))
+	b_deconv1 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_1]))
+	deconv1 = tf.nn.conv2d_transpose(hidden_image,W_deconv1,[batch_size,16,16,DECONV_OUTPUT_CHANNELS_1],[1,4,4,1])
+	h_deconv1 = tf.nn.relu(tf.nn.bias_add(deconv1,b_deconv1))
+
+	W_deconv2 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_2,DECONV_OUTPUT_CHANNELS_1], stddev = 0.1))
+	b_deconv2 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_2]))
+	deconv2 = tf.nn.conv2d_transpose(h_deconv1,W_deconv2,[batch_size,32,32,DECONV_OUTPUT_CHANNELS_2],[1,2,2,1])
+	h_deconv2 = tf.nn.relu(tf.nn.bias_add(deconv2,b_deconv2))
+
+	W_deconv3 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_3,DECONV_OUTPUT_CHANNELS_2], stddev = 0.1))
+	b_deconv3 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_3]))
+	deconv3 = tf.nn.conv2d_transpose(h_deconv2,W_deconv3,[batch_size,64,64,DECONV_OUTPUT_CHANNELS_3],[1,2,2,1])
+	h_deconv3 = tf.nn.sigmoid(tf.nn.bias_add(deconv3,b_deconv3))
+
+	return tf.squeeze(h_deconv3)
+
+
+
 x_image = tf.placeholder(tf.float32,shape = [None,64,64])
 x_joint = tf.placeholder(tf.float32,shape = [None,DOF])
 y_ = tf.placeholder(tf.float32,shape = [None,64,64])
@@ -168,11 +205,7 @@ encoded_joints = encode_joints(x_joint)
 #now concatenate the two encoded vectors to get a single vector that may be decoded to an output image
 h_encoded = tf.concat(1,[encoded_image,encoded_joints])
 #decode to get image
-W_fc3 = tf.Variable(tf.truncated_normal(shape = [FC_UNITS_JOINTS + FC_UNITS_IMAGE, 64*64], stddev = 0.1))
-b_fc3 = tf.Variable(tf.constant(0.,shape = [64*64]))
-h_decoded = tf.nn.sigmoid(tf.matmul(h_encoded,W_fc3) + b_fc3)
-#now reshape h_fc2 to get the output image
-y = tf.reshape(h_decoded, shape = [-1,64,64])
+y = decode_outputs(h_encoded)
 
 
 #now define a loss between y and the target image
