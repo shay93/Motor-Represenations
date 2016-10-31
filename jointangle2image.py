@@ -4,35 +4,110 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
 import pickle
+import training_tools as tt
 
 #define a max sequence length
 DOF = 2
-GAUSS_STD = 3
-link_length = 35
+GAUSS_STD = 0.5
+link_length = 50
 #model globals
 CONV_KERNELS_1 = 64
 CONV_KERNELS_2 = 32
 CONV_KERNELS_3 = 16
 DECONV_OUTPUT_CHANNELS_1 = 32
-DECONV_OUTPUT_CHANNELS_2 = 64
-DECONV_OUTPUT_CHANNELS_3 = 1
+DECONV_OUTPUT_CHANNELS_2 = 16
+DECONV_OUTPUT_CHANNELS_3 = 8
+DECONV_OUTPUT_CHANNELS_4 = 4
 DECONV_KERNELS_1 = 8
 
 FC_UNITS = 100
 FC_UNITS_IMAGE = 200
 FC_UNITS_JOINTS = 56
 #model globals
-NUM_SAMPLES = 2000
+NUM_SAMPLES = 1000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
-learning_rate = 1e-3
+learning_rate = 1e-1
 display_num = 10
-EVAL_BATCH_SIZE = 50
-EPOCHS = 200
+EVAL_BATCH_SIZE = 200
+EPOCHS = 2
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
-EVAL_FREQUENCY = 10
-DISPLAY = False
+EVAL_FREQUENCY = 20
+DISPLAY = True
+
+
+##############################LEGACY############################
+
+def generate_input_image_legacy():
+	"""
+	Generate the input image for the nn
+	"""
+	#initialize the input image
+	input_image = np.zeros((64,64), dtype = float)
+	#now generate a random number to determine the number of points that are illuminated in the input image
+	num_points = np.random.randint(5)
+	#now generate random joint states equal to the number of points
+	random_states = [gen_rand_joint_state(DOF) for j in range(num_points)]
+	#initialize a pos list
+	pos_list = []
+	for joint_state in random_states:
+		pos_list += [forward_kinematics(joint_state)]
+
+	for pos in pos_list:
+		input_image[pos[0],pos[1]] = 1.0
+
+	return input_image
+		 
+
+def gen_target_image_legacy(pos, input_image):
+	"""
+	Takes an input pos and generates a target image
+	"""
+	#use the position to fill in the specified index with 1
+	input_image[pos[0],pos[1]] = 1.0
+	#perform a gaussian blur on this target image to help with gradients
+	return filt.gaussian_filter(input_image,GAUSS_STD)
+
+
+def generate_training_data_legacy(num,dof):
+	joint_state_array = np.zeros((num,dof), dtype = float)
+	target_image_array = np.ndarray(shape = (num,64,64))
+	input_image_array = np.ndarray(shape = (num,64,64))
+	#now loop through the num of examples and populates these arrays
+	for i in range(num):
+		joint_state_array[i,:] = gen_rand_joint_state(DOF)
+		#get end effector position
+		pos = forward_kinematics(np.expand_dims(joint_state_array[i,:], axis = 0))
+		#get a randomly generated input image
+		input_image = generate_input_image()
+		input_image_blurred = filt.gaussian_filter(input_image,GAUSS_STD)
+		input_image_array[i,...] = input_image_blurred
+		#use the pos to get the target image and tack on to target_image_array
+		target_image_array[i,:] = gen_target_image(pos,input_image)
+	return joint_state_array,target_image_array,input_image_array
+
+###############################################LEGACY END###############################################
+
+def get_points_to_increase_line_thickness(pos_list):
+	#initialize a list to store the information needed
+	more_pts = [0] * (len(pos_list))
+	for i,pos in enumerate(pos_list):
+		x,y = pos
+		#use these values of x and y to build a temp array with points needed to thicken the original line
+		temp_list = [(x+1,y),(x-1,y),(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1),(x,y+1),(x,y-1)]
+		more_pts[i] = temp_list
+	return more_pts
+
+def gen_random_start_point_and_end_point():
+	rand_joint_state = gen_rand_joint_state(DOF)
+	#use this to get the random end_point
+	end_point = forward_kinematics(rand_joint_state)
+	start_point = (np.random.randint(63),np.random.randint(63))
+	if start_point == end_point or abs(start_point[0] - end_point[0]) < 2 or abs(start_point[1] - end_point[1]) < 2:
+		return gen_random_start_point_and_end_point()
+	else:
+		return start_point,end_point,rand_joint_state
 
 def gen_rand_joint_state(num_dof):
 	"""
@@ -57,57 +132,49 @@ def forward_kinematics(joint_angle_state):
 		ypos += round(link_length*np.sin(np.sum(joint_angle_state[0,:i])))
 	return (int(xpos),int(ypos))
 
-def generate_input_image():
-	"""
-	Generate the input image for the nn
-	"""
-	#initialize the input image
-	input_image = np.zeros((64,64), dtype = float)
-	#now generate a random number to determine the number of points that are illuminated in the input image
-	num_points = np.random.randint(5)
-	#now generate random joint states equal to the number of points
-	random_states = [gen_rand_joint_state(DOF) for j in range(num_points)]
-	#initialize a pos list
-	pos_list = []
-	for joint_state in random_states:
-		pos_list += [forward_kinematics(joint_state)]
-
-	for pos in pos_list:
+def generate_input_and_target_image():
+	#initialize the input and target image
+	input_image = np.zeros((64,64),dtype = float)
+	target_image = np.zeros((64,64),dtype = float)
+	#first generate a random start point and end point for a line
+	start_point,end_point,joint_state = gen_random_start_point_and_end_point()
+	#pass these to tt.draw_line to get a pos_list
+	sp = tt.shape_maker()
+	pos_list = sp.draw_line(start_point,end_point,0.01,0.01)
+	#now generate addtional points to thicken image
+	additional_points = get_points_to_increase_line_thickness(pos_list)
+	#now truncate the last point from the lists so that this could be used as the input joint state map
+	pos_list_truncated = pos_list[:-1]
+	additional_points_truncated = additional_points[:-1]
+	#flatten additional points and remove points which are out of bounds
+	additional_points_truncated_flattened = [pos for sublist in additional_points_truncated for pos in sublist if pos[0] < 64 and pos[1] < 64 and pos[0] > 0 and pos[1] > 0]
+	additional_points_flattened = [pos for sublist in additional_points for pos in sublist if pos[0] < 64 and pos[1] < 64 and pos[0] > 0 and pos[1] > 0]
+	#concatenate the lists
+	truncated_concatenated_pos_list = pos_list_truncated + additional_points_truncated_flattened
+	concatenated_pos_list = pos_list + additional_points_flattened
+	#now use these points to construct the input image
+	for pos in truncated_concatenated_pos_list:
 		input_image[pos[0],pos[1]] = 1.0
 
-	return input_image
-		 
+	for pos in concatenated_pos_list:
+		target_image[pos[0],pos[1]] = 1.0
 
-def gen_target_image(pos, input_image):
-	"""
-	Takes an input pos and generates a target image
-	"""
-	#use the position to fill in the specified index with 1
-	input_image[pos[0],pos[1]] = 1.0
-	#perform a gaussian blur on this target image to help with gradients
-	return filt.gaussian_filter(input_image,GAUSS_STD)
+	#now also find the joint state required to produce this additional point
+	return input_image,target_image,joint_state
 
-
-def generate_training_data(num,dof):
-	joint_state_array = np.zeros((num,dof), dtype = float)
+def generate_training_data(num):
+	joint_state_array = np.zeros((num,DOF), dtype = float)
 	target_image_array = np.ndarray(shape = (num,64,64))
 	input_image_array = np.ndarray(shape = (num,64,64))
 	#now loop through the num of examples and populates these arrays
 	for i in range(num):
-		joint_state_array[i,:] = gen_rand_joint_state(DOF)
-		#get end effector position
-		pos = forward_kinematics(np.expand_dims(joint_state_array[i,:], axis = 0))
-		#get a randomly generated input image
-		input_image = generate_input_image()
-		input_image_blurred = filt.gaussian_filter(input_image,GAUSS_STD)
-		input_image_array[i,...] = input_image_blurred
-		#use the pos to get the target image and tack on to target_image_array
-		target_image_array[i,:] = gen_target_image(pos,input_image)
+		input_image,target_image,joint_state = generate_input_and_target_image()
+		joint_state_array[i,...] = joint_state
+		input_image_array[i,...] = input_image
+		target_image_array[i,...] = target_image
 	return joint_state_array,target_image_array,input_image_array
 
-
-
-joint_state_array,target_image_array,input_image_array = generate_training_data(NUM_SAMPLES,DOF)
+joint_state_array,target_image_array,input_image_array = generate_training_data(NUM_SAMPLES)
 #split this data into a training and validation set
 joint_state_array_train = joint_state_array[TRAIN_SIZE:,...]
 target_image_array_train = target_image_array[TRAIN_SIZE:,...]
@@ -175,23 +242,34 @@ def decode_outputs(hidden_vector):
 	#Assume FC_UNITS_JOINTS + FC_UNITS_IMAGE is 256
 	#then reshape tensor from 2d to 4d to be compatible with deconvoh_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))lution
 	batch_size = tf.shape(hidden_vector)[0]
-	hidden_image = tf.reshape(hidden_vector, shape = [batch_size,4,4,16])
-	W_deconv1 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_1,16], stddev = 0.1))
+	hidden_image = tf.reshape(hidden_vector, shape = [batch_size,2,2,64])
+	
+	W_deconv1 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_1,64], stddev = 0.1))
 	b_deconv1 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_1]))
-	deconv1 = tf.nn.conv2d_transpose(hidden_image,W_deconv1,[batch_size,16,16,DECONV_OUTPUT_CHANNELS_1],[1,4,4,1])
+	deconv1 = tf.nn.conv2d_transpose(hidden_image,W_deconv1,[batch_size,4,4,DECONV_OUTPUT_CHANNELS_1],[1,2,2,1])
 	h_deconv1 = tf.nn.relu(tf.nn.bias_add(deconv1,b_deconv1))
 
-	W_deconv2 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_2,DECONV_OUTPUT_CHANNELS_1], stddev = 0.1))
+	W_deconv2 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_2,DECONV_OUTPUT_CHANNELS_1], stddev = 0.1))
 	b_deconv2 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_2]))
-	deconv2 = tf.nn.conv2d_transpose(h_deconv1,W_deconv2,[batch_size,32,32,DECONV_OUTPUT_CHANNELS_2],[1,2,2,1])
+	deconv2 = tf.nn.conv2d_transpose(h_deconv1,W_deconv2,[batch_size,8,8,DECONV_OUTPUT_CHANNELS_2],[1,2,2,1])
 	h_deconv2 = tf.nn.relu(tf.nn.bias_add(deconv2,b_deconv2))
 
-	W_deconv3 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_3,DECONV_OUTPUT_CHANNELS_2], stddev = 0.1))
+	W_deconv3 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_3,DECONV_OUTPUT_CHANNELS_2], stddev = 0.1))
 	b_deconv3 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_3]))
-	deconv3 = tf.nn.conv2d_transpose(h_deconv2,W_deconv3,[batch_size,64,64,DECONV_OUTPUT_CHANNELS_3],[1,2,2,1])
+	deconv3 = tf.nn.conv2d_transpose(h_deconv2,W_deconv3,[batch_size,16,16,DECONV_OUTPUT_CHANNELS_3],[1,2,2,1])
 	h_deconv3 = tf.nn.sigmoid(tf.nn.bias_add(deconv3,b_deconv3))
 
-	return tf.squeeze(h_deconv3)
+	W_deconv4 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_4,DECONV_OUTPUT_CHANNELS_3], stddev = 0.1))
+	b_deconv4 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_4]))
+	deconv4 = tf.nn.conv2d_transpose(h_deconv3,W_deconv4,[batch_size,32,32,DECONV_OUTPUT_CHANNELS_4],[1,2,2,1])
+	h_deconv4 = tf.nn.sigmoid(tf.nn.bias_add(deconv4,b_deconv4))
+
+	W_deconv5 = tf.Variable(tf.truncated_normal([3,3,1,DECONV_OUTPUT_CHANNELS_4], stddev = 0.1))
+	b_deconv5 = tf.Variable(tf.constant(0.1, shape = [1]))
+	deconv5 = tf.nn.conv2d_transpose(h_deconv4,W_deconv5,[batch_size,64,64,1],[1,2,2,1])
+	h_deconv5 = tf.nn.sigmoid(tf.nn.bias_add(deconv5,b_deconv5))
+
+	return tf.squeeze(h_deconv5)
 
 
 
