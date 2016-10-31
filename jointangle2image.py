@@ -24,17 +24,17 @@ FC_UNITS = 100
 FC_UNITS_IMAGE = 200
 FC_UNITS_JOINTS = 56
 #model globals
-NUM_SAMPLES = 1000
+NUM_SAMPLES = 5000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
-learning_rate = 1e-1
+learning_rate = 1e-2
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 2
+EPOCHS = 500
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 20
-DISPLAY = True
+DISPLAY = False
 
 
 ##############################LEGACY############################
