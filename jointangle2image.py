@@ -24,13 +24,13 @@ FC_UNITS = 100
 FC_UNITS_IMAGE = 200
 FC_UNITS_JOINTS = 56
 #model globals
-NUM_SAMPLES = 5000
+NUM_SAMPLES = 1000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
 learning_rate = 1e-2
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 500
+EPOCHS = 3
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 20
@@ -217,7 +217,9 @@ def encode_input_image(x_image):
 	W_fc1 = tf.Variable(tf.truncated_normal(shape = [64*CONV_KERNELS_3,FC_UNITS_IMAGE],stddev = 0.1)) 
 	b_fc1 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_IMAGE])) 
 	h_fc1 = tf.nn.relu(tf.matmul(h_conv3_reshape, W_fc1) + b_fc1)
-	return h_fc1
+
+	image_encode_variable_list = [W_conv1,W_conv2,W_conv3,b_conv1,b_conv2,b_conv3,W_fc1,b_fc1]
+	return h_fc1,image_encode_variable_list
 
 def encode_joints(x_joints):
 	"""
@@ -231,7 +233,9 @@ def encode_joints(x_joints):
 	W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_UNITS, FC_UNITS_JOINTS], stddev = 0.1))
 	b_fc2 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_JOINTS]))
 	h_fc2 = tf.nn.relu(tf.matmul(h_fc1,W_fc2) + b_fc2)
-	return h_fc2
+
+	joint_encoder_variable_list = [W_fc1,b_fc1,W_fc2,b_fc2]
+	return h_fc2,joint_encoder_variable_list
 
 
 def decode_outputs(hidden_vector):
@@ -257,19 +261,21 @@ def decode_outputs(hidden_vector):
 	W_deconv3 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_3,DECONV_OUTPUT_CHANNELS_2], stddev = 0.1))
 	b_deconv3 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_3]))
 	deconv3 = tf.nn.conv2d_transpose(h_deconv2,W_deconv3,[batch_size,16,16,DECONV_OUTPUT_CHANNELS_3],[1,2,2,1])
-	h_deconv3 = tf.nn.sigmoid(tf.nn.bias_add(deconv3,b_deconv3))
+	h_deconv3 = tf.nn.relu(tf.nn.bias_add(deconv3,b_deconv3))
 
 	W_deconv4 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_4,DECONV_OUTPUT_CHANNELS_3], stddev = 0.1))
 	b_deconv4 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_4]))
 	deconv4 = tf.nn.conv2d_transpose(h_deconv3,W_deconv4,[batch_size,32,32,DECONV_OUTPUT_CHANNELS_4],[1,2,2,1])
-	h_deconv4 = tf.nn.sigmoid(tf.nn.bias_add(deconv4,b_deconv4))
+	h_deconv4 = tf.nn.relu(tf.nn.bias_add(deconv4,b_deconv4))
 
 	W_deconv5 = tf.Variable(tf.truncated_normal([3,3,1,DECONV_OUTPUT_CHANNELS_4], stddev = 0.1))
 	b_deconv5 = tf.Variable(tf.constant(0.1, shape = [1]))
 	deconv5 = tf.nn.conv2d_transpose(h_deconv4,W_deconv5,[batch_size,64,64,1],[1,2,2,1])
 	h_deconv5 = tf.nn.sigmoid(tf.nn.bias_add(deconv5,b_deconv5))
 
-	return tf.squeeze(h_deconv5)
+	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
+
+	return tf.squeeze(h_deconv5),decoder_variable_list
 
 
 
@@ -278,18 +284,21 @@ x_joint = tf.placeholder(tf.float32,shape = [None,DOF])
 y_ = tf.placeholder(tf.float32,shape = [None,64,64])
 
 #get the encoded values for the joint angles as well as the images
-encoded_image = encode_input_image(x_image)
-encoded_joints = encode_joints(x_joint)
+encoded_image,image_encode_variable_list = encode_input_image(x_image)
+encoded_joints, joint_encoder_variable_list = encode_joints(x_joint)
 #now concatenate the two encoded vectors to get a single vector that may be decoded to an output image
 h_encoded = tf.concat(1,[encoded_image,encoded_joints])
 #decode to get image
-y = decode_outputs(h_encoded)
+y,decoder_variable_list = decode_outputs(h_encoded)
 
 
 #now define a loss between y and the target image
 loss = tf.reduce_mean(tf.square(y - y_))
-train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-#define a sess object
+opt = tf.train.AdamOptimizer(learning_rate)
+grads_and_vars = opt.compute_gradients(loss, image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
+summary_nodes = [tf.histogram_summary("var" + str(i),gv[0]) for i,gv in enumerate(grads_and_vars)]
+merged = tf.merge_all_summaries()
+train_op = opt.apply_gradients(grads_and_vars)
 
 
 def train_graph():
@@ -318,14 +327,15 @@ def train_graph():
 				feed_dict = { x_joint: joint_batch, x_image : input_image_batch, y_ : target_image_batch}
 
 				#run the graph
-				_, l = sess.run(
-					[train_op,loss],
+				_, l,merged_summary= sess.run(
+					[train_op,loss,merged],
 					feed_dict=feed_dict)
 				training_loss_array[step] = l
 
 
 				if step % EVAL_FREQUENCY == 0:
 					#predictions,test_loss_array = eval_in_batches(validation_data, sess)
+					train_writer.add_summary(merged_summary,step)
 					print step,l
 			predictions,test_loss_array = eval_in_batches(sess)
 		return predictions,training_loss_array,test_loss_array
