@@ -31,10 +31,10 @@ class grid:
 
 class shape_maker:
 
-	def __init__(self,directory_name):
+	def __init__(self, dir_name = None):
 		self.std = 6
 		self.mu = 32
-		self.directory_name = directory_name
+		self.directory_name = dir_name
 		self.pixel_width = 3
 
 	def draw_line(self,start_point,end_point,step_size,tol):
@@ -154,7 +154,7 @@ class shape_maker:
 				line_segment_list.append(line_segment)
 				pos_array.extend(line_segment)
 				start_point = end_point
-			return pos_array,self.thicken_line(line_segment_list)
+			return pos_array,None
 		else:
 			return self.get_points(shape)
 
