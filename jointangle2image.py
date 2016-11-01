@@ -7,7 +7,7 @@ import pickle
 import training_tools as tt
 
 #define a max sequence length
-DOF = 2
+DOF = 3
 GAUSS_STD = 0.5
 link_length = 50
 #model globals
@@ -24,13 +24,13 @@ FC_UNITS = 100
 FC_UNITS_IMAGE = 200
 FC_UNITS_JOINTS = 56
 #model globals
-NUM_SAMPLES = 1000
+NUM_SAMPLES = 5000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
-learning_rate = 1e-2
+learning_rate = 1e-4
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 3
+EPOCHS = 5000
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 20
