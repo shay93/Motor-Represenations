@@ -24,17 +24,17 @@ FC_UNITS = 100
 FC_UNITS_IMAGE = 200
 FC_UNITS_JOINTS = 56
 #model globals
-NUM_SAMPLES = 5000
+NUM_SAMPLES = 1000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
 learning_rate = 1e-4
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 5000
+EPOCHS = 1
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 20
-DISPLAY = False
+DISPLAY = True
 
 
 ##############################LEGACY############################
@@ -54,7 +54,12 @@ def generate_input_image_legacy():
 	for joint_state in random_states:
 		pos_list += [forward_kinematics(joint_state)]
 
+	additional_points = get_points_to_increase_line_thickness(pos_list)
+	additional_points_flattened = [pos for sublist in additional_points for pos in sublist if pos[0] < 64 and pos[1] < 64 and pos[0] > 0 and pos[1] > 0]
 	for pos in pos_list:
+		input_image[pos[0],pos[1]] = 1.0
+
+	for pos in additional_points_flattened:
 		input_image[pos[0],pos[1]] = 1.0
 
 	return input_image
@@ -64,10 +69,15 @@ def gen_target_image_legacy(pos, input_image):
 	"""
 	Takes an input pos and generates a target image
 	"""
+	x = pos[0]
+	y = pos[1]
+	temp_list = [(x+1,y),(x-1,y),(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1),(x,y+1),(x,y-1)]
 	#use the position to fill in the specified index with 1
-	input_image[pos[0],pos[1]] = 1.0
-	#perform a gaussian blur on this target image to help with gradients
-	return filt.gaussian_filter(input_image,GAUSS_STD)
+	pos_list = temp_list + [pos]
+	for pos in pos_list:
+		if pos[0] < 64 and pos[1] < 64 and pos[0] > 0 and pos[1] > 0:
+			input_image[pos[0],pos[1]] = 1.0
+	return input_image
 
 
 def generate_training_data_legacy(num,dof):
@@ -80,11 +90,10 @@ def generate_training_data_legacy(num,dof):
 		#get end effector position
 		pos = forward_kinematics(np.expand_dims(joint_state_array[i,:], axis = 0))
 		#get a randomly generated input image
-		input_image = generate_input_image()
-		input_image_blurred = filt.gaussian_filter(input_image,GAUSS_STD)
-		input_image_array[i,...] = input_image_blurred
+		input_image = generate_input_image_legacy()
+		input_image_array[i,...] = input_image
 		#use the pos to get the target image and tack on to target_image_array
-		target_image_array[i,:] = gen_target_image(pos,input_image)
+		target_image_array[i,:] = gen_target_image_legacy(pos,input_image)
 	return joint_state_array,target_image_array,input_image_array
 
 ###############################################LEGACY END###############################################
@@ -174,7 +183,7 @@ def generate_training_data(num):
 		target_image_array[i,...] = target_image
 	return joint_state_array,target_image_array,input_image_array
 
-joint_state_array,target_image_array,input_image_array = generate_training_data(NUM_SAMPLES)
+joint_state_array,target_image_array,input_image_array = generate_training_data_legacy(NUM_SAMPLES,DOF)
 #split this data into a training and validation set
 joint_state_array_train = joint_state_array[TRAIN_SIZE:,...]
 target_image_array_train = target_image_array[TRAIN_SIZE:,...]
@@ -389,3 +398,5 @@ for i in range(TRAIN_SIZE):
 #save testing loss array with pickle
 with open(ROOT_DIR + "training_loss.npy","wb") as f:
 	pickle.dump(training_loss_array,f)
+
+print "Test Loss is " + str(np.mean(test_loss_array))
