@@ -183,7 +183,7 @@ def generate_training_data(num):
 		target_image_array[i,...] = target_image
 	return joint_state_array,target_image_array,input_image_array
 
-joint_state_array,target_image_array,input_image_array = generate_training_data_legacy(NUM_SAMPLES,DOF)
+joint_state_array,target_image_array,input_image_array = generate_training_data(NUM_SAMPLES)
 #split this data into a training and validation set
 joint_state_array_train = joint_state_array[TRAIN_SIZE:,...]
 target_image_array_train = target_image_array[TRAIN_SIZE:,...]
@@ -302,7 +302,8 @@ y,decoder_variable_list = decode_outputs(h_encoded)
 
 
 #now define a loss between y and the target image
-loss = tf.reduce_mean(tf.square(y - y_))
+#try cross entropy loss
+loss = tf.reduce_mean(-tf.mul(y_,tf.log(y)))#tf.reduce_mean(tf.square(y - y_))
 opt = tf.train.AdamOptimizer(learning_rate)
 grads_and_vars = opt.compute_gradients(loss, image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
 summary_nodes = [tf.histogram_summary("var" + str(i),gv[0]) for i,gv in enumerate(grads_and_vars)]
