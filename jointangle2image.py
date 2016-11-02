@@ -1,4 +1,5 @@
 from __future__ import division
+
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,17 +25,17 @@ FC_UNITS = 100
 FC_UNITS_IMAGE = 200
 FC_UNITS_JOINTS = 56
 #model globals
-NUM_SAMPLES = 1000
+NUM_SAMPLES = 5000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
-learning_rate = 1e-4
+learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 1
+EPOCHS = 500
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
-EVAL_FREQUENCY = 20
-DISPLAY = True
+EVAL_FREQUENCY = 200
+DISPLAY = False
 
 
 ##############################LEGACY############################
@@ -303,11 +304,12 @@ y,decoder_variable_list = decode_outputs(h_encoded)
 
 #now define a loss between y and the target image
 #try cross entropy loss
-loss = tf.reduce_mean(-tf.mul(y_,tf.log(y)))#tf.reduce_mean(tf.square(y - y_))
+loss = -tf.reduce_mean(tf.mul(y_,tf.log(y+1e-10)) + tf.mul(1.-y_,tf.log(1.-y + 1e-10)))#tf.reduce_mean(tf.square(y - y_))
 opt = tf.train.AdamOptimizer(learning_rate)
+variable_names = ["W_conv1","W_conv2","W_conv3","b_conv1","b_conv2","b_conv3","W_image_fc1","b_image_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
 grads_and_vars = opt.compute_gradients(loss, image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
-summary_nodes = [tf.histogram_summary("var" + str(i),gv[0]) for i,gv in enumerate(grads_and_vars)]
-merged = tf.merge_all_summaries()
+#summary_nodes = [tf.histogram_summary(variable_names[i],gv[0]) for i,gv in enumerate(grads_and_vars)]
+#merged = tf.merge_all_summaries()
 train_op = opt.apply_gradients(grads_and_vars)
 
 
@@ -337,16 +339,17 @@ def train_graph():
 				feed_dict = { x_joint: joint_batch, x_image : input_image_batch, y_ : target_image_batch}
 
 				#run the graph
-				_, l,merged_summary= sess.run(
-					[train_op,loss,merged],
+				_, l= sess.run(
+					[train_op,loss],
 					feed_dict=feed_dict)
 				training_loss_array[step] = l
 
-
-				if step % EVAL_FREQUENCY == 0:
-					#predictions,test_loss_array = eval_in_batches(validation_data, sess)
-					train_writer.add_summary(merged_summary,step)
+				if step % 20 == 0:
 					print step,l
+				if step % EVAL_FREQUENCY == 0:
+					predictions,test_loss_array = eval_in_batches(sess)
+					#train_writer.add_summary(merged_summary,step)
+					print "Test Loss is " + str(np.mean(test_loss_array))
 			predictions,test_loss_array = eval_in_batches(sess)
 		return predictions,training_loss_array,test_loss_array
 
