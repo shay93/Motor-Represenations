@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
 import pickle
 import training_tools as tt
+import os
 
 #define a max sequence length
 DOF = 3
@@ -19,26 +20,32 @@ DECONV_OUTPUT_CHANNELS_1 = 32
 DECONV_OUTPUT_CHANNELS_2 = 16
 DECONV_OUTPUT_CHANNELS_3 = 8
 DECONV_OUTPUT_CHANNELS_4 = 4
-DECONV_KERNELS_1 = 8
 
 FC_UNITS = 100
 FC_UNITS_IMAGE = 200
 FC_UNITS_JOINTS = 56
 #model globals
-NUM_SAMPLES = 5000
+NUM_SAMPLES = 1000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
 learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 500
+EPOCHS = 5
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
-EVAL_FREQUENCY = 200
+EVAL_FREQUENCY = 2
 DISPLAY = False
-KEEP_PROB = 0.8
+KEEP_PROB = 1.0
+LAMBDA = 1e-2
 
-
+##########################HELPER FUNCTION#########################
+def regularizer(tensor):
+	# with tf.op_scope([tensor], scope, 'L2Regularizer'):
+ # 		l2_weight = tf.convert_to_tensor(weight,
+ #                                   dtype=tensor.dtype.base_dtype,
+ #                                   name='weight')
+  	return tf.nn.l2_loss(tensor)
 ##############################LEGACY############################
 
 def generate_input_image_legacy():
@@ -230,7 +237,8 @@ def encode_input_image(x_image):
 	h_fc1 = tf.nn.relu(tf.matmul(h_conv3_reshape, W_fc1) + b_fc1)
 
 	image_encode_variable_list = [W_conv1,W_conv2,W_conv3,b_conv1,b_conv2,b_conv3,W_fc1,b_fc1]
-	return h_fc1,image_encode_variable_list
+	image_weights = [W_conv1,W_conv2,W_conv3,W_fc1]
+	return h_fc1,image_encode_variable_list,image_weights
 
 def encode_joints(x_joints):
 	"""
@@ -246,7 +254,8 @@ def encode_joints(x_joints):
 	h_fc2 = tf.nn.relu(tf.matmul(h_fc1,W_fc2) + b_fc2)
 
 	joint_encoder_variable_list = [W_fc1,b_fc1,W_fc2,b_fc2]
-	return h_fc2,joint_encoder_variable_list
+	joint_weights = [W_fc1,W_fc2]
+	return h_fc2,joint_encoder_variable_list,joint_weights
 
 
 def decode_outputs(hidden_vector):
@@ -285,8 +294,9 @@ def decode_outputs(hidden_vector):
 	h_deconv5 = tf.nn.sigmoid(tf.nn.bias_add(deconv5,b_deconv5))
 
 	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
+	decoder_weights = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5]
 
-	return tf.squeeze(h_deconv5),decoder_variable_list
+	return tf.squeeze(h_deconv5),decoder_variable_list,decoder_weights
 
 
 
@@ -295,18 +305,21 @@ x_joint = tf.placeholder(tf.float32,shape = [None,DOF])
 y_ = tf.placeholder(tf.float32,shape = [None,64,64])
 
 #get the encoded values for the joint angles as well as the images
-encoded_image,image_encode_variable_list = encode_input_image(x_image)
-encoded_joints, joint_encoder_variable_list = encode_joints(x_joint)
+encoded_image,image_encode_variable_list,image_weights = encode_input_image(x_image)
+encoded_joints, joint_encoder_variable_list,joint_weights = encode_joints(x_joint)
 #now concatenate the two encoded vectors to get a single vector that may be decoded to an output image
 h_encoded = tf.concat(1,[encoded_image,encoded_joints])
-h_encoded_dropped = tf.nn.dropout(h_encoded,KEEP_PROB)
+#h_encoded_dropped = tf.nn.dropout(h_encoded,KEEP_PROB)
 #decode to get image
-y,decoder_variable_list = decode_outputs(h_encoded_dropped)
+y,decoder_variable_list,decoder_weights = decode_outputs(h_encoded)
 
-
+#get the regularaization term
+weight_norm_sum = 0
+for weight in image_weights + joint_weights + decoder_weights:
+	weight_norm_sum += regularizer(weight)
 #now define a loss between y and the target image
 #try cross entropy loss
-loss = -tf.reduce_mean(tf.mul(y_,tf.log(y+1e-10)) + tf.mul(1.-y_,tf.log(1.-y + 1e-10)))#tf.reduce_mean(tf.square(y - y_))
+loss = -tf.reduce_mean(tf.mul(y_,tf.log(y+1e-10)) + tf.mul(1.-y_,tf.log(1.-y + 1e-10))) + LAMBDA*weight_norm_sum
 opt = tf.train.AdamOptimizer(learning_rate)
 variable_names = ["W_conv1","W_conv2","W_conv3","b_conv1","b_conv2","b_conv3","W_image_fc1","b_image_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
 grads_and_vars = opt.compute_gradients(loss, image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
@@ -323,6 +336,7 @@ def train_graph():
 		"""
 		config = tf.ConfigProto()
 		config.gpu_options.allow_growth = True
+		average_test_loss = []
 
 		with tf.Session(config = config) as sess:
 			#initialize the variables
@@ -352,8 +366,21 @@ def train_graph():
 				if step % EVAL_FREQUENCY == 0:
 					predictions,test_loss_array = eval_in_batches(sess)
 					print "Test Loss is " + str(np.mean(test_loss_array))
+					average_test_loss = np.mean(test_loss_array)
+					#also svae the predictions to get
+					checkpoint_num = step // EVAL_FREQUENCY
+					#use the checkpoint_num to specify the correct directory to save an image
+					checkpoint_dir = ROOT_DIR + "Checkpoint" + str(checkpoint_num) + "/"
+					if not os.path.exists(checkpoint_dir):
+						os.makedirs(checkpoint_dir)
+					for i in range(TRAIN_SIZE):
+						plt.imsave(checkpoint_dir + "output_image" + str(i) + ".png", predictions[i,...], cmap = "Greys_r")
+						plt.imsave(checkpoint_dir + "target_image" + str(i) + ".png", target_image_array_eval[i,...], cmap = "Greys_r")
+						plt.imsave(checkpoint_dir + "input_image" + str(i) + ".png", input_image_array_eval[i,...], cmap = "Greys_r")
+
 			predictions,test_loss_array = eval_in_batches(sess)
-		return predictions,training_loss_array,test_loss_array
+			
+		return predictions,training_loss_array,test_loss_array,average_test_loss
 
 def eval_in_batches(sess):
 		"""Get combined loss for dataset by running in batches"""
@@ -378,7 +405,7 @@ def eval_in_batches(sess):
 			i += 1
 		return predictions,test_loss_array
 
-predictions,training_loss_array,test_loss_array = train_graph()
+predictions,training_loss_array,test_loss_array,average_test_loss = train_graph()
 
 #now plot the subplots
 # Four axes, returned as a 2-d array
@@ -404,5 +431,9 @@ for i in range(TRAIN_SIZE):
 #save testing loss array with pickle
 with open(ROOT_DIR + "training_loss.npy","wb") as f:
 	pickle.dump(training_loss_array,f)
+
+with open(ROOT_DIR + "average_test_loss.npy","wb") as f:
+	pickle.dump(average_test_loss,f)
+
 
 print "Test Loss is " + str(np.mean(test_loss_array))
