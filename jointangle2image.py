@@ -37,7 +37,7 @@ ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 1e-1
+LAMBDA = 1e-6
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
@@ -291,7 +291,7 @@ def decode_outputs(hidden_vector):
 	W_deconv5 = tf.Variable(tf.truncated_normal([3,3,1,DECONV_OUTPUT_CHANNELS_4], stddev = 0.1))
 	b_deconv5 = tf.Variable(tf.constant(0.1, shape = [1]))
 	deconv5 = tf.nn.conv2d_transpose(h_deconv4,W_deconv5,[batch_size,64,64,1],[1,2,2,1])
-	h_deconv5 = tf.nn.sigmoid(tf.nn.bias_add(deconv5,b_deconv5))
+	h_deconv5 = tf.nn.bias_add(deconv5,b_deconv5)
 
 	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
 	decoder_weights = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5]
@@ -311,8 +311,9 @@ encoded_joints, joint_encoder_variable_list,joint_weights = encode_joints(x_join
 h_encoded = tf.concat(1,[encoded_image,encoded_joints])
 #h_encoded_dropped = tf.nn.dropout(h_encoded,KEEP_PROB)
 #decode to get image
-y,decoder_variable_list,decoder_weights = decode_outputs(h_encoded)
-
+y_before_sigmoid,decoder_variable_list,decoder_weights = decode_outputs(h_encoded)
+#apply sigmoid to get y
+y = tf.nn.sigmoid(y_before_sigmoid)
 #get the regularaization term
 weight_norm_sum = 0
 for weight in image_weights + joint_weights + decoder_weights:
@@ -320,7 +321,7 @@ for weight in image_weights + joint_weights + decoder_weights:
 #now define a loss between y and the target image
 #try cross entropy loss
 #-tf.reduce_mean(tf.mul(y_,tf.log(y+1e-10)) + tf.mul(1.-y_,tf.log(1.-y + 1e-10)))
-loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(y,y_)) + LAMBDA*weight_norm_sum
+loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,y_)) + LAMBDA*weight_norm_sum
 opt = tf.train.AdamOptimizer(learning_rate)
 variable_names = ["W_conv1","W_conv2","W_conv3","b_conv1","b_conv2","b_conv3","W_image_fc1","b_image_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
 grads_and_vars = opt.compute_gradients(loss, image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
