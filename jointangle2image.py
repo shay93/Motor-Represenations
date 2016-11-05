@@ -21,9 +21,9 @@ DECONV_OUTPUT_CHANNELS_2 = 16
 DECONV_OUTPUT_CHANNELS_3 = 8
 DECONV_OUTPUT_CHANNELS_4 = 4
 
-FC_UNITS = 100
-FC_UNITS_IMAGE = 200
-FC_UNITS_JOINTS = 56
+FC_UNITS = 400
+FC_UNITS_IMAGE = 512
+FC_UNITS_JOINTS = 512
 #model globals
 NUM_SAMPLES = 10000
 IMAGE_SIZE = 64
@@ -37,7 +37,7 @@ ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 1e-3
+LAMBDA = 1e-4
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
@@ -192,7 +192,7 @@ def generate_training_data(num):
 		target_image_array[i,...] = target_image
 	return joint_state_array,target_image_array,input_image_array
 
-joint_state_array,target_image_array,input_image_array = generate_training_data_legacy(NUM_SAMPLES,DOF)
+joint_state_array,target_image_array,input_image_array = generate_training_data(NUM_SAMPLES)
 #split this data into a training and validation set
 joint_state_array_train = joint_state_array[TRAIN_SIZE:,...]
 target_image_array_train = target_image_array[TRAIN_SIZE:,...]
@@ -266,11 +266,11 @@ def decode_outputs(hidden_vector):
 	#Assume FC_UNITS_JOINTS + FC_UNITS_IMAGE is 256
 	#then reshape tensor from 2d to 4d to be compatible with deconvoh_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))lution
 	batch_size = tf.shape(hidden_vector)[0]
-	hidden_image = tf.reshape(hidden_vector, shape = [batch_size,2,2,64])
+	hidden_image = tf.reshape(hidden_vector, shape = [batch_size,4,4,64])
 	
 	W_deconv1 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_1,64], stddev = 0.1))
 	b_deconv1 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_1]))
-	deconv1 = tf.nn.conv2d_transpose(hidden_image,W_deconv1,[batch_size,4,4,DECONV_OUTPUT_CHANNELS_1],[1,2,2,1])
+	deconv1 = tf.nn.conv2d_transpose(hidden_image,W_deconv1,[batch_size,4,4,DECONV_OUTPUT_CHANNELS_1],[1,1,1,1])
 	h_deconv1 = tf.nn.relu(tf.nn.bias_add(deconv1,b_deconv1))
 
 	W_deconv2 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_2,DECONV_OUTPUT_CHANNELS_1], stddev = 0.1))
@@ -309,6 +309,7 @@ encoded_image,image_encode_variable_list,image_weights = encode_input_image(x_im
 encoded_joints, joint_encoder_variable_list,joint_weights = encode_joints(x_joint)
 #now concatenate the two encoded vectors to get a single vector that may be decoded to an output image
 h_encoded = tf.concat(1,[encoded_image,encoded_joints])
+print h_encoded
 #h_encoded_dropped = tf.nn.dropout(h_encoded,KEEP_PROB)
 #decode to get image
 y_before_sigmoid,decoder_variable_list,decoder_weights = decode_outputs(h_encoded)
