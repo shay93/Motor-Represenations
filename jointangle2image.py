@@ -9,7 +9,7 @@ import training_tools as tt
 import os
 
 #define a max sequence length
-DOF = 3
+DOF = 4
 GAUSS_STD = 2.5
 link_length = 50
 #model globals
@@ -31,13 +31,13 @@ BATCH_SIZE = 200
 learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 1000
+EPOCHS = 2000
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 1e-3
+LAMBDA = 1e-4
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
