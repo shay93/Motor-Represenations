@@ -192,7 +192,7 @@ def generate_training_data(num):
 		target_image_array[i,...] = target_image
 	return joint_state_array,target_image_array,input_image_array
 
-joint_state_array,target_image_array,input_image_array = generate_training_data(NUM_SAMPLES)
+joint_state_array,target_image_array,input_image_array = generate_training_data_legacy(NUM_SAMPLES,DOF)
 #split this data into a training and validation set
 joint_state_array_train = joint_state_array[TRAIN_SIZE:,...]
 target_image_array_train = target_image_array[TRAIN_SIZE:,...]
