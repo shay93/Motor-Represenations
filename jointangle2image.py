@@ -319,7 +319,8 @@ for weight in image_weights + joint_weights + decoder_weights:
 	weight_norm_sum += regularizer(weight)
 #now define a loss between y and the target image
 #try cross entropy loss
-loss = -tf.reduce_mean(tf.mul(y_,tf.log(y+1e-10)) + tf.mul(1.-y_,tf.log(1.-y + 1e-10))) + LAMBDA*weight_norm_sum
+#-tf.reduce_mean(tf.mul(y_,tf.log(y+1e-10)) + tf.mul(1.-y_,tf.log(1.-y + 1e-10)))
+loss = tf.nn.sigmoid_cross_entropy_with_logits(y,y_) + LAMBDA*weight_norm_sum
 opt = tf.train.AdamOptimizer(learning_rate)
 variable_names = ["W_conv1","W_conv2","W_conv3","b_conv1","b_conv2","b_conv3","W_image_fc1","b_image_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
 grads_and_vars = opt.compute_gradients(loss, image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
