@@ -37,7 +37,7 @@ ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 1e-6
+LAMBDA = 1e-2
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
@@ -368,7 +368,7 @@ def train_graph():
 				if step % EVAL_FREQUENCY == 0:
 					predictions,test_loss_array = eval_in_batches(sess)
 					print "Test Loss is " + str(np.mean(test_loss_array))
-					average_test_loss = np.mean(test_loss_array)
+					average_test_loss.append(np.mean(test_loss_array))
 					#also svae the predictions to get
 					checkpoint_num = step // EVAL_FREQUENCY
 					#use the checkpoint_num to specify the correct directory to save an image
