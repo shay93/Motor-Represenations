@@ -37,7 +37,7 @@ ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 1e-3
+LAMBDA = 0.5e-1
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
@@ -237,7 +237,7 @@ def encode_input_image(x_image):
 	h_fc1 = tf.nn.relu(tf.matmul(h_conv3_reshape, W_fc1) + b_fc1)
 
 	image_encode_variable_list = [W_conv1,W_conv2,W_conv3,b_conv1,b_conv2,b_conv3,W_fc1,b_fc1]
-	image_weights = [W_conv1,W_conv2,W_conv3,W_fc1]
+	image_weights = [W_conv1,W_conv2]
 	return h_fc1,image_encode_variable_list,image_weights
 
 def encode_joints(x_joints):
@@ -254,7 +254,7 @@ def encode_joints(x_joints):
 	h_fc2 = tf.nn.relu(tf.matmul(h_fc1,W_fc2) + b_fc2)
 
 	joint_encoder_variable_list = [W_fc1,b_fc1,W_fc2,b_fc2]
-	joint_weights = [W_fc1,W_fc2]
+	joint_weights = [W_fc1]
 	return h_fc2,joint_encoder_variable_list,joint_weights
 
 
@@ -294,7 +294,7 @@ def decode_outputs(hidden_vector):
 	h_deconv5 = tf.nn.bias_add(deconv5,b_deconv5)
 
 	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
-	decoder_weights = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5]
+	decoder_weights = [W_deconv4,W_deconv5]
 
 	return tf.squeeze(h_deconv5),decoder_variable_list,decoder_weights
 
