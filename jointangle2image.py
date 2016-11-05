@@ -31,13 +31,13 @@ BATCH_SIZE = 200
 learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 200
+EPOCHS = 500
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 1e-2
+LAMBDA = 1e-3
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
