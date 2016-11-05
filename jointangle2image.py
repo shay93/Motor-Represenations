@@ -9,9 +9,9 @@ import training_tools as tt
 import os
 
 #define a max sequence length
-DOF = 4
+DOF = 3
 GAUSS_STD = 2.5
-link_length = 20
+link_length = 30
 #model globals
 CONV_KERNELS_1 = 64
 CONV_KERNELS_2 = 32
