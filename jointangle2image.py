@@ -11,7 +11,7 @@ import os
 #define a max sequence length
 DOF = 4
 GAUSS_STD = 2.5
-link_length = 50
+link_length = 20
 #model globals
 CONV_KERNELS_1 = 64
 CONV_KERNELS_2 = 32
@@ -31,7 +31,7 @@ BATCH_SIZE = 200
 learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 2000
+EPOCHS = 500
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
