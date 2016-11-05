@@ -37,7 +37,7 @@ ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 1e-3
+LAMBDA = 1e-1
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
