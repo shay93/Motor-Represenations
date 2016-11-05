@@ -10,7 +10,7 @@ import os
 
 #define a max sequence length
 DOF = 3
-GAUSS_STD = 0.5
+GAUSS_STD = 2.5
 link_length = 50
 #model globals
 CONV_KERNELS_1 = 64
@@ -25,7 +25,7 @@ FC_UNITS = 100
 FC_UNITS_IMAGE = 200
 FC_UNITS_JOINTS = 56
 #model globals
-NUM_SAMPLES = 5000
+NUM_SAMPLES = 10000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
 learning_rate = 1e-3
@@ -37,7 +37,7 @@ ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 1e-4
+LAMBDA = 1e-3
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
