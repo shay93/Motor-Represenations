@@ -31,13 +31,13 @@ BATCH_SIZE = 200
 learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 2
+EPOCHS = 500
 TRAIN_SIZE = 400
 ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 0.5e-1
+LAMBDA = 0.6e-1
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
@@ -337,6 +337,6 @@ for i,threshold in enumerate(threshold_list):
 
 
 with open(ROOT_DIR + "percentage_correct.npy","wb") as f:
-	pickle.dump(IoU_list)
+	pickle.dump(IoU_list,f)
 
 
