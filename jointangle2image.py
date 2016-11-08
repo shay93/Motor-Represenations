@@ -24,11 +24,11 @@ DECONV_OUTPUT_CHANNELS_3 = 8
 DECONV_OUTPUT_CHANNELS_4 = 4
 
 ##Parameters for Joint encoder
-FC_UNITS_JOINTS_1 = 300
+FC_UNITS_JOINTS_1 = 100
 FC_UNITS_JOINTS_FINAL = 56
 
 #Parameters for Image encoder
-FC_UNITS_IMAGE = 200
+FC_UNITS_IMAGE = 1024 - 56
 #model globals
 NUM_SAMPLES = 10000
 IMAGE_SIZE = 64
@@ -42,7 +42,7 @@ ROOT_DIR = "Joints_to_Image/"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
-LAMBDA = 0.6e-1
+LAMBDA = 4.5e-3
 
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
@@ -104,21 +104,21 @@ def encode_input_image(x_image):
 	#Add another convolutional layer
 	W_conv4 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_3,CONV_KERNELS_4], stddev = 0.1))
 	b_conv4 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_4]))
-	conv4 = tf.nn.conv2d(h_conv2,W_conv3,strides = [1,2,2,1],padding = 'SAME')
+	conv4 = tf.nn.conv2d(h_conv3,W_conv4,strides = [1,2,2,1],padding = 'SAME')
 	h_conv4 = tf.nn.relu(tf.nn.bias_add(conv4,b_conv4))
 
 	#Add an additonal conv layer
 	W_conv5 = tf.Variable(tf.truncated_normal([2,2,CONV_KERNELS_4,CONV_KERNELS_5], stddev = 0.1))
-	b_conv5 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_4]))
-	conv5 = tf.nn.conv2d(h_conv2,W_conv3,strides = [1,2,2,1],padding = 'SAME')
+	b_conv5 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_5]))
+	conv5 = tf.nn.conv2d(h_conv4,W_conv5,strides = [1,2,2,1],padding = 'SAME')
 	h_conv5 = tf.nn.relu(tf.nn.bias_add(conv5,b_conv5))
-	
+	print h_conv5	
 
-	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*CONV_KERNELS_4])
+	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*CONV_KERNELS_5])
 
 	
 	#define parameters for full connected layer
-	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*CONV_KERNELS_4,FC_UNITS_IMAGE],stddev = 0.1)) 
+	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*CONV_KERNELS_5,FC_UNITS_IMAGE],stddev = 0.1)) 
 	b_fc1 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_IMAGE])) 
 	h_fc1 = tf.nn.relu(tf.matmul(h_conv5_reshape, W_fc1) + b_fc1)
 
@@ -153,11 +153,11 @@ def decode_outputs(hidden_vector):
 	#Assume FC_UNITS_JOINTS + FC_UNITS_IMAGE is 256
 	#then reshape tensor from 2d to 4d to be compatible with deconvoh_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))lution
 	batch_size = tf.shape(hidden_vector)[0]
-	hidden_image = tf.reshape(hidden_vector, shape = [batch_size,2,2,64])
+	hidden_image = tf.reshape(hidden_vector, shape = [batch_size,4,4,64])
 	
 	W_deconv1 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_1,64], stddev = 0.1))
 	b_deconv1 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_1]))
-	deconv1 = tf.nn.conv2d_transpose(hidden_image,W_deconv1,[batch_size,4,4,DECONV_OUTPUT_CHANNELS_1],[1,2,2,1])
+	deconv1 = tf.nn.conv2d_transpose(hidden_image,W_deconv1,[batch_size,4,4,DECONV_OUTPUT_CHANNELS_1],[1,1,1,1])
 	h_deconv1 = tf.nn.relu(tf.nn.bias_add(deconv1,b_deconv1))
 
 	W_deconv2 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_2,DECONV_OUTPUT_CHANNELS_1], stddev = 0.1))
@@ -335,7 +335,7 @@ print "Test Loss is " + str(np.mean(test_loss_array))
 #I like a code
 #Go to ETH
 #first construct an array of pixels for the
-threshold_list = np.arange(0,0.5,step = 0.025)
+threshold_list = np.arange(0,0.9,step = 0.025)
 IoU_list = []
 for i,threshold in enumerate(threshold_list):
 	good_mapping_count = 0
