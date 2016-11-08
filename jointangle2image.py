@@ -168,20 +168,20 @@ def decode_outputs(hidden_vector):
 	W_deconv3 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_3,DECONV_OUTPUT_CHANNELS_2], stddev = 0.1))
 	b_deconv3 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_3]))
 	deconv3 = tf.nn.conv2d_transpose(h_deconv2,W_deconv3,[batch_size,16,16,DECONV_OUTPUT_CHANNELS_3],[1,2,2,1])
-	h_deconv3 = tf.nn.relu(tf.nn.bias_add(deconv3,b_deconv3))
+	h_deconv3 = tf.nn.dropout(tf.nn.relu(tf.nn.bias_add(deconv3,b_deconv3)),0.5)
 
 	W_deconv4 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_4,DECONV_OUTPUT_CHANNELS_3], stddev = 0.1))
 	b_deconv4 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_4]))
 	deconv4 = tf.nn.conv2d_transpose(h_deconv3,W_deconv4,[batch_size,32,32,DECONV_OUTPUT_CHANNELS_4],[1,2,2,1])
-	h_deconv4 = tf.nn.relu(tf.nn.bias_add(deconv4,b_deconv4))
+	h_deconv4 = tf.nn.dropout(tf.nn.relu(tf.nn.bias_add(deconv4,b_deconv4)),0.5)
 
 	W_deconv5 = tf.Variable(tf.truncated_normal([3,3,1,DECONV_OUTPUT_CHANNELS_4], stddev = 0.1))
 	b_deconv5 = tf.Variable(tf.constant(0.1, shape = [1]))
 	deconv5 = tf.nn.conv2d_transpose(h_deconv4,W_deconv5,[batch_size,64,64,1],[1,2,2,1])
-	h_deconv5 = tf.nn.bias_add(deconv5,b_deconv5)
+	h_deconv5 = tf.nn.dropout(tf.nn.bias_add(deconv5,b_deconv5),0.5)
 
 	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
-	decoder_weights = [W_deconv4,W_deconv5]
+	decoder_weights = [W_deconv3,W_deconv4,W_deconv5]
 
 	return tf.squeeze(h_deconv5),decoder_variable_list,decoder_weights
 
