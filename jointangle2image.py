@@ -30,15 +30,17 @@ FC_UNITS_JOINTS_FINAL = 56
 #Parameters for Image encoder
 FC_UNITS_IMAGE = 1024 - 56
 #model globals
-NUM_SAMPLES = 10000
+NUM_SAMPLES = 5000
 IMAGE_SIZE = 64
 BATCH_SIZE = 200
 learning_rate = 1e-2
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 500
-TRAIN_SIZE = 400
+EPOCHS = 2
+EVAL_SIZE = 400
+TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
 ROOT_DIR = "Joints_to_Image/"
+SUMMARY_DIR = "/tmp/summary_logs"
 EVAL_FREQUENCY = 60
 DISPLAY = False
 KEEP_PROB = 1.0
@@ -69,13 +71,13 @@ def load_data(num):
 
 joint_state_array,target_image_array,input_image_array = load_data(NUM_SAMPLES)
 #split this data into a training and validation set
-joint_state_array_train = joint_state_array[TRAIN_SIZE:,...]
-target_image_array_train = target_image_array[TRAIN_SIZE:,...]
-input_image_array_train = input_image_array[TRAIN_SIZE:,...]
+joint_state_array_train = joint_state_array[EVAL_SIZE:,...]
+target_image_array_train = target_image_array[EVAL_SIZE:,...]
+input_image_array_train = input_image_array[EVAL_SIZE:,...]
 #now specify the eval set
-joint_state_array_eval = joint_state_array[:TRAIN_SIZE,...]
-target_image_array_eval = target_image_array[:TRAIN_SIZE,...]
-input_image_array_eval = input_image_array[:TRAIN_SIZE,...]
+joint_state_array_eval = joint_state_array[:EVAL_SIZE,...]
+target_image_array_eval = target_image_array[:EVAL_SIZE,...]
+input_image_array_eval = input_image_array[:EVAL_SIZE,...]
 
 def encode_input_image(x_image):
 	"""
@@ -230,7 +232,7 @@ def train_graph():
 
 		with tf.Session(config = config) as sess:
 			#initialize the variables
-			log_dir = ROOT_DIR + "/tmp/summary_logs"
+			log_dir = ROOT_DIR + SUMMARY_DIR
 			train_writer = tf.train.SummaryWriter(log_dir, sess.graph)
 
 			sess.run(tf.initialize_all_variables())
@@ -263,7 +265,7 @@ def train_graph():
 					checkpoint_dir = ROOT_DIR + "Checkpoint" + str(checkpoint_num) + "/"
 					if not os.path.exists(checkpoint_dir):
 						os.makedirs(checkpoint_dir)
-					for i in range(TRAIN_SIZE):
+					for i in range(EVAL_SIZE):
 						plt.imsave(checkpoint_dir + "output_image" + str(i) + ".png", predictions[i,...], cmap = "Greys_r")
 						plt.imsave(checkpoint_dir + "target_image" + str(i) + ".png", target_image_array_eval[i,...], cmap = "Greys_r")
 						plt.imsave(checkpoint_dir + "input_image" + str(i) + ".png", input_image_array_eval[i,...], cmap = "Greys_r")
@@ -277,7 +279,7 @@ def train_graph():
 
 def eval_in_batches(sess):
 		"""Get combined loss for dataset by running in batches"""
-		size = TRAIN_SIZE
+		size = EVAL_SIZE
 
 		if size < EVAL_BATCH_SIZE:
 			raise ValueError("batch size for evals larger than dataset: %d" % size)
@@ -316,7 +318,7 @@ if DISPLAY:
 
 #now save images in a directory
 #loop through predictions and save
-for i in range(TRAIN_SIZE):
+for i in range(EVAL_SIZE):
 	plt.imsave(ROOT_DIR + "Output_Images/" + "output_image" + str(i) + ".png", predictions[i,...], cmap = "Greys_r")
 	plt.imsave(ROOT_DIR + "Output_Images/" + "target_image" + str(i) + ".png", target_image_array_eval[i,...], cmap = "Greys_r")
 	plt.imsave(ROOT_DIR + "Output_Images/" + "input_image" + str(i) + ".png", input_image_array_eval[i,...], cmap = "Greys_r")
@@ -340,7 +342,7 @@ IoU_list = []
 for i,threshold in enumerate(threshold_list):
 	good_mapping_count = 0
 	bad_mapping_count = 0
-	for i in range(TRAIN_SIZE):
+	for i in range(EVAL_SIZE):
 		arr_pred = np.nonzero(np.round(predictions[i,...]))
 		pos_list_pred = zip(arr_pred[0],arr_pred[1])
 		arr_input = np.nonzero(input_image_array_eval[i,...])
