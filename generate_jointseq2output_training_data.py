@@ -161,7 +161,7 @@ def generate_training_data(num):
 
 #call on training data 
 
-joint_state_array,target_image_array,input_image_array = generate_training_data(10000)
+joint_state_array,target_image_array,input_image_array = generate_training_data(20000)
 with open(ROOT_DIR + "joint_state_array_" + str(DOF) + "DOF.npy", "wb") as f:
 	pickle.dump(joint_state_array,f)
 
