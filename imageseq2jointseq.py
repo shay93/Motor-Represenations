@@ -116,7 +116,7 @@ binary_loss_array_eval = binary_loss_array[:EVAL_SIZE,...]
 
 x = tf.placeholder(tf.float32, shape = [None,IMAGE_SIZE,IMAGE_SIZE,SEQ_MAX_LENGTH])
 y_ = tf.placeholder(tf.float32, shape = [None,IMAGE_SIZE,IMAGE_SIZE,SEQ_MAX_LENGTH])
-binary_loss_tensor = tf.placeholder(tf.float32,shape [None,SEQ_MAX_LENGTH])
+binary_loss_tensor = tf.placeholder(tf.float32,shape = [None,SEQ_MAX_LENGTH])
 #split this into individual images with one channel
 observed_image_sequence = tf.split(3,SEQ_MAX_LENGTH,x)
 target_image_list = tf.split(3,SEQ_MAX_LENGTH,y_)
@@ -331,7 +331,7 @@ for i,joint_angle_state in enumerate(joint_angle_list):
 	previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
 
 loss_per_image = tf.transpose(tf.pack(image_loss_list))
-loss = tf.reduce_sum(tf.reduce_mean(tf.mul(loss_per_image,binary_loss_tensor,[1])))
+loss = tf.reduce_sum(tf.reduce_mean(tf.mul(loss_per_image,binary_loss_tensor),[1]))
 #use this loss to compute the
 train_op = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 # opt = tf.train.AdamOptimizer(learning_rate)
