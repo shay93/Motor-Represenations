@@ -325,11 +325,12 @@ print previous_image
 for i,joint_angle_state in enumerate(joint_angle_list):
 	#pass the joint_angle_state to the mapping
 	output_image_before_sigmoid = jointangle2image(joint_angle_state,previous_image)
-	image_loss_list.append(tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,target_image_list[i]),[1,2])) #reduce each image in batch to a single value
+	image_loss_list.append(tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i])),[1,2])) #reduce each image in batch to a single value
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
 	#now set the previous image to be the current output image
 	previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
 
+y = tf.pack(output_image_list,axis = -1)
 loss_per_image = tf.transpose(tf.pack(image_loss_list))
 loss = tf.reduce_sum(tf.reduce_mean(tf.mul(loss_per_image,binary_loss_tensor),[1]))
 #use this loss to compute the
