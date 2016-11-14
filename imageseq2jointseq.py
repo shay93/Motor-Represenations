@@ -303,9 +303,9 @@ def jointangle2image(joint_angle,previous_image):
 
 #split this into individual images with one channel
 observed_image_sequence = tf.split(3,SEQ_MAX_LENGTH,x)
-print "Observed Image Sequence " + observed_image_sequence[0]
+print "Observed Image Sequence ",observed_image_sequence[0]
 target_image_list = tf.split(3,SEQ_MAX_LENGTH,y_)
-print "Target Image Sequence " + target_image_list[0]
+print "Target Image Sequence ",target_image_list[0]
 
 #iterate through the observed image sequence and decode them in order to get the encoded_observed_image_sequence
 encoded_observed_image_list = []
@@ -330,8 +330,10 @@ print previous_image
 for i,joint_angle_state in enumerate(joint_angle_list):
 	#pass the joint_angle_state to the mapping
 	output_image_before_sigmoid = jointangle2image(joint_angle_state,previous_image)
-	image_loss_list.append(tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i])),[1,2])) #reduce each image in batch to a single value shape should be [None,64,64]
-	#should be computing loss for each image in the l
+	entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i]))
+#	print "Entropy Loss",entropy_loss  #reduce each image in batch to a single value shape should be [None,64,64]
+	image_loss_list.append(entropy_loss)
+#should be computing loss for each image in the l
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
 	#now set the previous image to be the current output image
 	previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
@@ -340,7 +342,7 @@ print "Image Loss ",image_loss_list[0]
 y = tf.pack(output_image_list,axis = -1)
 loss_per_image = tf.pack(image_loss_list, axis = -1)
 print "Loss per Image ",loss_per_image
-loss = tf.reduce_mean(tf.mul(loss_per_image,binary_loss_tensor))
+loss = tf.reduce_mean(image_loss_list)
 #use this loss to compute the
 train_op = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 # opt = tf.train.AdamOptimizer(learning_rate)
