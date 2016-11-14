@@ -9,17 +9,17 @@ import training_tools as tt
 import os
 
 
-BATCH_SIZE = 50
-EVAL_BATCH_SIZE = 50
+BATCH_SIZE = 100
+EVAL_BATCH_SIZE = 100
 IMAGE_SIZE = 64
-VALIDATION_SIZE = 250
-EPOCHS = 2
+VALIDATION_SIZE = 400
+EPOCHS = 10
 ROOT_DIR = "Baseline_Seq2Seq_Outputs/"
 EVAL_FREQUENCY = 20
-NUM_SAMPLES = 200
-EVAL_SIZE = 50
+NUM_SAMPLES = 3000
+EVAL_SIZE = 100
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
-DISPLAY_SIZE = 20
+DISPLAY_SIZE = 10
 SUMMARY_DIR = "/tmp/summary_logs"
 
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
@@ -31,11 +31,11 @@ output_arm_dof = 3
 OUTPUT_FEATURES = 3
 
 
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-5
 
 ###########################################DEFINE PARAMETERS FOR MODEL#########################################
-observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
-joint_angle_decoder_parameters = {"lstm_hidden_units": 200,"output_features" : output_arm_dof,"layers" : 3}
+observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
+joint_angle_decoder_parameters = {"lstm_hidden_units": 100,"output_features" : output_arm_dof,"layers" : 1}
 joint_encoder_parameters = {"fc_1" : 200 , "fc_2" : 56}
 output_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
 output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4}
@@ -331,8 +331,9 @@ for i,joint_angle_state in enumerate(joint_angle_list):
 	previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
 
 y = tf.pack(output_image_list,axis = -1)
-loss_per_image = tf.transpose(tf.pack(image_loss_list))
-loss = tf.reduce_sum(tf.reduce_mean(tf.mul(loss_per_image,binary_loss_tensor),[1]))
+loss_per_image = tf.pack(image_loss_list,axis = -1)
+print loss_per_image
+loss = tf.reduce_mean(tf.reduce_mean(tf.mul(loss_per_image,binary_loss_tensor),[1]))
 #use this loss to compute the
 train_op = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 # opt = tf.train.AdamOptimizer(learning_rate)
@@ -375,7 +376,7 @@ def train_graph():
 				
 				training_loss_array[step] = l
 
-				if step % 20 == 0:
+				if step % 5 == 0:
 					#train_writer.add_summary(merged_summary,step)
 					print step,l
 				
@@ -442,7 +443,7 @@ def save_output_images(predictions):
 		shape_name_index = output_image_num % len(shape_str_array)
 		#next figure out the index of the shape being read in i.e. is it Triangle1 or Triangle100
 		shape_index = output_image_num // len(shape_str_array)
-		total_tsteps = 	total_tsteps_list[image_num]
+		total_tsteps = 	total_tsteps_list[output_image_num]
 		shape_dir = ROOT_DIR + shape_name + str(shape_number) + "/"
 		#create this directory if it doesnt exist
 		if not(os.path.exists(shape_dir)):
