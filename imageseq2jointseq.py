@@ -117,9 +117,7 @@ binary_loss_array_eval = binary_loss_array[:EVAL_SIZE,...]
 x = tf.placeholder(tf.float32, shape = [None,IMAGE_SIZE,IMAGE_SIZE,SEQ_MAX_LENGTH])
 y_ = tf.placeholder(tf.float32, shape = [None,IMAGE_SIZE,IMAGE_SIZE,SEQ_MAX_LENGTH])
 binary_loss_tensor = tf.placeholder(tf.float32,shape = [None,SEQ_MAX_LENGTH])
-#split this into individual images with one channel
-observed_image_sequence = tf.split(3,SEQ_MAX_LENGTH,x)
-target_image_list = tf.split(3,SEQ_MAX_LENGTH,y_)
+
 
 def observed_image_encoder(observed_image):
 	"""
@@ -303,6 +301,11 @@ def jointangle2image(joint_angle,previous_image):
 	y_before_sigmoid = decode_outputs(encoded_vector,decoder_variable_list)
 	return y_before_sigmoid
 
+#split this into individual images with one channel
+observed_image_sequence = tf.split(3,SEQ_MAX_LENGTH,x)
+print "Observed Image Sequence " + observed_image_sequence[0]
+target_image_list = tf.split(3,SEQ_MAX_LENGTH,y_)
+print "Target Image Sequence " + target_image_list[0]
 
 #iterate through the observed image sequence and decode them in order to get the encoded_observed_image_sequence
 encoded_observed_image_list = []
@@ -310,8 +313,10 @@ for observed_image in observed_image_sequence:
 	encoded_observed_image, observed_image_encoder_variables = observed_image_encoder(observed_image)
 	encoded_observed_image_list.append(encoded_observed_image)
 
+print "Encoded Observed Image ",encoded_observed_image_list[0]
 #now decode the encoded observed image into a joint sequence list that may then be fed into the jointangleseq2output image mapping
-joint_angle_list = joint_angle_decoder(encoded_observed_image_list) 
+joint_angle_list = joint_angle_decoder(encoded_observed_image_list)
+print "Joint Angle Decoder ",joint_angle_list[0]
 #initialize an output image array to record the output image tensor at each timestep
 output_image_list = []
 #initialize a loss accumulator
@@ -325,15 +330,17 @@ print previous_image
 for i,joint_angle_state in enumerate(joint_angle_list):
 	#pass the joint_angle_state to the mapping
 	output_image_before_sigmoid = jointangle2image(joint_angle_state,previous_image)
-	image_loss_list.append(tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i])),[1,2])) #reduce each image in batch to a single value
+	image_loss_list.append(tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i])),[1,2])) #reduce each image in batch to a single value shape should be [None,64,64]
+	#should be computing loss for each image in the l
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
 	#now set the previous image to be the current output image
 	previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
 
+print "Image Loss ",image_loss_list[0]
 y = tf.pack(output_image_list,axis = -1)
-loss_per_image = tf.pack(image_loss_list,axis = -1)
-print loss_per_image
-loss = tf.reduce_mean(tf.reduce_mean(tf.mul(loss_per_image,binary_loss_tensor),[1]))
+loss_per_image = tf.pack(image_loss_list, axis = -1)
+print "Loss per Image ",loss_per_image
+loss = tf.reduce_mean(tf.mul(loss_per_image,binary_loss_tensor))
 #use this loss to compute the
 train_op = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 # opt = tf.train.AdamOptimizer(learning_rate)
