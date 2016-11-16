@@ -314,12 +314,14 @@ for observed_image in observed_image_sequence:
 	encoded_observed_image_list.append(encoded_observed_image)
 
 print "Encoded Observed Image ",encoded_observed_image_list[0]
+print "Length of Encoded Observed Image List", len(encoded_observed_image_list)
 #now decode the encoded observed image into a joint sequence list that may then be fed into the jointangleseq2output image mapping
 joint_angle_list = joint_angle_decoder(encoded_observed_image_list)
 print "Joint Angle Decoder ",joint_angle_list[0]
+print "Length of Joint Angle List", len(joint_angle_list)
 #initialize an output image array to record the output image tensor at each timestep
 output_image_list = []
-#initialize a loss accumulator
+#initia
 image_loss_list = []
 #initialize the previous image to be an empty black image
 print joint_angle_list[0]
@@ -330,9 +332,10 @@ print previous_image
 for i,joint_angle_state in enumerate(joint_angle_list):
 	#pass the joint_angle_state to the mapping
 	output_image_before_sigmoid = jointangle2image(joint_angle_state,previous_image)
-	entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i]))
+	#entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i]))
+	meansq_loss_per_image = tf.reduce_mean(tf.square(tf.nn.sigmoid(output_image_before_sigmoid) - tf.squeeze(target_image_list[i])))
 #	print "Entropy Loss",entropy_loss  #reduce each image in batch to a single value shape should be [None,64,64]
-	image_loss_list.append(entropy_loss)
+	image_loss_list.append(meansq_loss_per_image)
 #should be computing loss for each image in the l
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
 	#now set the previous image to be the current output image
@@ -453,6 +456,7 @@ def save_output_images(predictions):
 		#next figure out the index of the shape being read in i.e. is it Triangle1 or Triangle100
 		shape_index = output_image_num // len(shape_str_array)
 		total_tsteps = 	total_tsteps_list[output_image_num]
+		shape_name = shape_str_array[shape_name_index]
 		shape_dir = ROOT_DIR + shape_name + str(shape_number) + "/"
 		#create this directory if it doesnt exist
 		if not(os.path.exists(shape_dir)):
