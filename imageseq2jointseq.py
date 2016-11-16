@@ -325,6 +325,8 @@ output_image_list = []
 image_loss_list = []
 #initialize the previous image to be an empty black image
 print joint_angle_list[0]
+#compute l2 norm of target image
+target_image_norm_list = []
 
 previous_image = tf.zeros([tf.shape(joint_angle_list[0])[0],64,64])
 print previous_image
@@ -334,6 +336,8 @@ for i,joint_angle_state in enumerate(joint_angle_list):
 	output_image_before_sigmoid = jointangle2image(joint_angle_state,previous_image)
 	#entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i]))
 	meansq_loss_per_image = tf.reduce_mean(tf.square(tf.nn.sigmoid(output_image_before_sigmoid) - tf.squeeze(target_image_list[i])))
+	target_image_norm = tf.reduce_mean(tf.square(tf.squeeze(target_image_list[i])))
+	target_image_norm_list.append(target_image_norm)
 #	print "Entropy Loss",entropy_loss  #reduce each image in batch to a single value shape should be [None,64,64]
 	image_loss_list.append(meansq_loss_per_image)
 #should be computing loss for each image in the l
@@ -346,6 +350,8 @@ y = tf.pack(output_image_list,axis = -1)
 loss_per_image = tf.pack(image_loss_list, axis = -1)
 print "Loss per Image ",loss_per_image
 loss = tf.reduce_mean(image_loss_list)
+target_image_norm_tensor = tf.pack(target_image_norm_list, axis = -1)
+average_target_image_norm = tf.reduce_mean(target_image_norm_tensor)
 #use this loss to compute the
 train_op = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 # opt = tf.train.AdamOptimizer(learning_rate)
@@ -382,15 +388,15 @@ def train_graph():
 				feed_dict = {x : time_varying_image_batch, y_ : time_varying_image_batch, binary_loss_tensor : binary_loss_batch}
 
 				#run the graph
-				_, l= sess.run(
-					[train_op,loss],
+				_, l,t= sess.run(
+					[train_op,loss,average_target_image_norm],
 					feed_dict=feed_dict)
 				
 				training_loss_array[step] = l
 
 				if step % 5 == 0:
 					#train_writer.add_summary(merged_summary,step)
-					print step,l
+					print step,l,"Target L2 Norm",t
 				
 				# if step % EVAL_FREQUENCY == 0:
 				# 	predictions,test_loss_array = eval_in_batches(sess)
