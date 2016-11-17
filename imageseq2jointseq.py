@@ -129,32 +129,32 @@ def observed_image_encoder(observed_image):
 	"""
 	Encodes the observed image to a vector that may be passed to an lstm in order to obtain the joint angles for the 
 	"""
-	W_conv1 = tf.Variable(tf.truncated_normal([3,3,1,observed_image_encoder_parameters["conv1_kernels"]],stddev = 0.1))
-	b_conv1 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv1_kernels"]]))
+	W_conv1 = tf.Variable(tf.truncated_normal([3,3,1,observed_image_encoder_parameters["conv1_kernels"]],stddev = 0.1), name = "W_conv1")
+	b_conv1 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv1_kernels"]]), name = "b_conv1")
 	conv1 = tf.nn.conv2d(observed_image,W_conv1,strides = [1,2,2,1],padding = 'SAME')
 	h_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))	
 
 	#define parameters for the second convolutional layer
-	W_conv2 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],stddev = 0.1))
-	b_conv2 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv2_kernels"]]))
+	W_conv2 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],stddev = 0.1),name = "W_conv2")
+	b_conv2 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv2_kernels"]]), name = "b_conv2")
 	conv2 = tf.nn.conv2d(h_conv1,W_conv2,strides = [1,2,2,1],padding = 'SAME')
 	h_conv2 = tf.nn.relu(tf.nn.bias_add(conv2,b_conv2))
 
 	#define a third convolutional layer
-	W_conv3 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],stddev = 0.1))
-	b_conv3 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv3_kernels"]]))
+	W_conv3 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],stddev = 0.1), name = "W_conv3")
+	b_conv3 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv3_kernels"]]), name = "b_conv3")
 	conv3 = tf.nn.conv2d(h_conv2,W_conv3,strides = [1,2,2,1],padding = 'SAME')
 	h_conv3 = tf.nn.relu(tf.nn.bias_add(conv3,b_conv3))
 
 	#Add another convolutional layer
-	W_conv4 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]], stddev = 0.1))
-	b_conv4 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv4_kernels"]]))
+	W_conv4 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]], stddev = 0.1), name = "W_conv4")
+	b_conv4 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv4_kernels"]]), name = "b_conv4")
 	conv4 = tf.nn.conv2d(h_conv3,W_conv4,strides = [1,2,2,1],padding = 'SAME')
 	h_conv4 = tf.nn.relu(tf.nn.bias_add(conv4,b_conv4))
 
 	#Add an additonal conv layer
-	W_conv5 = tf.Variable(tf.truncated_normal([2,2,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]], stddev = 0.1))
-	b_conv5 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv5_kernels"]]))
+	W_conv5 = tf.Variable(tf.truncated_normal([2,2,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]], stddev = 0.1), name = "W_conv5")
+	b_conv5 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv5_kernels"]]), name = "b_conv5")
 	conv5 = tf.nn.conv2d(h_conv4,W_conv5,strides = [1,2,2,1],padding = 'SAME')
 	h_conv5 = tf.nn.relu(tf.nn.bias_add(conv5,b_conv5))	
 
@@ -162,8 +162,8 @@ def observed_image_encoder(observed_image):
 
 
 	#define parameters for full connected layer
-	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*observed_image_encoder_parameters["conv5_kernels"],observed_image_encoder_parameters["fc_1"]],stddev = 0.1)) 
-	b_fc1 = tf.Variable(tf.constant(0.,shape = [observed_image_encoder_parameters["fc_1"]])) 
+	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*observed_image_encoder_parameters["conv5_kernels"],observed_image_encoder_parameters["fc_1"]],stddev = 0.1), name = "W_fc1") 
+	b_fc1 = tf.Variable(tf.constant(0.,shape = [observed_image_encoder_parameters["fc_1"]]), name = "b_fc1") 
 	h_fc1 = tf.nn.relu(tf.matmul(h_conv5_reshape, W_fc1) + b_fc1)
 
 	#create a list of all the variables in order to compute their gradients
@@ -319,9 +319,13 @@ print "Target Image Sequence ",target_image_list[0]
 
 #iterate through the observed image sequence and decode them in order to get the encoded_observed_image_sequence
 encoded_observed_image_list = []
-for observed_image in observed_image_sequence:
-	encoded_observed_image, observed_image_encoder_variables = observed_image_encoder(observed_image)
+with tf.variable_scope("observed_image_encoder") as scope:
+	encoded_observed_image, observed_image_encoder_variables = observed_image_encoder(observed_image_sequence[0])
 	encoded_observed_image_list.append(encoded_observed_image)
+	scope.reuse_variables()
+	for observed_image in observed_image_sequence[1:]:
+		encoded_observed_image, observed_image_encoder_variables = observed_image_encoder(observed_image)
+		encoded_observed_image_list.append(encoded_observed_image)
 
 print "Encoded Observed Image ",encoded_observed_image_list[0]
 print "Length of Encoded Observed Image List", len(encoded_observed_image_list)
