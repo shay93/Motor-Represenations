@@ -198,7 +198,7 @@ def encode_previous_output_image(previous_output_image):
 	"""
 
 	#define a place holder for the outputs
-	x_image = tf.expand_dims(x_image, -1)
+	x_image = tf.expand_dims(previous_output_image, -1)
 	W_conv1 = tf.Variable(tf.truncated_normal([3,3,1,observed_image_encoder_parameters["conv1_kernels"]],stddev = 0.1), name = "W_conv1", trainable = False)
 	b_conv1 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv1_kernels"]]), name = "b_conv1", trainable = False)
 	conv1 = tf.nn.conv2d(x_image,W_conv1,strides = [1,2,2,1],padding = 'SAME')
@@ -280,7 +280,7 @@ def decode_outputs(hidden_vector):
 
 	W_deconv3 = tf.Variable(tf.truncated_normal([3,3,output_image_decoder_parameters['deconv_output_channels_3'],output_image_decoder_parameters['deconv_output_channels_2']], stddev = 0.1), name = "W_deconv_3", trainable = False)
 	b_deconv3 = tf.Variable(tf.constant(0.1, shape = [output_image_decoder_parameters['deconv_output_channels_3']]), name = "b_deconv3", trainable = False)
-	deconv3 = tf.nn.conv2d_transpose(h_deconv2,W_deconv3,[batch_size,16,16,output_image_image_decoder_parameters['deconv_output_channels_3']],[1,2,2,1])
+	deconv3 = tf.nn.conv2d_transpose(h_deconv2,W_deconv3,[batch_size,16,16,output_image_decoder_parameters['deconv_output_channels_3']],[1,2,2,1])
 	h_deconv3 = tf.nn.dropout(tf.nn.relu(tf.nn.bias_add(deconv3,b_deconv3)),0.5)
 
 	W_deconv4 = tf.Variable(tf.truncated_normal([3,3,output_image_decoder_parameters['deconv_output_channels_4'],output_image_decoder_parameters['deconv_output_channels_3']], stddev = 0.1), name = "W_deconv_4", trainable = False)
@@ -352,7 +352,7 @@ for i,joint_angle_state in enumerate(joint_angle_list[1:]):
 	target_image_norm = tf.reduce_mean(tf.square(tf.squeeze(target_image_list[i])))
 	target_image_norm_list.append(target_image_norm)
 #	print "Entropy Loss",entropy_loss  #reduce each image in batch to a single value shape should be [None,64,64]
-	image_loss_list.append(meansq_loss_per_image)
+	image_loss_list.append(entropy_loss)
 #should be computing loss for each image in the l
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
 	#now set the previous image to be the current output image
