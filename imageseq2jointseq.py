@@ -457,7 +457,7 @@ def save_output_images(predictions):
 		shape_index = output_image_num // len(shape_str_array)
 		total_tsteps = 	total_tsteps_list[output_image_num]
 		shape_name = shape_str_array[shape_name_index]
-		shape_dir = ROOT_DIR + shape_str_array[shape_index] + str(shape_number) + "/"
+		shape_dir = ROOT_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/"
 		#create this directory if it doesnt exist
 		if not(os.path.exists(shape_dir)):
 			os.makedirs(shape_dir)
