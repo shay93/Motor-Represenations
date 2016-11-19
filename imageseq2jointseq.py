@@ -9,14 +9,14 @@ import training_tools as tt
 import os
 
 
-BATCH_SIZE = 10
+BATCH_SIZE = 50
 EVAL_BATCH_SIZE = 5
 IMAGE_SIZE = 64
 VALIDATION_SIZE = 400
 EPOCHS = 10
 ROOT_DIR = "Baseline_Seq2Seq_Outputs/"
 EVAL_FREQUENCY = 20
-NUM_SAMPLES = 300
+NUM_SAMPLES = 3000
 EVAL_SIZE = 100
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
 DISPLAY_SIZE = 6
@@ -37,7 +37,7 @@ OUTPUT_FEATURES = 3
 
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-2
 
 ###########################################DEFINE PARAMETERS FOR MODEL#########################################
 observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
@@ -364,7 +364,7 @@ train_op = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 init_op = tf.initialize_all_variables()
 # Add ops to save and restore all the variables.
 saver = tf.train.Saver(image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
-opt = tf.train.AdamOptimizer(learning_rate)
+opt = tf.train.AdamOptimizer(LEARNING_RATE)
 variable_names = ["W_conv_obs_1","W_conv_obs_2","W_conv_obs_3","W_conv_obs_4","W_conv_obs_5","b_conv_obs_1","b_conv_obs_2","b_conv_obs_3","b_conv_obs_4", "b_conv_obs_5","W_image_obs_fc1","b_image_obs_fc1","W_conv_output_1","W_conv_output_2","W_conv_output_3","W_conv_output_4","W_conv_output_5","b_conv_output_1","b_conv_output_2","b_conv_output_3","b_conv_output_4", "b_conv_output_5","W_image_output_fc1","b_image_output_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
 grads_and_vars = opt.compute_gradients(loss, observed_image_encoder_variables + image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
 summary_nodes = [tf.histogram_summary(variable_names[i],gv[0]) for i,gv in enumerate(grads_and_vars)]
@@ -401,7 +401,7 @@ def train_graph():
 
 				#run the graph
 				_, l,t,merged_summary= sess.run(
-					[train_op,loss,average_target_image_norm],
+					[train_op,loss,average_target_image_norm,merged],
 					feed_dict=feed_dict)
 				
 				training_loss_array[step] = l
