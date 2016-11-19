@@ -38,6 +38,7 @@ OUTPUT_FEATURES = 3
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 
 LEARNING_RATE = 1e-2
+REGULARIZATION_COEFFICIENT = 1e-3
 
 ###########################################DEFINE PARAMETERS FOR MODEL#########################################
 observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
@@ -45,6 +46,10 @@ joint_angle_decoder_parameters = {"lstm_hidden_units": 100,"output_features" : o
 joint_encoder_parameters = {"fc_1" : 200 , "fc_2" : 56}
 output_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
 output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4}
+#############################################HELPER FUNCTIONS################################################
+
+def regularizer(tensor):
+  	return tf.nn.l2_loss(tensor)
 
 ########################################## EXTRACT DATA #######################################################################
 
@@ -173,7 +178,8 @@ def joint_angle_decoder(encoded_observed_image_list):
 		jointangle_timestep = tf.nn.elu(tf.matmul(output_timestep,W_fc_jointangle) + b_fc_jointangle)
 		jointangle_list.append(jointangle_timestep)
 
-	return jointangle_list
+	joint_angle_decoder_var_list = [W_fc_jointangle,b_fc_jointangle]
+	return jointangle_list,joint_angle_decoder_var_list
 
 
 
@@ -314,7 +320,7 @@ print "Length of encoded observed images list",len(encoded_observed_image_list)
 print "Encoded Observed Image ",encoded_observed_image_list[0]
 print "Length of Encoded Observed Image List", len(encoded_observed_image_list)
 #now decode the encoded observed image into a joint sequence list that may then be fed into the jointangleseq2output image mapping
-joint_angle_list = joint_angle_decoder(encoded_observed_image_list)
+joint_angle_list,joint_angle_decoder_var_list = joint_angle_decoder(encoded_observed_image_list)
 print "Joint Angle Decoder ",joint_angle_list[0]
 print "Length of Joint Angle List", len(joint_angle_list)
 #initialize an output image array to record the output image tensor at each timestep
@@ -351,12 +357,20 @@ for i,joint_angle_state in enumerate(joint_angle_list[1:]):
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
 	#now set the previous image to be the current output image
 	previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
+
+#create a dictionary of all nn parameters
+variable_names = ["W_conv_obs_1","W_conv_obs_2","W_conv_obs_3","W_conv_obs_4","W_conv_obs_5","b_conv_obs_1","b_conv_obs_2","b_conv_obs_3","b_conv_obs_4", "b_conv_obs_5","W_image_obs_fc1","b_image_obs_fc1","W_conv_output_1","W_conv_output_2","W_conv_output_3","W_conv_output_4","W_conv_output_5","b_conv_output_1","b_conv_output_2","b_conv_output_3","b_conv_output_4", "b_conv_output_5","W_image_output_fc1","b_image_output_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5","W_decode_obs_image","b_decode_obs_image"]
+grads_and_vars = opt.compute_gradients(loss, observed_image_encoder_variables + image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list + joint_angle_decoder_var_list)
+#also construct a dictionary using the two list
+var_dict = dict(zip(variable_names,observed_image_encoder_variables + image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list + joint_angle_decoder_var_list))
+
 print "Length of Image Loss List",len(image_loss_list)
 print "Image Loss ",image_loss_list[0]
 y = tf.pack(output_image_list,axis = -1)
 image_loss_tensor = tf.pack(image_loss_list, axis = -1)
 print "Loss per Image ",image_loss_tensor
-loss = tf.reduce_mean(tf.mul(image_loss_tensor,binary_loss_tensor))
+regularization_term = regularizer(var_dict["W_conv_obs_1"]) + regularizer(var_dict["W_decode_obs_image"])
+loss = tf.reduce_mean(tf.mul(image_loss_tensor,binary_loss_tensor)) + regularization_term
 target_image_norm_tensor = tf.pack(target_image_norm_list, axis = -1)
 average_target_image_norm = tf.reduce_mean(target_image_norm_tensor)
 #use this loss to compute the
@@ -365,9 +379,13 @@ init_op = tf.initialize_all_variables()
 # Add ops to save and restore all the variables.
 saver = tf.train.Saver(image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
 opt = tf.train.AdamOptimizer(LEARNING_RATE)
-variable_names = ["W_conv_obs_1","W_conv_obs_2","W_conv_obs_3","W_conv_obs_4","W_conv_obs_5","b_conv_obs_1","b_conv_obs_2","b_conv_obs_3","b_conv_obs_4", "b_conv_obs_5","W_image_obs_fc1","b_image_obs_fc1","W_conv_output_1","W_conv_output_2","W_conv_output_3","W_conv_output_4","W_conv_output_5","b_conv_output_1","b_conv_output_2","b_conv_output_3","b_conv_output_4", "b_conv_output_5","W_image_output_fc1","b_image_output_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
-grads_and_vars = opt.compute_gradients(loss, observed_image_encoder_variables + image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
 summary_nodes = [tf.histogram_summary(variable_names[i],gv[0]) for i,gv in enumerate(grads_and_vars)]
+#add scalar summary nodes for the joint angle sequence these scalar summaries should include mean max variance and min
+tf.scalar_summary("Joint Angle Max",tf.reduce_max(joint_angle_list))
+tf.scalar_summary("Joint Angle Min",tf.reduce_min(joint_angle_list))
+tf.scalar_summary("Joint Angle Mean",tf.reduce_mean(joint_angle_list))
+stddev = tf.sqrt(tf.reduce_mean(tf.square(joint_angle_list - tf.reduce_mean(joint_angle_list))))
+tf.scalar_summary("Joint Angle Stddev", stddev)
 merged = tf.merge_all_summaries()
 
 ######################################################################TRAIN AND EVALUATE MODEL############################################################
