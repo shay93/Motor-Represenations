@@ -9,17 +9,17 @@ import training_tools as tt
 import os
 
 
-BATCH_SIZE = 100
-EVAL_BATCH_SIZE = 100
+BATCH_SIZE = 10
+EVAL_BATCH_SIZE = 5
 IMAGE_SIZE = 64
 VALIDATION_SIZE = 400
 EPOCHS = 10
 ROOT_DIR = "Baseline_Seq2Seq_Outputs/"
 EVAL_FREQUENCY = 20
-NUM_SAMPLES = 3000
+NUM_SAMPLES = 300
 EVAL_SIZE = 100
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
-DISPLAY_SIZE = 10
+DISPLAY_SIZE = 6
 SUMMARY_DIR = "/tmp/summary_logs"
 DOF = 3
 CONV_KERNELS_1 = 64
@@ -37,7 +37,7 @@ OUTPUT_FEATURES = 3
 
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 1e-3
 
 ###########################################DEFINE PARAMETERS FOR MODEL#########################################
 observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
@@ -352,11 +352,12 @@ for i,joint_angle_state in enumerate(joint_angle_list[1:]):
 		scope.reuse_variables()
 		output_image_before_sigmoid,_,_,_ = jointangle2image(joint_angle_state,previous_image)
 	entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i]))
+	entropy_loss_per_image = tf.reduce_mean(entropy_loss,[1,2])
 	#meansq_loss_per_image = tf.reduce_mean(tf.square(tf.nn.sigmoid(output_image_before_sigmoid) - tf.squeeze(target_image_list[i])))
 	target_image_norm = tf.reduce_mean(tf.square(tf.squeeze(target_image_list[i])))
 	target_image_norm_list.append(target_image_norm)
 #	print "Entropy Loss",entropy_loss  #reduce each image in batch to a single value shape should be [None,64,64]
-	image_loss_list.append(entropy_loss)
+	image_loss_list.append(entropy_loss_per_image)
 #should be computing loss for each image in the l
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
 	#now set the previous image to be the current output image
@@ -364,9 +365,9 @@ for i,joint_angle_state in enumerate(joint_angle_list[1:]):
 
 print "Image Loss ",image_loss_list[0]
 y = tf.pack(output_image_list,axis = -1)
-loss_per_image = tf.pack(image_loss_list, axis = -1)
-print "Loss per Image ",loss_per_image
-loss = tf.reduce_mean(image_loss_list)
+image_loss_tensor = tf.pack(image_loss_list, axis = -1)
+print "Loss per Image ",image_loss_tensor
+loss = tf.reduce_mean(image_loss_tensor)
 target_image_norm_tensor = tf.pack(target_image_norm_list, axis = -1)
 average_target_image_norm = tf.reduce_mean(target_image_norm_tensor)
 #use this loss to compute the
