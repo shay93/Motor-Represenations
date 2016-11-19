@@ -13,11 +13,11 @@ BATCH_SIZE = 50
 EVAL_BATCH_SIZE = 5
 IMAGE_SIZE = 64
 VALIDATION_SIZE = 400
-EPOCHS = 1500
+EPOCHS = 20
 ROOT_DIR = "Baseline_Seq2Seq_Outputs/"
 EVAL_FREQUENCY = 20
 NUM_SAMPLES = 3000
-EVAL_SIZE = 100
+EVAL_SIZE = 10
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
 DISPLAY_SIZE = 6
 SUMMARY_DIR = "/tmp/summary_logs"
@@ -38,7 +38,7 @@ OUTPUT_FEATURES = 3
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 
 
-LEARNING_RATE = 1e-2
+LEARNING_RATE = 1e-4
 REGULARIZATION_COEFFICIENT = 1e-3
 
 
@@ -372,7 +372,7 @@ y = tf.pack(output_image_list,axis = -1)
 image_loss_tensor = tf.pack(image_loss_list, axis = -1)
 print "Loss per Image ",image_loss_tensor
 regularization_term = regularizer(var_dict["W_conv_obs_1"]) + regularizer(var_dict["W_decode_obs_image"])
-loss = tf.reduce_mean(tf.mul(image_loss_tensor,binary_loss_tensor)) + regularization_term
+loss = tf.reduce_mean(tf.mul(image_loss_tensor,binary_loss_tensor)) + regularization_term*REGULARIZATION_COEFFICIENT
 target_image_norm_tensor = tf.pack(target_image_norm_list, axis = -1)
 average_target_image_norm = tf.reduce_mean(target_image_norm_tensor)
 #use this loss to compute the
