@@ -228,7 +228,6 @@ def encode_previous_output_image(previous_output_image):
 	b_conv5 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv5_kernels"]]), name = "b_conv5", trainable = False)
 	conv5 = tf.nn.conv2d(h_conv4,W_conv5,strides = [1,2,2,1],padding = 'SAME')
 	h_conv5 = tf.nn.relu(tf.nn.bias_add(conv5,b_conv5))
-	print h_conv5	
 
 	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*observed_image_encoder_parameters["conv5_kernels"]])
 
@@ -326,7 +325,7 @@ with tf.variable_scope("observed_image_encoder") as scope:
 	for observed_image in observed_image_sequence[1:]:
 		encoded_observed_image, observed_image_encoder_variables = observed_image_encoder(observed_image)
 		encoded_observed_image_list.append(encoded_observed_image)
-
+print "Length of encoded observed images list",len(encoded_observed_image_list)
 print "Encoded Observed Image ",encoded_observed_image_list[0]
 print "Length of Encoded Observed Image List", len(encoded_observed_image_list)
 #now decode the encoded observed image into a joint sequence list that may then be fed into the jointangleseq2output image mapping
@@ -362,7 +361,7 @@ for i,joint_angle_state in enumerate(joint_angle_list[1:]):
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
 	#now set the previous image to be the current output image
 	previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
-
+print "Length of Image Loss List",len(image_loss_list)
 print "Image Loss ",image_loss_list[0]
 y = tf.pack(output_image_list,axis = -1)
 image_loss_tensor = tf.pack(image_loss_list, axis = -1)
