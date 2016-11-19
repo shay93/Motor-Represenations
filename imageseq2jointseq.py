@@ -42,7 +42,7 @@ LEARNING_RATE = 1e-3
 ###########################################DEFINE PARAMETERS FOR MODEL#########################################
 observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
 joint_angle_decoder_parameters = {"lstm_hidden_units": 100,"output_features" : output_arm_dof,"layers" : 1}
-joint_encoder_parameters = {"fc_1" : 100 , "fc_2" : 56}
+joint_encoder_parameters = {"fc_1" : 200 , "fc_2" : 56}
 output_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
 output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4}
 
@@ -99,14 +99,14 @@ def get_binary_loss(total_tsteps_list):
 	"""
 	use the tstep list to get a numpy array of 1s and 0s to zero out the loss as needed
 	"""
-	binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH))
+	binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH - 1))
 	for i,max_tstep in enumerate(total_tsteps_list):
-		binary_loss[i,:max_tstep] = np.ones(max_tstep,dtype = np.float32)
+		binary_loss[i,:max_tstep - 1] = np.ones(max_tstep - 1,dtype = np.float32)
 	return binary_loss
 
 output_image_encoder_variable_list,joint_encoder_variable_list,decoder_variable_list = load_saved_variables()
 SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SAMPLES)
-
+print "Sequence Max Length is ",SEQ_MAX_LENGTH
 time_varying_images = extract_observed_images(NUM_SAMPLES,total_tsteps_list,SEQ_MAX_LENGTH)
 binary_loss_array = get_binary_loss(total_tsteps_list)
 
