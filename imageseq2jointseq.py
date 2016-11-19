@@ -13,7 +13,7 @@ BATCH_SIZE = 50
 EVAL_BATCH_SIZE = 5
 IMAGE_SIZE = 64
 VALIDATION_SIZE = 400
-EPOCHS = 10
+EPOCHS = 1500
 ROOT_DIR = "Baseline_Seq2Seq_Outputs/"
 EVAL_FREQUENCY = 20
 NUM_SAMPLES = 3000
@@ -37,7 +37,7 @@ OUTPUT_FEATURES = 3
 
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 
-LEARNING_RATE = 1e-2
+LEARNING_RATE = 1e-3
 
 ###########################################DEFINE PARAMETERS FOR MODEL#########################################
 observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
