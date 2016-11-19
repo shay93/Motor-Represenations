@@ -99,9 +99,9 @@ def get_binary_loss(total_tsteps_list):
 	"""
 	use the tstep list to get a numpy array of 1s and 0s to zero out the loss as needed
 	"""
-	binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH - 1))
+	binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH))
 	for i,max_tstep in enumerate(total_tsteps_list):
-		binary_loss[i,:max_tstep - 1] = np.ones(max_tstep - 1,dtype = np.float32)
+		binary_loss[i,:max_tstep] = np.ones(max_tstep,dtype = np.float32)
 	return binary_loss
 
 output_image_encoder_variable_list,joint_encoder_variable_list,decoder_variable_list = load_saved_variables()
@@ -343,6 +343,11 @@ target_image_norm_list = []
 previous_image = tf.zeros([tf.shape(joint_angle_list[0])[0],64,64])
 with tf.variable_scope("jointangle2image") as scope:
 	output_image_before_sigmoid, joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list = jointangle2image(joint_angle_list[0],previous_image)
+	entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[0]))
+	entropy_loss_per_image = tf.reduce_mean(entropy_loss,[1,2])
+	image_loss_list.append(entropy_loss_per_image)
+	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
+
 previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
 #now loop through the joint angle list at each timestep and pass this to the jointangle2image map to get the output image at each timestep
 for i,joint_angle_state in enumerate(joint_angle_list[1:]):
