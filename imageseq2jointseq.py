@@ -367,7 +367,7 @@ print "Image Loss ",image_loss_list[0]
 y = tf.pack(output_image_list,axis = -1)
 image_loss_tensor = tf.pack(image_loss_list, axis = -1)
 print "Loss per Image ",image_loss_tensor
-loss = tf.reduce_mean(image_loss_tensor)
+loss = tf.reduce_mean(tf.mul(image_loss_tensor,binary_loss_tensor))
 target_image_norm_tensor = tf.pack(target_image_norm_list, axis = -1)
 average_target_image_norm = tf.reduce_mean(target_image_norm_tensor)
 #use this loss to compute the
