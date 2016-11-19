@@ -362,7 +362,6 @@ for i,joint_angle_state in enumerate(joint_angle_list[1:]):
 
 #create a dictionary of all nn parameters
 variable_names = ["W_conv_obs_1","W_conv_obs_2","W_conv_obs_3","W_conv_obs_4","W_conv_obs_5","b_conv_obs_1","b_conv_obs_2","b_conv_obs_3","b_conv_obs_4", "b_conv_obs_5","W_image_obs_fc1","b_image_obs_fc1","W_conv_output_1","W_conv_output_2","W_conv_output_3","W_conv_output_4","W_conv_output_5","b_conv_output_1","b_conv_output_2","b_conv_output_3","b_conv_output_4", "b_conv_output_5","W_image_output_fc1","b_image_output_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5","W_decode_obs_image","b_decode_obs_image"]
-grads_and_vars = opt.compute_gradients(loss, observed_image_encoder_variables + image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list + joint_angle_decoder_var_list)
 #also construct a dictionary using the two list
 var_dict = dict(zip(variable_names,observed_image_encoder_variables + image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list + joint_angle_decoder_var_list))
 
@@ -381,6 +380,8 @@ init_op = tf.initialize_all_variables()
 # Add ops to save and restore all the variables.
 saver = tf.train.Saver(image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
 opt = tf.train.AdamOptimizer(LEARNING_RATE)
+grads_and_vars = opt.compute_gradients(loss, observed_image_encoder_variables + image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list + joint_angle_decoder_var_list)
+
 summary_nodes = [tf.histogram_summary(variable_names[i],gv[0]) for i,gv in enumerate(grads_and_vars)]
 #add scalar summary nodes for the joint angle sequence these scalar summaries should include mean max variance and min
 tf.scalar_summary("Joint Angle Max",tf.reduce_max(joint_angle_list))
