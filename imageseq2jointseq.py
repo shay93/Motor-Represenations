@@ -81,20 +81,6 @@ def extract_observed_images(num,total_tsteps_list,max_seq_length):
 	return time_varying_images
 
 
-def load_saved_variables():
-	"""
-	Loads the saved weights and biases used in the joint angle to image mapping
-	"""
-	with open("Joints_to_Image/learned_variable_list.npy","rb") as f:
-		learned_variable_list = pickle.load(f)
-	print len(learned_variable_list)
-
-	output_image_encoder_variable_list = learned_variable_list[:12]
-	joint_encoder_variable_list = learned_variable_list[12:16]
-	decoder_variable_list = learned_variable_list[-10:]
-	return output_image_encoder_variable_list,joint_encoder_variable_list,decoder_variable_list
-
-
 def get_binary_loss(total_tsteps_list):
 	"""
 	use the tstep list to get a numpy array of 1s and 0s to zero out the loss as needed
@@ -104,7 +90,6 @@ def get_binary_loss(total_tsteps_list):
 		binary_loss[i,:max_tstep] = np.ones(max_tstep,dtype = np.float32)
 	return binary_loss
 
-output_image_encoder_variable_list,joint_encoder_variable_list,decoder_variable_list = load_saved_variables()
 SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SAMPLES)
 print "Sequence Max Length is ",SEQ_MAX_LENGTH
 time_varying_images = extract_observed_images(NUM_SAMPLES,total_tsteps_list,SEQ_MAX_LENGTH)
@@ -323,7 +308,7 @@ with tf.variable_scope("observed_image_encoder") as scope:
 	encoded_observed_image_list.append(encoded_observed_image)
 	scope.reuse_variables()
 	for observed_image in observed_image_sequence[1:]:
-		encoded_observed_image, observed_image_encoder_variables = observed_image_encoder(observed_image)
+		encoded_observed_image,_  = observed_image_encoder(observed_image)
 		encoded_observed_image_list.append(encoded_observed_image)
 print "Length of encoded observed images list",len(encoded_observed_image_list)
 print "Encoded Observed Image ",encoded_observed_image_list[0]
@@ -379,11 +364,11 @@ train_op = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
 init_op = tf.initialize_all_variables()
 # Add ops to save and restore all the variables.
 saver = tf.train.Saver(image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
-# opt = tf.train.AdamOptimizer(learning_rate)
-# variable_names = ["W_conv1","W_conv2","W_conv3","W_conv4","W_conv5","b_conv1","b_conv2","b_conv3","b_conv4", "b_conv5","W_image_fc1","b_image_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
-# grads_and_vars = opt.compute_gradients(loss, image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
-# summary_nodes = [tf.histogram_summary(variable_names[i],gv[0]) for i,gv in enumerate(grads_and_vars)]
-# merged = tf.merge_all_summaries()
+opt = tf.train.AdamOptimizer(learning_rate)
+variable_names = ["W_conv_obs_1","W_conv_obs_2","W_conv_obs_3","W_conv_obs_4","W_conv_obs_5","b_conv_obs_1","b_conv_obs_2","b_conv_obs_3","b_conv_obs_4", "b_conv_obs_5","W_conv_output_1","W_conv_output_2","W_conv_output_3","W_conv_output_4","W_conv_output_5","b_conv_output_1","b_conv_output_2","b_conv_output_3","b_conv_output_4", "b_conv_output_5","W_image_fc1","b_image_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
+grads_and_vars = opt.compute_gradients(loss, observed_image_encoder_variables + image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
+summary_nodes = [tf.histogram_summary(variable_names[i],gv[0]) for i,gv in enumerate(grads_and_vars)]
+merged = tf.merge_all_summaries()
 
 ######################################################################TRAIN AND EVALUATE MODEL############################################################
 def train_graph():
@@ -415,36 +400,18 @@ def train_graph():
 				feed_dict = {x : time_varying_image_batch, y_ : time_varying_image_batch, binary_loss_tensor : binary_loss_batch}
 
 				#run the graph
-				_, l,t= sess.run(
+				_, l,t,merged_summary= sess.run(
 					[train_op,loss,average_target_image_norm],
 					feed_dict=feed_dict)
 				
 				training_loss_array[step] = l
 
 				if step % 5 == 0:
-					#train_writer.add_summary(merged_summary,step)
+					train_writer.add_summary(merged_summary,step)
 					print step,l,"Target L2 Norm",t
 				
-				# if step % EVAL_FREQUENCY == 0:
-				# 	predictions,test_loss_array = eval_in_batches(sess)
-				# 	print "Test Loss is " + str(np.mean(test_loss_array))
-				# 	average_test_loss.append(np.mean(test_loss_array))
-				# 	#also svae the predictions to get
-				# 	checkpoint_num = step // EVAL_FREQUENCY
-				# 	#use the checkpoint_num to specify the correct directory to save an image
-				# 	checkpoint_dir = ROOT_DIR + "Checkpoint" + str(checkpoint_num) + "/"
-					
-				# 	if not os.path.exists(checkpoint_dir):
-				# 		os.makedirs(checkpoint_dir)
-					
-				# 	for i in range(EVAL_SIZE):
-				# 		plt.imsave(checkpoint_dir + "output_image" + str(i) + ".png", predictions[i,...], cmap = "Greys_r")
-				# 		plt.imsave(checkpoint_dir + "target_image" + str(i) + ".png", target_image_array_eval[i,...], cmap = "Greys_r")
-				# 		plt.imsave(checkpoint_dir + "input_image" + str(i) + ".png", input_image_array_eval[i,...], cmap = "Greys_r")
 
 			predictions,test_loss_array = eval_in_batches(sess)
-			#now get the learned variable values and dump to a list
-			#variable_list = sess.run(image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
 		return predictions,training_loss_array,test_loss_array
 
 
@@ -490,7 +457,7 @@ def save_output_images(predictions):
 		shape_index = output_image_num // len(shape_str_array)
 		total_tsteps = 	total_tsteps_list[output_image_num]
 		shape_name = shape_str_array[shape_name_index]
-		shape_dir = ROOT_DIR + shape_index + str(shape_number) + "/"
+		shape_dir = ROOT_DIR + shape_str_array[shape_index] + str(shape_number) + "/"
 		#create this directory if it doesnt exist
 		if not(os.path.exists(shape_dir)):
 			os.makedirs(shape_dir)
