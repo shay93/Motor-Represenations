@@ -394,7 +394,7 @@ tf.scalar_summary("W_conv_obs_1 L2 Norm", regularizer(var_dict["W_conv_obs_1"]))
 tf.scalar_summary("W_decode_obs_image",regularizer(var_dict["W_decode_obs_image"]))
 merged = tf.merge_all_summaries()
 r_im = tf.image_summary("Reconstructed Image", tf.expand_dims(output_image_list[20],-1))
-t_im = tf.image_summary("Target Image", tf.expand_dims(target_image_list[20],-1))
+t_im = tf.image_summary("Target Image", target_image_list[20])
 
 ######################################################################TRAIN AND EVALUATE MODEL############################################################
 def train_graph():
