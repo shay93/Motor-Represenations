@@ -13,14 +13,14 @@ BATCH_SIZE = 50
 EVAL_BATCH_SIZE = 5
 IMAGE_SIZE = 64
 VALIDATION_SIZE = 400
-EPOCHS = 20
+EPOCHS = 7
 ROOT_DIR = "Baseline_Seq2Seq_Outputs/"
 EVAL_FREQUENCY = 20
 NUM_SAMPLES = 3000
 EVAL_SIZE = 10
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
 DISPLAY_SIZE = 6
-SUMMARY_DIR = "/tmp/summary_logs"
+SUMMARY_DIR = "/tmp/summary_logs_LR1e-4_RC1e-3"
 DOF = 3
 CONV_KERNELS_1 = 64
 CONV_KERNELS_2 = 32
@@ -121,31 +121,31 @@ def observed_image_encoder(observed_image):
 	"""
 	Encodes the observed image to a vector that may be passed to an lstm in order to obtain the joint angles for the 
 	"""
-	W_conv1 = tf.Variable(tf.truncated_normal([3,3,1,observed_image_encoder_parameters["conv1_kernels"]],stddev = 0.1), name = "W_conv1")
+	W_conv1 = tf.Variable(tf.truncated_normal([3,3,1,observed_image_encoder_parameters["conv1_kernels"]],stddev = 0.5), name = "W_conv1")
 	b_conv1 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv1_kernels"]]), name = "b_conv1")
 	conv1 = tf.nn.conv2d(observed_image,W_conv1,strides = [1,2,2,1],padding = 'SAME')
 	h_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))	
 
 	#define parameters for the second convolutional layer
-	W_conv2 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],stddev = 0.1),name = "W_conv2")
+	W_conv2 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],stddev = 0.5),name = "W_conv2")
 	b_conv2 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv2_kernels"]]), name = "b_conv2")
 	conv2 = tf.nn.conv2d(h_conv1,W_conv2,strides = [1,2,2,1],padding = 'SAME')
 	h_conv2 = tf.nn.relu(tf.nn.bias_add(conv2,b_conv2))
 
 	#define a third convolutional layer
-	W_conv3 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],stddev = 0.1), name = "W_conv3")
+	W_conv3 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],stddev = 0.5), name = "W_conv3")
 	b_conv3 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv3_kernels"]]), name = "b_conv3")
 	conv3 = tf.nn.conv2d(h_conv2,W_conv3,strides = [1,2,2,1],padding = 'SAME')
 	h_conv3 = tf.nn.relu(tf.nn.bias_add(conv3,b_conv3))
 
 	#Add another convolutional layer
-	W_conv4 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]], stddev = 0.1), name = "W_conv4")
+	W_conv4 = tf.Variable(tf.truncated_normal([3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]], stddev = 0.5), name = "W_conv4")
 	b_conv4 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv4_kernels"]]), name = "b_conv4")
 	conv4 = tf.nn.conv2d(h_conv3,W_conv4,strides = [1,2,2,1],padding = 'SAME')
 	h_conv4 = tf.nn.relu(tf.nn.bias_add(conv4,b_conv4))
 
 	#Add an additonal conv layer
-	W_conv5 = tf.Variable(tf.truncated_normal([2,2,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]], stddev = 0.1), name = "W_conv5")
+	W_conv5 = tf.Variable(tf.truncated_normal([2,2,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]], stddev = 0.5), name = "W_conv5")
 	b_conv5 = tf.Variable(tf.constant(0.1,shape = [observed_image_encoder_parameters["conv5_kernels"]]), name = "b_conv5")
 	conv5 = tf.nn.conv2d(h_conv4,W_conv5,strides = [1,2,2,1],padding = 'SAME')
 	h_conv5 = tf.nn.relu(tf.nn.bias_add(conv5,b_conv5))	
@@ -154,7 +154,7 @@ def observed_image_encoder(observed_image):
 
 
 	#define parameters for full connected layer
-	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*observed_image_encoder_parameters["conv5_kernels"],observed_image_encoder_parameters["fc_1"]],stddev = 0.1), name = "W_fc1") 
+	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*observed_image_encoder_parameters["conv5_kernels"],observed_image_encoder_parameters["fc_1"]],stddev = 0.5), name = "W_fc1") 
 	b_fc1 = tf.Variable(tf.constant(0.,shape = [observed_image_encoder_parameters["fc_1"]]), name = "b_fc1") 
 	h_fc1 = tf.nn.relu(tf.matmul(h_conv5_reshape, W_fc1) + b_fc1)
 
@@ -387,9 +387,14 @@ summary_nodes = [tf.histogram_summary(variable_names[i],gv[0]) for i,gv in enume
 tf.scalar_summary("Joint Angle Max",tf.reduce_max(joint_angle_list))
 tf.scalar_summary("Joint Angle Min",tf.reduce_min(joint_angle_list))
 tf.scalar_summary("Joint Angle Mean",tf.reduce_mean(joint_angle_list))
+tf.scalar_summary("Loss_Summary",loss)
 stddev = tf.sqrt(tf.reduce_mean(tf.square(joint_angle_list - tf.reduce_mean(joint_angle_list))))
 tf.scalar_summary("Joint Angle Stddev", stddev)
+tf.scalar_summary("W_conv_obs_1 L2 Norm", regularizer(var_dict["W_conv_obs_1"]))
+tf.scalar_summary("W_decode_obs_image",regularizer(var_dict["W_decode_obs_image"]))
 merged = tf.merge_all_summaries()
+r_im = tf.image_summary("Reconstructed Image", output_image_list[20])
+t_im = tf.image_summary("Target Image",target_image_list[20])
 
 ######################################################################TRAIN AND EVALUATE MODEL############################################################
 def train_graph():
@@ -421,8 +426,8 @@ def train_graph():
 				feed_dict = {x : time_varying_image_batch, y_ : time_varying_image_batch, binary_loss_tensor : binary_loss_batch}
 
 				#run the graph
-				_, l,t,merged_summary= sess.run(
-					[train_op,loss,average_target_image_norm,merged],
+				_, l,t,merged_summary,tar_im,re_im = sess.run(
+					[train_op,loss,average_target_image_norm,merged,t_im,r_im],
 					feed_dict=feed_dict)
 				
 				training_loss_array[step] = l
@@ -430,7 +435,9 @@ def train_graph():
 				if step % 5 == 0:
 					train_writer.add_summary(merged_summary,step)
 					print step,l,"Target L2 Norm",t
-				
+				if step % 50 == 0:
+					train_writer.add_summary(tar_im,step)
+					train_writer.add_summary(re_im,step)				
 
 			predictions,test_loss_array = eval_in_batches(sess)
 		return predictions,training_loss_array,test_loss_array
