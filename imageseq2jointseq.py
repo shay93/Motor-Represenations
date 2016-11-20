@@ -20,7 +20,7 @@ NUM_SAMPLES = 3000
 EVAL_SIZE = 10
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
 DISPLAY_SIZE = 6
-SUMMARY_DIR = "/tmp/summary_logs_LR1e-4_RC1e-3"
+SUMMARY_DIR = "/tmp/summary_logs_LR1e-2_RC1e-4"
 DOF = 3
 CONV_KERNELS_1 = 64
 CONV_KERNELS_2 = 32
@@ -38,8 +38,8 @@ OUTPUT_FEATURES = 3
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 
 
-LEARNING_RATE = 1e-4
-REGULARIZATION_COEFFICIENT = 1e-3
+LEARNING_RATE = 1e-2
+REGULARIZATION_COEFFICIENT = 1e-4
 
 
 ###########################################DEFINE PARAMETERS FOR MODEL#########################################
@@ -370,7 +370,7 @@ print "Image Loss ",image_loss_list[0]
 y = tf.pack(output_image_list,axis = -1)
 image_loss_tensor = tf.pack(image_loss_list, axis = -1)
 print "Loss per Image ",image_loss_tensor
-regularization_term = regularizer(var_dict["W_conv_obs_1"]) + regularizer(var_dict["W_decode_obs_image"])
+regularization_term = regularizer(var_dict["W_conv_obs_1"]) + regularizer(var_dict["W_conv_obs_2"])
 loss = tf.reduce_mean(tf.mul(image_loss_tensor,binary_loss_tensor)) + regularization_term*REGULARIZATION_COEFFICIENT
 target_image_norm_tensor = tf.pack(target_image_norm_list, axis = -1)
 average_target_image_norm = tf.reduce_mean(target_image_norm_tensor)
@@ -391,7 +391,8 @@ tf.scalar_summary("Loss_Summary",loss)
 stddev = tf.sqrt(tf.reduce_mean(tf.square(joint_angle_list - tf.reduce_mean(joint_angle_list))))
 tf.scalar_summary("Joint Angle Stddev", stddev)
 tf.scalar_summary("W_conv_obs_1 L2 Norm", regularizer(var_dict["W_conv_obs_1"]))
-tf.scalar_summary("W_decode_obs_image",regularizer(var_dict["W_decode_obs_image"]))
+tf.scalar_summary("W_decode_obs_image Norm",regularizer(var_dict["W_decode_obs_image"]))
+tf.image_summary("Previous Image",tf.expand_dims(previous_image,-1))
 merged = tf.merge_all_summaries()
 r_im = tf.image_summary("Reconstructed Image", tf.expand_dims(output_image_list[20],-1))
 t_im = tf.image_summary("Target Image", target_image_list[20])
