@@ -349,7 +349,7 @@ for i,joint_angle_state in enumerate(joint_angle_list[1:]):
 	#pass the joint_angle_state to the mapping
 	with tf.variable_scope("jointangle2image") as scope:
 		scope.reuse_variables()
-		output_image_before_sigmoid,_,_,_ = jointangle2image(joint_angle_state,output_image_before_sigmoid_list[i])
+		output_image_before_sigmoid,_,_,_ = jointangle2image(joint_angle_state,output_image_list[i])
 	entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i+1]))
 	entropy_loss_per_image = tf.reduce_mean(entropy_loss,[1,2])
 	#meansq_loss_per_image = tf.reduce_mean(tf.square(tf.nn.sigmoid(output_image_before_sigmoid) - tf.squeeze(target_image_list[i])))
@@ -393,10 +393,10 @@ stddev = tf.sqrt(tf.reduce_mean(tf.square(joint_angle_list - tf.reduce_mean(join
 tf.scalar_summary("Joint Angle Stddev", stddev)
 tf.scalar_summary("W_conv_obs_1 L2 Norm", regularizer(var_dict["W_conv_obs_1"]))
 tf.scalar_summary("W_decode_obs_image Norm",regularizer(var_dict["W_decode_obs_image"]))
-tf.image_summary("Previous Image",tf.expand_dims(previous_image,-1))
+tf.image_summary("Previous Image",tf.expand_dims(output_image_list[19],-1))
+tf.image_summary("Reconstructed Image", tf.expand_dims(output_image_list[20],-1))
+tf.image_summary("Target Image", target_image_list[20])
 merged = tf.merge_all_summaries()
-r_im = tf.image_summary("Reconstructed Image", tf.expand_dims(output_image_list[20],-1))
-t_im = tf.image_summary("Target Image", target_image_list[20])
 
 ######################################################################TRAIN AND EVALUATE MODEL############################################################
 def train_graph():
