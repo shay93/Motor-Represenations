@@ -332,6 +332,7 @@ image_loss_list = []
 #initialize the previous image to be an empty black image
 #compute l2 norm of target image
 target_image_norm_list = []
+output_image_before_sigmoid_list = []
 
 previous_image = tf.zeros([tf.shape(joint_angle_list[0])[0],64,64])
 with tf.variable_scope("jointangle2image") as scope:
@@ -340,6 +341,7 @@ with tf.variable_scope("jointangle2image") as scope:
 	entropy_loss_per_image = tf.reduce_mean(entropy_loss,[1,2])
 	image_loss_list.append(entropy_loss_per_image)
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
+	output_image_before_sigmoid_list.append(output_image_before_sigmoid)
 
 previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
 #now loop through the joint angle list at each timestep and pass this to the jointangle2image map to get the output image at each timestep
@@ -347,18 +349,17 @@ for i,joint_angle_state in enumerate(joint_angle_list[1:]):
 	#pass the joint_angle_state to the mapping
 	with tf.variable_scope("jointangle2image") as scope:
 		scope.reuse_variables()
-		output_image_before_sigmoid,_,_,_ = jointangle2image(joint_angle_state,previous_image)
-	entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i]))
+		output_image_before_sigmoid,_,_,_ = jointangle2image(joint_angle_state,output_image_before_sigmoid_list[i])
+	entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(output_image_before_sigmoid,tf.squeeze(target_image_list[i+1]))
 	entropy_loss_per_image = tf.reduce_mean(entropy_loss,[1,2])
 	#meansq_loss_per_image = tf.reduce_mean(tf.square(tf.nn.sigmoid(output_image_before_sigmoid) - tf.squeeze(target_image_list[i])))
+	output_image_before_sigmoid_list.append(output_image_before_sigmoid)
 	target_image_norm = tf.reduce_mean(tf.square(tf.squeeze(target_image_list[i])))
 	target_image_norm_list.append(target_image_norm)
 #	print "Entropy Loss",entropy_loss  #reduce each image in batch to a single value shape should be [None,64,64]
 	image_loss_list.append(entropy_loss_per_image)
 #should be computing loss for each image in the l
 	output_image_list.append(tf.nn.sigmoid(output_image_before_sigmoid))
-	#now set the previous image to be the current output image
-	previous_image = tf.nn.sigmoid(output_image_before_sigmoid)
 
 #create a dictionary of all nn parameters
 variable_names = ["W_conv_obs_1","W_conv_obs_2","W_conv_obs_3","W_conv_obs_4","W_conv_obs_5","b_conv_obs_1","b_conv_obs_2","b_conv_obs_3","b_conv_obs_4", "b_conv_obs_5","W_image_obs_fc1","b_image_obs_fc1","W_conv_output_1","W_conv_output_2","W_conv_output_3","W_conv_output_4","W_conv_output_5","b_conv_output_1","b_conv_output_2","b_conv_output_3","b_conv_output_4", "b_conv_output_5","W_image_output_fc1","b_image_output_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5","W_decode_obs_image","b_decode_obs_image"]
