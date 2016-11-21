@@ -36,7 +36,7 @@ output_arm_dof = 3
 OUTPUT_FEATURES = 3
 
 model_dir = "Joints_to_Image/tmp/model.cpkt"
-trainable_boolean = True
+trainable_boolean = False
 
 LEARNING_RATE = 1e-2
 REGULARIZATION_COEFFICIENT = 1e-4
