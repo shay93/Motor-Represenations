@@ -142,9 +142,9 @@ def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,t
 		#initiaize the biases
 		b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-2]]), trainable = trainable, name = "b_deconv")
 		#calculate the output from the deconvolution
-		deconv = tf.nn.conv2d_transpose(hidden_image,W_deconv1,output_shape,[1,1,1,1])
+		deconv = tf.nn.conv2d_transpose(x,W,output_shape,strides = strides)
 		#calculate the activations
-		h = tf.nn.relu(tf.nn.bias_add(deconv1,b_deconv1))
+		h = tf.nn.relu(tf.nn.bias_add(deconv,b))
 
 	return h,W,b
 
