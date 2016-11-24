@@ -148,25 +148,6 @@ def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,t
 
 	return h,W,b
 
-def input_image_to_joint_angle(x):
-	"""
-	Take in the two channel image with the first channel corresponding to the observed image at the first timestep and the second channel corresponding to the image at the second timestep
-	"""
-	h_conv1,W_conv1,b_conv1 = conv(x_image,[3,3,2,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_input")
-	#find the activations of the second conv layer
-	h_conv2,W_conv2,b_conv2 = conv(h_conv1,[3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_input")
-	#find the activations of the third conv layer
-	h_conv3,W_conv3,b_conv3 = conv(h_conv2,[3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_input")
-	#find the activations of the second conv layer
-	h_conv4,W_conv4,b_conv4 = conv(h_conv3,[3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_input")
-	#find the activations of the second conv layer
-	h_conv5,W_conv5,b_conv5 = conv(h_conv4,[3,3,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_input")
-	#flatten the activations in the final conv layer in order to obtain an output image
-	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*observed_image_encoder_parameters["conv5_kernels"]])
-	#pass flattened activations to a fully connected layer
-	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],DOF],"fc_layer_encode_output")
-	input_image_encoder_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
-	return h_fc1,input_image_encoder_variable_list
 
 def encode_previous_output_image(previous_output_image):
 	"""
@@ -191,7 +172,7 @@ def encode_previous_output_image(previous_output_image):
 	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],1024 - 56],"fc_layer_encode_output",trainable = False)
 	output_image_encoder_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
 
-	return h_fc1,image_encoder_variable_list 
+	return h_fc1,output_image_encoder_variable_list 
 
 def encode_joints(x_joints):
 	"""
