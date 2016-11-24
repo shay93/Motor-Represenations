@@ -13,14 +13,14 @@ BATCH_SIZE = 50
 EVAL_BATCH_SIZE = 5
 IMAGE_SIZE = 64
 VALIDATION_SIZE = 400
-EPOCHS = 7
+EPOCHS = 10
 ROOT_DIR = "Baseline_Seq2Seq_Outputs/"
 EVAL_FREQUENCY = 20
 NUM_SAMPLES = 3000
-EVAL_SIZE = 10
+EVAL_SIZE = 25
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
 DISPLAY_SIZE = 6
-SUMMARY_DIR = "/tmp/summary_logs_LR1e-2_RC1e-4_trainable"
+SUMMARY_DIR = "/tmp/summary_logs_LR1e-3_RC1e-4_longerrun"
 DOF = 3
 CONV_KERNELS_1 = 64
 CONV_KERNELS_2 = 32
@@ -38,7 +38,7 @@ OUTPUT_FEATURES = 3
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 trainable_boolean = False
 
-LEARNING_RATE = 1e-2
+LEARNING_RATE = 1e-3
 REGULARIZATION_COEFFICIENT = 1e-4
 
 
@@ -428,8 +428,8 @@ def train_graph():
 				feed_dict = {x : time_varying_image_batch, y_ : time_varying_image_batch, binary_loss_tensor : binary_loss_batch}
 
 				#run the graph
-				_, l,t,merged_summary,tar_im,re_im = sess.run(
-					[train_op,loss,average_target_image_norm,merged,t_im,r_im],
+				_, l,t,merged_summary= sess.run(
+					[train_op,loss,average_target_image_norm,merged],
 					feed_dict=feed_dict)
 				
 				training_loss_array[step] = l
@@ -437,9 +437,9 @@ def train_graph():
 				if step % 5 == 0:
 					train_writer.add_summary(merged_summary,step)
 					print step,l,"Target L2 Norm",t
-				if step % 50 == 0:
-					train_writer.add_summary(tar_im,step)
-					train_writer.add_summary(re_im,step)				
+			#	if step % 50 == 0:
+					#train_writer.add_summary(tar_im,step)
+					#train_writer.add_summary(re_im,step)				
 
 			predictions,test_loss_array = eval_in_batches(sess)
 		return predictions,training_loss_array,test_loss_array
