@@ -47,6 +47,14 @@ DISPLAY = False
 KEEP_PROB = 1.0
 LAMBDA = 1e-3
 
+############################DEFINE PARAMETERS FOR JOINT TO SEQ MAP#######################################
+
+observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
+joint_encoder_parameters = {"fc_1" : 200 , "fc_2" : 56}
+output_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
+output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4}
+
+
 ##########################HELPER FUNCTION#########################
 def regularizer(tensor):
 	# with tf.op_scope([tensor], scope, 'L2Regularizer'):
@@ -83,71 +91,118 @@ joint_state_array_eval = joint_state_array[:EVAL_SIZE,...]
 target_image_array_eval = target_image_array[:EVAL_SIZE,...]
 input_image_array_eval = input_image_array[:EVAL_SIZE,...]
 
-def encode_input_image(x_image):
+def conv(x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables = False):
+	"""
+	x should be the 4d tensor which is being convolved
+	weight shape should be a list of the form [Kernel Width, Kernel Width, input channels, output channels]
+	scope should be string specifying the scope of the variables in question
+	"""
+
+	with tf.variable_scope(scope) as scope:
+		if reuse_variables:
+			scope.reuse_variables()
+		#initialize the weights for the convolutional layer
+		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev, trainable = trainable, name = "W_conv1"))
+		#initiaize the biases
+		b = tf.Variable(tf.constant(0.1,shape = weight_shape[-1]), trainable = trainable, name = "b_conv1")
+		#calculate the output from the convolution 
+		conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
+		#compute the activations
+		h = tf.nn.relu(tf.nn.bias_add(conv,b))
+
+	return h,W,b
+
+
+def fc_layer(x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variables = False):
+	"""
+	Compute the activations of the fc layer
+	"""
+	with tf.variable_scope(scope) as scope:
+		if reuse_variables:
+			scope.reuse_variables()
+	
+		#initialize the weights for the convolutional layer
+		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_fc")
+		#initiaize the biases
+		b = tf.Variable(tf.constant(0.,shape = weight_shape[-1]), trainable = trainable, name = "b_fc")
+		#calculate biases
+		h = tf.nn.relu(tf.matmul(x,W) + b)
+
+	return h,W,b 
+
+def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False):
+	"""
+	generalizable deconv function
+	"""
+	with tf.variable_scope(scope) as scope:
+		if reuse_variables:
+			scope.reuse_variables()
+		#initialize the weights for the convolutional layer
+		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev, trainable = trainable, name = "W_deconv"))
+		#initiaize the biases
+		b = tf.Variable(tf.constant(0.1,shape = weight_shape[-2]), trainable = trainable, name = "b_deconv")
+		#calculate the output from the deconvolution
+		deconv = tf.nn.conv2d_transpose(hidden_image,W_deconv1,output_shape,[1,1,1,1])
+		#calculate the activations
+		h = tf.nn.relu(tf.nn.bias_add(deconv1,b_deconv1))
+
+	return h,W,b
+
+def input_image_to_joint_angle(x):
+	"""
+	Take in the two channel image with the first channel corresponding to the observed image at the first timestep and the second channel corresponding to the image at the second timestep
+	"""
+	h_conv1,W_conv1,b_conv1 = conv(x_image,[3,3,2,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_input")
+	#find the activations of the second conv layer
+	h_conv2,W_conv2,b_conv2 = conv(h_conv1,[3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_input")
+	#find the activations of the third conv layer
+	h_conv3,W_conv3,b_conv3 = conv(h_conv2,[3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_input")
+	#find the activations of the second conv layer
+	h_conv4,W_conv4,b_conv4 = conv(h_conv3,[3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_input")
+	#find the activations of the second conv layer
+	h_conv5,W_conv5,b_conv5 = conv(h_conv4,[3,3,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_input")
+	#flatten the activations in the final conv layer in order to obtain an output image
+	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*observed_image_encoder_parameters["conv5_kernels"]])
+	#pass flattened activations to a fully connected layer
+	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],DOF],"fc_layer_encode_output")
+	input_image_encoder_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
+	return h_fc1,input_image_encoder_variable_list
+
+def encode_previous_output_image(previous_output_image):
 	"""
 	Takes an input placeholder for an image
 	"""
-	#define a place holder for the outputs
-	x_image = tf.expand_dims(x_image, -1)
-	W_conv1 = tf.Variable(tf.truncated_normal([3,3,1,CONV_KERNELS_1],stddev = 0.1), name = "W_conv1")
-	b_conv1 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_1]), name = "b_conv1")
-	conv1 = tf.nn.conv2d(x_image,W_conv1,strides = [1,2,2,1],padding = 'SAME')
-	h_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))
-		
-	#define parameters for the second convolutional layer
-	W_conv2 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_1,CONV_KERNELS_2],stddev = 0.1), name = "W_conv2")
-	b_conv2 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_2]),name = "b_conv2")
-	conv2 = tf.nn.conv2d(h_conv1,W_conv2,strides = [1,2,2,1],padding = 'SAME')
-	h_conv2 = tf.nn.relu(tf.nn.bias_add(conv2,b_conv2))
 
-	#define a third convolutional layer
-	W_conv3 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_2,CONV_KERNELS_3],stddev = 0.1), name = "W_conv3")
-	b_conv3 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_3]), name = "b_conv3")
-	conv3 = tf.nn.conv2d(h_conv2,W_conv3,strides = [1,2,2,1],padding = 'SAME')
-	h_conv3 = tf.nn.relu(tf.nn.bias_add(conv3,b_conv3))
+	#expand the dimensionality of the input image
+	x_image = tf.expand_dims(previous_output_image, -1)
+	#find the activations of the first conv layer
+	h_conv1,W_conv1,b_conv1 = conv(x_image,[3,3,1,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_output",trainable = False)
+	#find the activations of the second conv layer
+	h_conv2,W_conv2,b_conv2 = conv(h_conv1,[3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_output",trainable = False)
+	#find the activations of the third conv layer
+	h_conv3,W_conv3,b_conv3 = conv(h_conv2,[3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_output",trainable = False)
+	#find the activations of the second conv layer
+	h_conv4,W_conv4,b_conv4 = conv(h_conv3,[3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_output",trainable = False)
+	#find the activations of the second conv layer
+	h_conv5,W_conv5,b_conv5 = conv(h_conv4,[3,3,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_output",trainable = False)
+	#flatten the activations in the final conv layer in order to obtain an output image
+	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*observed_image_encoder_parameters["conv5_kernels"]])
+	#pass flattened activations to a fully connected layer
+	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],1024 - 56],"fc_layer_encode_output",trainable = False)
+	output_image_encoder_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
 
-	#Add another convolutional layer
-	W_conv4 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_3,CONV_KERNELS_4],stddev = 0.1), name = "W_conv4")
-	b_conv4 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_4]), name = "b_conv4")
-	conv4 = tf.nn.conv2d(h_conv3,W_conv4,strides = [1,2,2,1],padding = 'SAME')
-	h_conv4 = tf.nn.relu(tf.nn.bias_add(conv4,b_conv4))
-
-	#Add an additonal conv layer
-	W_conv5 = tf.Variable(tf.truncated_normal([2,2,CONV_KERNELS_4,CONV_KERNELS_5],stddev = 0.1), name = "W_conv5")
-	b_conv5 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_5]), name = "b_conv5")
-	conv5 = tf.nn.conv2d(h_conv4,W_conv5,strides = [1,2,2,1],padding = 'SAME')
-	h_conv5 = tf.nn.relu(tf.nn.bias_add(conv5,b_conv5))
-	print h_conv5	
-
-	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*CONV_KERNELS_5])
-
-	
-	#define parameters for full connected layer
-	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*CONV_KERNELS_5,FC_UNITS_IMAGE],stddev = 0.1), name = "W_image_fc1") 
-	b_fc1 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_IMAGE]), name = "b_image_fc1") 
-	h_fc1 = tf.nn.relu(tf.matmul(h_conv5_reshape, W_fc1) + b_fc1)
-
-	image_encode_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
-	image_weights = [W_conv1,W_conv2,W_conv3]
-	return h_fc1,image_encode_variable_list,image_weights
+	return h_fc1,image_encoder_variable_list 
 
 def encode_joints(x_joints):
 	"""
 	Takes joint states and encodes them in order to generate an image
 	"""
-	#define a fully connected layer
-	W_fc1 = tf.Variable(tf.truncated_normal(shape = [DOF,FC_UNITS_JOINTS_1],stddev = 0.1), name = "W_joints_fc1")
-	b_fc1 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_JOINTS_1]), name = "b_joints_fc1")
-	h_fc1 = tf.nn.relu(tf.matmul(x_joints,W_fc1) + b_fc1)
-	#now pass through second fully connected layer
-	W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_UNITS_JOINTS_1, FC_UNITS_JOINTS_FINAL],stddev = 0.1), name = "W_joints_fc2")
-	b_fc2 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_JOINTS_FINAL]), name = "b_joints_fc2")
-	h_fc2 = tf.nn.relu(tf.matmul(h_fc1,W_fc2) + b_fc2)
-
+	h_fc1,W_fc1,b_fc1 = fc_layer(x_joints,[DOF,joint_encoder_parameters["fc_1"]],"fc_joint_encoder_1",trainable = False)
+	#pass the activations to a second fc layer
+	h_fc2,W_fc2,b_fc2 = fc_layer(h_fc1,[joint_encoder_parameters["fc_1"], joint_encoder_parameters["fc_2"]],"fc_joint_encoder_2",trainable = False)
 	joint_encoder_variable_list = [W_fc1,b_fc1,W_fc2,b_fc2]
-	joint_weights = [W_fc1]
-	
-	return h_fc2,joint_encoder_variable_list,joint_weights
+
+	return h_fc2,joint_encoder_variable_list
 
 
 def decode_outputs(hidden_vector):
@@ -155,77 +210,62 @@ def decode_outputs(hidden_vector):
 	Take in a tensor of size [None, FC_UNITS_JOINTS + FC_UNITS_IMAGE]
 	and generate an image of size [None,64,64,1], do this via 
 	"""	
-	#Assume FC_UNITS_JOINTS + FC_UNITS_IMAGE is 256
-	#then reshape tensor from 2d to 4d to be compatible with deconvoh_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))lution
+	#find the batch size of the input data in order to use later
 	batch_size = tf.shape(hidden_vector)[0]
+	#reshape the hidden activation vector into a 4d image that can be deconvolved to form an image
 	hidden_image = tf.reshape(hidden_vector, shape = [batch_size,4,4,64])
-	
-	W_deconv1 = tf.Variable(tf.truncated_normal([2,2,DECONV_OUTPUT_CHANNELS_1,64]), name = "W_deconv_1")
-	b_deconv1 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_1]), name = "b_deconv1")
-	deconv1 = tf.nn.conv2d_transpose(hidden_image,W_deconv1,[batch_size,4,4,DECONV_OUTPUT_CHANNELS_1],[1,1,1,1])
-	h_deconv1 = tf.nn.relu(tf.nn.bias_add(deconv1,b_deconv1))
-
-	W_deconv2 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_2,DECONV_OUTPUT_CHANNELS_1]), name = "W_deconv_2")
-	b_deconv2 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_2]), name = "b_deconv2")
-	deconv2 = tf.nn.conv2d_transpose(h_deconv1,W_deconv2,[batch_size,8,8,DECONV_OUTPUT_CHANNELS_2],[1,2,2,1])
-	h_deconv2 = tf.nn.relu(tf.nn.bias_add(deconv2,b_deconv2))
-
-	W_deconv3 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_3,DECONV_OUTPUT_CHANNELS_2]), name = "W_deconv_3")
-	b_deconv3 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_3]), name = "b_deconv3")
-	deconv3 = tf.nn.conv2d_transpose(h_deconv2,W_deconv3,[batch_size,16,16,DECONV_OUTPUT_CHANNELS_3],[1,2,2,1])
-	h_deconv3 = tf.nn.relu(tf.nn.bias_add(deconv3,b_deconv3))
-
-	W_deconv4 = tf.Variable(tf.truncated_normal([3,3,DECONV_OUTPUT_CHANNELS_4,DECONV_OUTPUT_CHANNELS_3]), name = "W_deconv_4")
-	b_deconv4 = tf.Variable(tf.constant(0.1, shape = [DECONV_OUTPUT_CHANNELS_4]), name = "b_deconv4")
-	deconv4 = tf.nn.conv2d_transpose(h_deconv3,W_deconv4,[batch_size,32,32,DECONV_OUTPUT_CHANNELS_4],[1,2,2,1])
-	h_deconv4 = tf.nn.relu(tf.nn.bias_add(deconv4,b_deconv4))
-
-	W_deconv5 = tf.Variable(tf.truncated_normal([3,3,1,DECONV_OUTPUT_CHANNELS_4], stddev = 0.1), name = "W_deconv_5")
-	b_deconv5 = tf.Variable(tf.constant(0.1, shape = [1]), name = "b_deconv5")
-	deconv5 = tf.nn.conv2d_transpose(h_deconv4,W_deconv5,[batch_size,64,64,1],[1,2,2,1])
-
-	h_deconv5 = tf.nn.bias_add(deconv5,b_deconv5)
-
+	#calculate activations for the first deconv layer
+	h_deconv1,W_deconv1,b_deconv1 = deconv(hidden_image,[2,2,output_image_decoder_parameters['deconv_output_channels_1'],64],[batch_size,4,4,output_image_decoder_parameters['deconv_output_channels_1']],"Deconv1",strides = [1,1,1,1])
+	#calculate activations for second deconv layer
+	h_deconv2,W_deconv2,b_deconv2 = deconv(h_deconv1,[3,3,output_image_decoder_parameters['deconv_output_channels_2'],output_image_decoder_parameters['deconv_output_channels_1']],[batch_size,8,8,output_image_decoder_parameters['deconv_output_channels_2']],"Deconv2")
+	#calculate activations for third deconv layer
+	h_deconv3,W_deconv3,b_deconv3 = deconv(h_deconv2,[3,3,output_image_decoder_parameters['deconv_output_channels_3'],output_image_decoder_parameters['deconv_output_channels_2']],[batch_size,16,16,output_image_decoder_parameters['deconv_output_channels_3']],"Deconv3")
+	#calculate activations for fourth deconv layer
+	h_deconv4,W_deconv4,b_deconv4 = deconv(h_deconv3,[3,3,output_image_decoder_parameters['deconv_output_channels_4'],output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,32,32,output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4")
+	#calculate activations for fifth deconv layer
+	h_deconv5,W_deconv5,b_deconv5 = deconv(h_deconv3,[3,3,output_image_decoder_parameters['deconv_output_channels_5'],output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5")
 	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
-	decoder_weights = [W_deconv3,W_deconv4,W_deconv5]
 
-	return tf.squeeze(h_deconv5),decoder_variable_list,decoder_weights
+	return tf.squeeze(h_deconv5),decoder_variable_list
 
+
+def jointangle2image(joint_angle,previous_image):
+	"""
+	Calls on the respective decoder and encoders in order to map a joint angle state to an output image joint_angle and previous image are both tensors
+	"""
+	encoded_joint_angle,joint_encoder_variable_list = encode_joints(joint_angle)
+	previous_image_encoded,image_encode_variable_list = encode_previous_output_image(previous_image)
+	#now concatenate to obtain encoded vector
+	encoded_vector = tf.concat(1,[encoded_joint_angle,previous_image_encoded])
+	#pass to a decoder in order to get the output
+	y_before_sigmoid,decoder_variable_list = decode_outputs(encoded_vector)
+	return y_before_sigmoid,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list
 
 
 x_image = tf.placeholder(tf.float32,shape = [None,64,64])
 x_joint = tf.placeholder(tf.float32,shape = [None,DOF])
 y_ = tf.placeholder(tf.float32,shape = [None,64,64])
 
-#get the encoded values for the joint angles as well as the images
-with tf.variable_scope("jointangle2image") as scope:
-	encoded_image,image_encode_variable_list,image_weights = encode_input_image(x_image)
-	encoded_joints, joint_encoder_variable_list,joint_weights = encode_joints(x_joint)
-	#now concatenate the two encoded vectors to get a single vector that may be decoded to an output image
-	h_encoded = tf.concat(1,[encoded_image,encoded_joints])
-	#h_encoded_dropped = tf.nn.dropout(h_encoded,KEEP_PROB)
-	#decode to get image
-	y_before_sigmoid,decoder_variable_list,decoder_weights = decode_outputs(h_encoded)
+#pass the input image and joint angle tensor to jointangle2image to get y_before_sigmoid
+y_before_sigmoid,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list = jointangle2image(x_joint,x_image)
 #apply sigmoid to get y
 y = tf.nn.sigmoid(y_before_sigmoid)
-#get the regularaization term
-weight_norm_sum = 0
-for weight in image_weights + joint_weights + decoder_weights:
-	weight_norm_sum += regularizer(weight)
-#now define a loss between y and the target image
-#try cross entropy loss
-#-tf.reduce_mean(tf.mul(y_,tf.log(y+1e-10)) + tf.mul(1.-y_,tf.log(1.-y + 1e-10)))
-loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,y_)) + LAMBDA*weight_norm_sum
+#define the loss op using the y before sigmoid and in the cross entropy sense
+loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,y_))
+#add a summary node to record the los
+tf.scalar_summary("loss summary",loss)
+#define the optimizer with the specified learning rate
 opt = tf.train.AdamOptimizer(learning_rate)
 variable_names = ["W_conv1","W_conv2","W_conv3","W_conv4","W_conv5","b_conv1","b_conv2","b_conv3","b_conv4", "b_conv5","W_image_fc1","b_image_fc1","W_joint_fc1","b_joint_fc1","W_joint_fc2","b_joint_fc2","W_deconv1","W_deconv2","W_deconv3","W_deconv4","W_deconv5","b_deconv1","b_deconv2","b_deconv3","b_deconv4","b_deconv5"]
-grads_and_vars = opt.compute_gradients(loss, image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
-summary_nodes = [tf.histogram_summary(variable_names[i],gv[0]) for i,gv in enumerate(grads_and_vars)]
+grads_and_vars = opt.compute_gradients(loss, joint_encoder_variable_list + image_encode_variable_list + decoder_variable_list)
+gradient_summary_nodes = [tf.histogram_summary(variable_names[i] + "_gradients",gv[0]) for i,gv in enumerate(grads_and_vars)]
+var_summary_nodes = [tf.histogram_summary(variable_names[i],gv[1]) for i,gv in enumerate(grads_and_vars)]
 merged = tf.merge_all_summaries()
 train_op = opt.apply_gradients(grads_and_vars)
 #define an op to initialize variables
 init_op = tf.initialize_all_variables()
 # Add ops to save and restore all the variables.
-saver = tf.train.Saver(image_encode_variable_list + joint_encoder_variable_list + decoder_variable_list)
+saver = tf.train.Saver(joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list)
 
 def train_graph():
 		"""
