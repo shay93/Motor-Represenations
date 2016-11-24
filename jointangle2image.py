@@ -33,10 +33,10 @@ FC_UNITS_IMAGE = 1024 - FC_UNITS_JOINTS_FINAL
 NUM_SAMPLES = 50000
 IMAGE_SIZE = 64
 BATCH_SIZE = 3000
-learning_rate = 1e-2
+learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 200
-EPOCHS = 300
+EPOCHS = 3000
 EVAL_SIZE = 400
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
 ROOT_DIR = "Joints_to_Image/"
@@ -71,6 +71,9 @@ def load_data(num):
 
 
 joint_state_array,target_image_array,input_image_array = load_data(NUM_SAMPLES)
+print "Joint State Array Shape",np.shape(joint_state_array)
+print "Tareget Image Array Shape",np.shape(target_image_array)
+print "Input Image Array Shape",np.shape(input_image_array)
 #split this data into a training and validation set
 joint_state_array_train = joint_state_array[EVAL_SIZE:,...]
 target_image_array_train = target_image_array[EVAL_SIZE:,...]
@@ -86,31 +89,31 @@ def encode_input_image(x_image):
 	"""
 	#define a place holder for the outputs
 	x_image = tf.expand_dims(x_image, -1)
-	W_conv1 = tf.Variable(tf.truncated_normal([3,3,1,CONV_KERNELS_1]), name = "W_conv1")
+	W_conv1 = tf.Variable(tf.truncated_normal([3,3,1,CONV_KERNELS_1],stddev = 0.1), name = "W_conv1")
 	b_conv1 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_1]), name = "b_conv1")
 	conv1 = tf.nn.conv2d(x_image,W_conv1,strides = [1,2,2,1],padding = 'SAME')
 	h_conv1 = tf.nn.relu(tf.nn.bias_add(conv1,b_conv1))
 		
 	#define parameters for the second convolutional layer
-	W_conv2 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_1,CONV_KERNELS_2]), name = "W_conv2")
+	W_conv2 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_1,CONV_KERNELS_2],stddev = 0.1), name = "W_conv2")
 	b_conv2 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_2]),name = "b_conv2")
 	conv2 = tf.nn.conv2d(h_conv1,W_conv2,strides = [1,2,2,1],padding = 'SAME')
 	h_conv2 = tf.nn.relu(tf.nn.bias_add(conv2,b_conv2))
 
 	#define a third convolutional layer
-	W_conv3 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_2,CONV_KERNELS_3]), name = "W_conv3")
+	W_conv3 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_2,CONV_KERNELS_3],stddev = 0.1), name = "W_conv3")
 	b_conv3 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_3]), name = "b_conv3")
 	conv3 = tf.nn.conv2d(h_conv2,W_conv3,strides = [1,2,2,1],padding = 'SAME')
 	h_conv3 = tf.nn.relu(tf.nn.bias_add(conv3,b_conv3))
 
 	#Add another convolutional layer
-	W_conv4 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_3,CONV_KERNELS_4]), name = "W_conv4")
+	W_conv4 = tf.Variable(tf.truncated_normal([3,3,CONV_KERNELS_3,CONV_KERNELS_4],stddev = 0.1), name = "W_conv4")
 	b_conv4 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_4]), name = "b_conv4")
 	conv4 = tf.nn.conv2d(h_conv3,W_conv4,strides = [1,2,2,1],padding = 'SAME')
 	h_conv4 = tf.nn.relu(tf.nn.bias_add(conv4,b_conv4))
 
 	#Add an additonal conv layer
-	W_conv5 = tf.Variable(tf.truncated_normal([2,2,CONV_KERNELS_4,CONV_KERNELS_5]), name = "W_conv5")
+	W_conv5 = tf.Variable(tf.truncated_normal([2,2,CONV_KERNELS_4,CONV_KERNELS_5],stddev = 0.1), name = "W_conv5")
 	b_conv5 = tf.Variable(tf.constant(0.1,shape = [CONV_KERNELS_5]), name = "b_conv5")
 	conv5 = tf.nn.conv2d(h_conv4,W_conv5,strides = [1,2,2,1],padding = 'SAME')
 	h_conv5 = tf.nn.relu(tf.nn.bias_add(conv5,b_conv5))
@@ -120,7 +123,7 @@ def encode_input_image(x_image):
 
 	
 	#define parameters for full connected layer
-	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*CONV_KERNELS_5,FC_UNITS_IMAGE]), name = "W_image_fc1") 
+	W_fc1 = tf.Variable(tf.truncated_normal(shape = [4*CONV_KERNELS_5,FC_UNITS_IMAGE],stddev = 0.1), name = "W_image_fc1") 
 	b_fc1 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_IMAGE]), name = "b_image_fc1") 
 	h_fc1 = tf.nn.relu(tf.matmul(h_conv5_reshape, W_fc1) + b_fc1)
 
@@ -133,11 +136,11 @@ def encode_joints(x_joints):
 	Takes joint states and encodes them in order to generate an image
 	"""
 	#define a fully connected layer
-	W_fc1 = tf.Variable(tf.truncated_normal(shape = [DOF,FC_UNITS_JOINTS_1]), name = "W_joints_fc1")
+	W_fc1 = tf.Variable(tf.truncated_normal(shape = [DOF,FC_UNITS_JOINTS_1],stddev = 0.1), name = "W_joints_fc1")
 	b_fc1 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_JOINTS_1]), name = "b_joints_fc1")
 	h_fc1 = tf.nn.relu(tf.matmul(x_joints,W_fc1) + b_fc1)
 	#now pass through second fully connected layer
-	W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_UNITS_JOINTS_1, FC_UNITS_JOINTS_FINAL]), name = "W_joints_fc2")
+	W_fc2 = tf.Variable(tf.truncated_normal(shape = [FC_UNITS_JOINTS_1, FC_UNITS_JOINTS_FINAL],stddev = 0.1), name = "W_joints_fc2")
 	b_fc2 = tf.Variable(tf.constant(0.,shape = [FC_UNITS_JOINTS_FINAL]), name = "b_joints_fc2")
 	h_fc2 = tf.nn.relu(tf.matmul(h_fc1,W_fc2) + b_fc2)
 
