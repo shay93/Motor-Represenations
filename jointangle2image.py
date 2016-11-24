@@ -102,9 +102,9 @@ def conv(x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables =
 		if reuse_variables:
 			scope.reuse_variables()
 		#initialize the weights for the convolutional layer
-		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev, trainable = trainable, name = "W_conv1"))
+		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_conv1")
 		#initiaize the biases
-		b = tf.Variable(tf.constant(0.1,shape = weight_shape[-1]), trainable = trainable, name = "b_conv1")
+		b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-1]]), trainable = trainable, name = "b_conv1")
 		#calculate the output from the convolution 
 		conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
 		#compute the activations
@@ -124,7 +124,7 @@ def fc_layer(x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variable
 		#initialize the weights for the convolutional layer
 		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_fc")
 		#initiaize the biases
-		b = tf.Variable(tf.constant(0.,shape = weight_shape[-1]), trainable = trainable, name = "b_fc")
+		b = tf.Variable(tf.constant(0.,shape = [weight_shape[-1]]), trainable = trainable, name = "b_fc")
 		#calculate biases
 		h = tf.nn.relu(tf.matmul(x,W) + b)
 
@@ -138,9 +138,9 @@ def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,t
 		if reuse_variables:
 			scope.reuse_variables()
 		#initialize the weights for the convolutional layer
-		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev, trainable = trainable, name = "W_deconv"))
+		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_deconv")
 		#initiaize the biases
-		b = tf.Variable(tf.constant(0.1,shape = weight_shape[-2]), trainable = trainable, name = "b_deconv")
+		b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-2]]), trainable = trainable, name = "b_deconv")
 		#calculate the output from the deconvolution
 		deconv = tf.nn.conv2d_transpose(hidden_image,W_deconv1,output_shape,[1,1,1,1])
 		#calculate the activations
