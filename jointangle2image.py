@@ -117,7 +117,7 @@ def fc_layer(x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variable
 
 	return h,W,b 
 
-def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False):
+def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False,non_linearity = True):
 	"""
 	generalizable deconv function
 	"""
@@ -131,7 +131,10 @@ def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,t
 		#calculate the output from the deconvolution
 		deconv = tf.nn.conv2d_transpose(x,W,output_shape,strides = strides)
 		#calculate the activations
-		h = tf.nn.relu(tf.nn.bias_add(deconv,b))
+		if non_linearity:
+			h = tf.nn.relu(tf.nn.bias_add(deconv,b))
+		else:
+			h = tf.nn.bias_add(deconv,b)
 
 	return h,W,b
 
