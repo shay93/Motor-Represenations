@@ -15,7 +15,7 @@ link_length = 30
 #model globals
 
 #Parameters for Image encoder
-FC_UNITS_IMAGE = 1024 - FC_UNITS_JOINTS_FINAL
+FC_UNITS_IMAGE = 1024 - 56
 #model globals
 NUM_SAMPLES = 5000
 IMAGE_SIZE = 64
