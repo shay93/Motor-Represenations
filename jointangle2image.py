@@ -13,19 +13,6 @@ DOF = 3
 GAUSS_STD = 2.5
 link_length = 30
 #model globals
-CONV_KERNELS_1 = 64
-CONV_KERNELS_2 = 32
-CONV_KERNELS_3 = 16
-CONV_KERNELS_4 = 8
-CONV_KERNELS_5 = 4
-DECONV_OUTPUT_CHANNELS_1 = 32
-DECONV_OUTPUT_CHANNELS_2 = 16
-DECONV_OUTPUT_CHANNELS_3 = 8
-DECONV_OUTPUT_CHANNELS_4 = 4
-
-##Parameters for Joint encoder
-FC_UNITS_JOINTS_1 = 200
-FC_UNITS_JOINTS_FINAL = 56
 
 #Parameters for Image encoder
 FC_UNITS_IMAGE = 1024 - FC_UNITS_JOINTS_FINAL
@@ -157,19 +144,19 @@ def encode_previous_output_image(previous_output_image):
 	#expand the dimensionality of the input image
 	x_image = tf.expand_dims(previous_output_image, -1)
 	#find the activations of the first conv layer
-	h_conv1,W_conv1,b_conv1 = conv(x_image,[3,3,1,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_output",trainable = False)
+	h_conv1,W_conv1,b_conv1 = conv(x_image,[3,3,1,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_output",trainable = True)
 	#find the activations of the second conv layer
-	h_conv2,W_conv2,b_conv2 = conv(h_conv1,[3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_output",trainable = False)
+	h_conv2,W_conv2,b_conv2 = conv(h_conv1,[3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_output",trainable = True)
 	#find the activations of the third conv layer
-	h_conv3,W_conv3,b_conv3 = conv(h_conv2,[3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_output",trainable = False)
+	h_conv3,W_conv3,b_conv3 = conv(h_conv2,[3,3,observed_image_encoder_parameters["conv2_kernels"],observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_output",trainable = True)
 	#find the activations of the second conv layer
-	h_conv4,W_conv4,b_conv4 = conv(h_conv3,[3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_output",trainable = False)
+	h_conv4,W_conv4,b_conv4 = conv(h_conv3,[3,3,observed_image_encoder_parameters["conv3_kernels"],observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_output",trainable = True)
 	#find the activations of the second conv layer
-	h_conv5,W_conv5,b_conv5 = conv(h_conv4,[3,3,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_output",trainable = False)
+	h_conv5,W_conv5,b_conv5 = conv(h_conv4,[3,3,observed_image_encoder_parameters["conv4_kernels"],observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_output",trainable = True)
 	#flatten the activations in the final conv layer in order to obtain an output image
 	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*observed_image_encoder_parameters["conv5_kernels"]])
 	#pass flattened activations to a fully connected layer
-	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],1024 - 56],"fc_layer_encode_output",trainable = False)
+	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],1024 - 56],"fc_layer_encode_output",trainable = True)
 	output_image_encoder_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
 
 	return h_fc1,output_image_encoder_variable_list 
@@ -178,9 +165,9 @@ def encode_joints(x_joints):
 	"""
 	Takes joint states and encodes them in order to generate an image
 	"""
-	h_fc1,W_fc1,b_fc1 = fc_layer(x_joints,[DOF,joint_encoder_parameters["fc_1"]],"fc_joint_encoder_1",trainable = False)
+	h_fc1,W_fc1,b_fc1 = fc_layer(x_joints,[DOF,joint_encoder_parameters["fc_1"]],"fc_joint_encoder_1",trainable = True)
 	#pass the activations to a second fc layer
-	h_fc2,W_fc2,b_fc2 = fc_layer(h_fc1,[joint_encoder_parameters["fc_1"], joint_encoder_parameters["fc_2"]],"fc_joint_encoder_2",trainable = False)
+	h_fc2,W_fc2,b_fc2 = fc_layer(h_fc1,[joint_encoder_parameters["fc_1"], joint_encoder_parameters["fc_2"]],"fc_joint_encoder_2",trainable = True)
 	joint_encoder_variable_list = [W_fc1,b_fc1,W_fc2,b_fc2]
 
 	return h_fc2,joint_encoder_variable_list
@@ -272,8 +259,8 @@ def train_graph():
 				#compute the offset of the current minibatch in the data
 				offset = (step * BATCH_SIZE) % (TRAIN_SIZE)
 				joint_batch = joint_state_array_train[offset:(offset + BATCH_SIZE),...]
-				input_image_batch = target_image_array_train[offset:(offset + BATCH_SIZE),...]
-				target_image_batch = input_image_array_train[offset:(offset + BATCH_SIZE),...]
+				input_image_batch = input_image_array_train[offset:(offset + BATCH_SIZE),...]
+				target_image_batch = target_image_array_train[offset:(offset + BATCH_SIZE),...]
 				feed_dict = { x_joint: joint_batch, x_image : input_image_batch, y_ : target_image_batch}
 
 				#run the graph
