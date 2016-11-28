@@ -15,11 +15,11 @@ link_length = 30
 #model globals
 
 #Parameters for Image encoder
-FC_UNITS_IMAGE = 1024 - FC_UNITS_JOINTS_FINAL
+FC_UNITS_IMAGE = 1024 - 56
 #model globals
-NUM_SAMPLES = 500
+NUM_SAMPLES = 5000
 IMAGE_SIZE = 64
-BATCH_SIZE = 300
+BATCH_SIZE = 1000
 learning_rate = 1e-3
 display_num = 10
 EVAL_BATCH_SIZE = 200
@@ -191,7 +191,7 @@ def decode_outputs(hidden_vector):
 	#calculate activations for fourth deconv layer
 	h_deconv4,W_deconv4,b_deconv4 = deconv(h_deconv3,[3,3,output_image_decoder_parameters['deconv_output_channels_4'],output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,32,32,output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4")
 	#calculate activations for fifth deconv layer
-	h_deconv5,W_deconv5,b_deconv5 = deconv(h_deconv3,[3,3,output_image_decoder_parameters['deconv_output_channels_5'],output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5")
+	h_deconv5,W_deconv5,b_deconv5 = deconv(h_deconv4,[3,3,output_image_decoder_parameters['deconv_output_channels_5'],output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5")
 	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
 
 	return tf.squeeze(h_deconv5),decoder_variable_list
@@ -257,7 +257,7 @@ def train_graph():
 			training_loss_array = [0] * (int(EPOCHS * TRAIN_SIZE) // BATCH_SIZE)
 			for step in xrange(int(EPOCHS * TRAIN_SIZE) // BATCH_SIZE):
 				#compute the offset of the current minibatch in the data
-				offset = (step * BATCH_SIZE) % (TRAIN_SIZE - BATCH_SIZE)
+				offset = (step * BATCH_SIZE) % (TRAIN_SIZE)
 				joint_batch = joint_state_array_train[offset:(offset + BATCH_SIZE),...]
 				input_image_batch = input_image_array_train[offset:(offset + BATCH_SIZE),...]
 				target_image_batch = target_image_array_train[offset:(offset + BATCH_SIZE),...]
