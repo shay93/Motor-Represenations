@@ -36,10 +36,10 @@ LAMBDA = 1e-3
 
 ############################DEFINE PARAMETERS FOR JOINT TO SEQ MAP#######################################
 
-observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
+observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4}
 joint_encoder_parameters = {"fc_1" : 200 , "fc_2" : 56}
-output_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
-output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4, "deconv_output_channels_5" : 1}
+#output_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
+#output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4, "deconv_output_channels_5" : 1}
 
 
 ##########################HELPER FUNCTION#########################
@@ -89,9 +89,9 @@ def conv(x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables =
 		if reuse_variables:
 			scope.reuse_variables()
 		#initialize the weights for the convolutional layer
-		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_conv1")
+		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_conv")
 		#initiaize the biases
-		b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-1]]), trainable = trainable, name = "b_conv1")
+		b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-1]]), trainable = trainable, name = "b_conv")
 		#calculate the output from the convolution 
 		conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
 		#compute the activations
