@@ -18,7 +18,7 @@ FC_UNITS_IMAGE = 1024 - 56
 NUM_SAMPLES = 5000
 IMAGE_SIZE = 64
 BATCH_SIZE = 1000
-learning_rate = 1e-3
+learning_rate = 1e-4
 EVAL_BATCH_SIZE = 200
 EPOCHS = 3000
 EVAL_SIZE = 200
@@ -328,9 +328,9 @@ def eval_in_batches(sess):
 			end = begin + EVAL_BATCH_SIZE
 			
 			if end <= size:
-				predictions[begin:end, ...],l = sess.run([y,loss],feed_dict={x_1 : x_1_image_array_eval[begin:end, ...], x_2 : x_2_image_array_eval[begin:end, ...]})
+				predictions[begin:end, ...],l = sess.run([y,loss],feed_dict={x_1 : np.expand_dims(x_1_image_array_eval[begin:end, ...], axis = -1), x_2 : np.expand_dims(x_2_image_array_eval[begin:end, ...],axis = -1)})
 			else:
-				batch_prediction,l = sess.run([y,loss],feed_dict={x_1 : x_1_image_array_eval[-EVAL_BATCH_SIZE:, ...], x_2 : x_2_image_array_eval[-EVAL_BATCH_SIZE:, ...]})
+				batch_prediction,l = sess.run([y,loss],feed_dict={x_1 : np.expand_dims(x_1_image_array_eval[-EVAL_BATCH_SIZE:, ...], axis = -1), x_2 : np.expand_dims(x_2_image_array_eval[-EVAL_BATCH_SIZE:, ...], axis = -1)})
 				predictions[begin:, ...] = batch_prediction[-(size - begin):,...]
 
 			test_loss_array[i] = l
@@ -340,3 +340,8 @@ def eval_in_batches(sess):
 
 
 predictions,training_loss_array,test_loss_array = train_graph()
+
+for i in range(EVAL_SIZE):
+	plt.imsave(ROOT_DIR + "Output_Images/" + "output_image" + str(i) + ".png", predictions[i,...], cmap = "Greys_r")
+	plt.imsave(ROOT_DIR + "Output_Images/" + "target_image" + str(i) + ".png", x_2_image_array_eval[i,...], cmap = "Greys_r")
+	plt.imsave(ROOT_DIR + "Output_Images/" + "x_1_image" + str(i) + ".png", x_1_image_array_eval[i,...], cmap = "Greys_r")
