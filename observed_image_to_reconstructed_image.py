@@ -68,7 +68,7 @@ x_1_image_array_eval = x_1_image_array[:EVAL_SIZE,...]
 observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
 joint_encoder_parameters = {"fc_1" : 200 , "fc_2" : 56}
 output_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
-output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4}
+output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4,"deconv_output_channels_5" : 1}
 
 ####first define an input placeholder, note that the input images will also serve as the output labels so that it is possible to compute
 
@@ -147,9 +147,9 @@ def encode_previous_output_image(previous_output_image):
 	"""
 
 	#expand the dimensionality of the input image
-	x_image = tf.expand_dims(previous_output_image, -1)
+	#x_image = tf.expand_dims(previous_output_image, -1)
 	#find the activations of the first conv layer
-	h_conv1,W_conv1,b_conv1 = conv(x_image,[3,3,1,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_output",trainable = False)
+	h_conv1,W_conv1,b_conv1 = conv(previous_output_image,[3,3,1,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_output",trainable = False)
 	#find the activations of the second conv layer
 	h_conv2,W_conv2,b_conv2 = conv(h_conv1,[3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_output",trainable = False)
 	#find the activations of the third conv layer
@@ -207,7 +207,7 @@ def input_image_to_joint_angle(x):
 	"""
 	Take in the two channel image with the first channel corresponding to the observed image at the first timestep and the second channel corresponding to the image at the second timestep
 	"""
-	h_conv1,W_conv1,b_conv1 = conv(x_image,[3,3,2,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_input")
+	h_conv1,W_conv1,b_conv1 = conv(x,[3,3,2,observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_input")
 	#find the activations of the second conv layer
 	h_conv2,W_conv2,b_conv2 = conv(h_conv1,[3,3,observed_image_encoder_parameters["conv1_kernels"],observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_input")
 	#find the activations of the third conv layer
@@ -219,7 +219,7 @@ def input_image_to_joint_angle(x):
 	#flatten the activations in the final conv layer in order to obtain an output image
 	h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*observed_image_encoder_parameters["conv5_kernels"]])
 	#pass flattened activations to a fully connected layer
-	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],DOF],"fc_layer_encode_output")
+	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],DOF],"fc_layer_encode_input_image")
 	input_image_encoder_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
 	return h_fc1,input_image_encoder_variable_list
 
@@ -240,7 +240,7 @@ def jointangle2image(joint_angle,previous_image):
 
 
 #compute the joint angle state from the input images
-joint_angle_state,input_image_encoder_variable_list = input_image_to_joint_angle(x)
+joint_angle_state,input_image_encoder_variable_list = input_image_to_joint_angle(x_concatenated)
 #now feed this joint angle to the jointangle2image mapping this is necesary in order to compute the loss in pixel space
 y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_list,decoder_variable_list = jointangle2image(joint_angle_state,x_1)
 #take the sigmoid of the output to ensure that the output lies between 0 and 1
@@ -250,20 +250,21 @@ loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(tf.expand_dims(y_b
 #define an operation for the optimizer
 opt = tf.train.AdamOptimizer(learning_rate)
 #define an operation to initialize variables
-init_op = tf.initialize_all_variables()
+#init_op = tf.initialize_all_variables()
 #Add ops to restore all the variables in the second network which is 
 saver = tf.train.Saver(observed_image_encoder_variable_list + joint_encoder_variable_list + decoder_variable_list)
 #compute the gradients for all variables
 grads_and_vars = opt.compute_gradients(loss,input_image_encoder_variable_list + joint_encoder_variable_list + observed_image_encoder_variable_list + decoder_variable_list)
 #define a training operation which applies the gradient updates inorder to tune the parameters of the graph
 train_op = opt.apply_gradients(grads_and_vars)
+init_op = tf.initialize_all_variables()
 #apply histogram summary nodes for the gradients of all the variables
-gradient_summary_nodes = [tf.histogram_summary(str(gv[1].name),gv[0]) for gv in grads_and_vars]
+gradient_summary_nodes = [tf.histogram_summary(str(gv[1].name) + "_gradient",gv[0]) for gv in grads_and_vars]
 #apply histogram summary nodes to the values of all variables
 var_summary_nodes = [tf.histogram_summary(str(gv[1].name),gv[1]) for gv in grads_and_vars]
 #save images
-tf.image_summary("Reconstructed Output", y[5,...])
-tf.image_summary("Target Image", x_2[5,:,:,0])
+tf.image_summary("Reconstructed Output", tf.expand_dims(y,-1))
+tf.image_summary("Target Image", x_2)
 #now merge all the summary nodes
 merged = tf.merge_all_summaries()
 
@@ -296,7 +297,7 @@ def train_graph():
 				x_2_image_batch = x_2_image_array_train[offset:(offset + BATCH_SIZE),...]
 				
 				#construct a feed dictionary in order to run the model
-				feed_dict = {x_1 : x_1_image_batch, x_2 : x_2_image_batch}
+				feed_dict = {x_1 : np.expand_dims(x_1_image_batch,axis=-1), x_2 : np.expand_dims(x_2_image_batch,axis = -1)}
 
 				#run the graph
 				_, l,merged_summary= sess.run(
