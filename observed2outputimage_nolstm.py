@@ -51,7 +51,7 @@ def find_seq_max_length(num_of_samples):
 
 def extract_observed_images(num,total_tsteps_list):
 
-	time_varying_images = np.zeros([num,IMAGE_SIZE,IMAGE_SIZE])
+	time_varying_images = np.zeros([np.sum(total_tsteps_list),IMAGE_SIZE,IMAGE_SIZE])
 	i = 0
 	for image_num in xrange(num):
 		#figure out which shape control needs to be loaded
@@ -81,7 +81,7 @@ def load_data(num):
 
 
 #first find the number of tsteps for all the image sequences that are going to be loaded
-_,total_tstep_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
+_,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
 #now use the tstep list to extract the images into an array
 time_varying_images = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_list)
 #determine how many images there are in the set
@@ -391,7 +391,7 @@ def plot_predictions(predictions,total_tsteps_list):
 		total_tsteps = 	total_tsteps_list[image_num]
 		#create the summary directory if it does not exist
 		if not(os.path.exists(OUTPUT_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/")):
-			os.makedirs(OUTPUT_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/"ROOT_DIR + SUMMARY_DIR)
+			os.makedirs(OUTPUT_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/")
 		for timestep in xrange(total_tsteps):
 			#load the next observed image timestep if the max time step has not been reached yet
 			plt.imsave(OUTPUT_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(timestep) + "rec" + '.png', cmap = 'Greys_r')
@@ -399,4 +399,4 @@ def plot_predictions(predictions,total_tsteps_list):
 
 
 predictions,training_loss_array,test_loss_array = train_graph()
-plot_predictions(predictions)
+plot_predictions(predictions,total_tsteps_list)
