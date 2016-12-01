@@ -88,7 +88,7 @@ time_varying_images = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_l
 num_images = np.shape(time_varying_images)[0]
 #now we have to separate these sets of images into pairs with one member of the pair a timestep before the other
 x_2_image_array = time_varying_images
-x_1_image_array = np.append(time_varying_images[:-1, ...], np.zeros([1,IMAGE_SIZE,IMAGE_SIZE]), axis = 0)
+x_1_image_array = np.append(np.zeros([1,IMAGE_SIZE,IMAGE_SIZE]),time_varying_images[:-1, ...], axis = 0)
 #Determine the number of images in the validation set versus those in the training set
 EVAL_SIZE = np.sum(total_tsteps_list[:EVAL_SHAPE_SEQUENCES])
 #the train size is given by the sum of the length of the sequences that are not in the training set
