@@ -12,12 +12,14 @@ import os
 #define a max sequence length
 DOF = 3
 #model globals
-NUM_SHAPE_SEQUENCES = 50
+NUM_SHAPE_SEQUENCES = 30
 EVAL_SHAPE_SEQUENCES = 6
+TRAIN_SIZE = NUM_SHAPE_SEQUENCES - EVAL_SHAPE_SEQUENCES
+EVAL_SIZE = EVAL_SHAPE_SEQUENCES
 IMAGE_SIZE = 64
-BATCH_SIZE = 1000
-learning_rate = 1e-4
-EVAL_BATCH_SIZE = 100
+BATCH_SIZE = 12
+learning_rate = 1e-3
+EVAL_BATCH_SIZE = 6
 EPOCHS = 3000
 ROOT_DIR = "observed_to_reconstructed_shapes/"
 SUMMARY_DIR = "tmp/summary_logs"
@@ -79,21 +81,21 @@ def get_binary_loss(total_tsteps_list):
 	"""
 	binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH),dtype = np.float32)
 	for i,max_tstep in enumerate(total_tsteps_list):
-		binary_loss[i,:max_tstep] = np.ones(max_tstep - 4,dtype = np.float32)
+		binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)
 	return binary_loss
 
-SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SAMPLES)
+SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
 print "Sequence Max Length is ",SEQ_MAX_LENGTH
-x_1_array,x_2_array = extract_observed_images(NUM_SAMPLES,total_tsteps_list,SEQ_MAX_LENGTH)
+x_1_array,x_2_array = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_list,SEQ_MAX_LENGTH)
 binary_loss_array = get_binary_loss(total_tsteps_list)
 #get the previous time step by appending 
 #split this data into a training and validation set
-x_2_image_array_train = x_2_image_array[EVAL_SHAPE_SEQUENCES:,...]
-x_1_image_array_train = x_1_image_array[EVAL_SHAPE_SEQUENCES:,...]
+x_2_image_array_train = x_2_array[EVAL_SHAPE_SEQUENCES:,...]
+x_1_image_array_train = x_1_array[EVAL_SHAPE_SEQUENCES:,...]
 binary_loss_array_train = binary_loss_array[EVAL_SHAPE_SEQUENCES:,...]
 #now specify the eval set
-x_2_image_array_eval = x_2_image_array[:EVAL_SHAPE_SEQUENCES,...]
-x_1_image_array_eval = x_1_image_array[:EVAL_SHAPE_SEQUENCES,...]
+x_2_image_array_eval = x_2_array[:EVAL_SHAPE_SEQUENCES,...]
+x_1_image_array_eval = x_1_array[:EVAL_SHAPE_SEQUENCES,...]
 binary_loss_array_eval = binary_loss_array[:EVAL_SHAPE_SEQUENCES,...]
 
 
@@ -111,8 +113,8 @@ x_1_sequence = tf.placeholder(tf.float32,shape = [None,64,64,SEQ_MAX_LENGTH],nam
 #now define a placeholder for the second image
 x_2_sequence = tf.placeholder(tf.float32,shape = [None,64,64,SEQ_MAX_LENGTH], name = "x_t2_sequence_tensor")
 #split these two sequences into lists so that they can be fed to the model sequentially
-x_1_list = tf.split(3,SEQ_MAX_LENGTH,x_1,name = "x_t1_list")
-x_2_list = tf.split(3,SEQ_MAX_LENGTH,x_2,name = "x_t2_list")
+x_1_list = tf.split(3,SEQ_MAX_LENGTH,x_1_sequence,name = "x_t1_list")
+x_2_list = tf.split(3,SEQ_MAX_LENGTH,x_2_sequence,name = "x_t2_list")
 #intialize a list to store the concatenated tensors
 x_concatenated_list = []
 #now loop through the list and concatenate each member of the sequence along the 3rd dimension
@@ -244,7 +246,7 @@ def decode_outputs(hidden_vector, reuse_variables = False):
 
 
 
-def input_image_to_joint_angle(x, resuse_variables = False):
+def input_image_to_joint_angle(x, reuse_variables = False):
 	"""
 	Take in the two channel image with the first channel corresponding to the observed image at the first timestep and the second channel corresponding to the image at the second timestep
 	"""
@@ -295,12 +297,12 @@ joint_angle_state,input_image_encoder_variable_list = input_image_to_joint_angle
 #now feed this joint angle to the jointangle2image mapping this is necesary in order to compute the loss in pixel space
 y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_list,decoder_variable_list = jointangle2image(joint_angle_state,previous_output_image_list[0])
 #append the joint angle state for that tstep to the joint_angle_state_list
-loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(tf.expand_dims(y_before_sigmoid,axis = -1),x_2_list[0]))
+loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(tf.expand_dims(y_before_sigmoid,-1),x_2_list[0]))
 joint_angle_state_list.append(joint_angle_state)
 current_output_image_list.append(y_before_sigmoid)
-previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
+previous_output_image_list.append(tf.expand_dims(tf.nn.sigmoid(y_before_sigmoid),-1))
 #now perform the same but for a sequence images
-for tstep in xrange(1,max_seq_length):
+for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#infer the joint angle
 	joint_angle_state,_ = input_image_to_joint_angle(x_concatenated_list[tstep], reuse_variables = True)
 	#append the joint angle op to the list
@@ -308,9 +310,9 @@ for tstep in xrange(1,max_seq_length):
 	#now pass this inferred joint angle and the previous output image to the second network that produces the output image
 	y_before_sigmoid,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[tstep])
 	#append this output image to the output image list
-	previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
+	previous_output_image_list.append(tf.expand_dims(tf.nn.sigmoid(y_before_sigmoid),-1))
 	current_output_image_list.append(y_before_sigmoid)
-	loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(tf.expand_dims(y_before_sigmoid,axis = -1),x_2_list[tstep]))
+	loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(tf.expand_dims(y_before_sigmoid, -1),x_2_list[tstep]))
 
 #pack together the loss into a tensor of size [None,MAX SEQ LENGTH]
 loss_tensor = tf.pack(loss_per_tstep_list,axis = -1)
@@ -338,8 +340,8 @@ var_summary_nodes = [tf.histogram_summary(str(gv[1].name),gv[1]) for gv in grads
 #Also record the loss
 tf.scalar_summary("loss",loss)
 #save images
-tf.image_summary("Reconstructed Output", tf.expand_dims(y,-1))
-tf.image_summary("Target Image", x_2)
+#tf.image_summary("Reconstructed Output", tf.expand_dims(y,-1))
+#tf.image_summary("Target Image", x_2)
 #now merge all the summary nodes
 merged = tf.merge_all_summaries()
 
@@ -372,7 +374,7 @@ def train_graph():
 				x_2_image_batch = x_2_image_array_train[offset:(offset + BATCH_SIZE),...]
 				binary_loss_array_batch = binary_loss_array_train[offset:(offset + BATCH_SIZE),...]
 				#construct a feed dictionary in order to run the model
-				feed_dict = {x_1 : np.expand_dims(x_1_image_batch,axis=-1), x_2 : np.expand_dims(x_2_image_batch,axis = -1), binary_loss_tensor : binary_loss_array_batch}
+				feed_dict = {x_1_sequence : x_1_image_batch, x_2_sequence : x_2_image_batch, binary_loss_tensor : binary_loss_array_batch}
 
 				#run the graph
 				_, l,merged_summary= sess.run(
@@ -403,9 +405,9 @@ def eval_in_batches(sess):
 		end = begin + EVAL_BATCH_SIZE
 		
 		if end <= size:
-			predictions[begin:end, ...],l = sess.run([y,loss],feed_dict={x_1 : np.expand_dims(x_1_image_array_eval[begin:end, ...], axis = -1), x_2 : np.expand_dims(x_2_image_array_eval[begin:end, ...],axis = -1), binary_loss_tensor: binary_loss_array_eval[begin:end, ...]})
+			predictions[begin:end, ...],l = sess.run([y,loss],feed_dict={x_1_sequence : x_1_image_array_eval[begin:end, ...], x_2_sequence : x_2_image_array_eval[begin:end, ...], binary_loss_tensor: binary_loss_array_eval[begin:end, ...]})
 		else:
-			batch_prediction,l = sess.run([y,loss],feed_dict={x_1 : np.expand_dims(x_1_image_array_eval[-EVAL_BATCH_SIZE:, ...], axis = -1), x_2 : np.expand_dims(x_2_image_array_eval[-EVAL_BATCH_SIZE:, ...], axis = -1),binary_loss_tensor: binary_loss_array_eval[-EVAL_BATCH_SIZE:,...]})
+			batch_prediction,l = sess.run([y,loss],feed_dict={x_1_sequence : x_1_image_array_eval[-EVAL_BATCH_SIZE:, ...], x_2_sequence: x_2_image_array_eval[-EVAL_BATCH_SIZE:, ...],binary_loss_tensor: binary_loss_array_eval[-EVAL_BATCH_SIZE:,...]})
 			predictions[begin:, ...] = batch_prediction[-(size - begin):,...]
 
 		test_loss_array[i] = l
