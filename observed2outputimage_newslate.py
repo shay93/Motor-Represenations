@@ -298,7 +298,8 @@ joint_angle_state,input_image_encoder_variable_list = input_image_to_joint_angle
 y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_list,decoder_variable_list = jointangle2image(joint_angle_state,previous_output_image_list[0])
 print joint_angle_state
 #append the joint angle state for that tstep to the joint_angle_state_list
-loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[0]))
+cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[0])
+loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss,[1,2,3]))
 joint_angle_state_list.append(joint_angle_state)
 current_output_image_list.append(y_before_sigmoid)
 previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
