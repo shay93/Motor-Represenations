@@ -12,12 +12,12 @@ import os
 #define a max sequence length
 DOF = 3
 #model globals
-NUM_SHAPE_SEQUENCES = 30
+NUM_SHAPE_SEQUENCES = 1000
 EVAL_SHAPE_SEQUENCES = 6
 TRAIN_SIZE = NUM_SHAPE_SEQUENCES - EVAL_SHAPE_SEQUENCES
 EVAL_SIZE = EVAL_SHAPE_SEQUENCES
 IMAGE_SIZE = 64
-BATCH_SIZE = 12
+BATCH_SIZE = 500
 learning_rate = 1e-3
 EVAL_BATCH_SIZE = 6
 EPOCHS = 3000
@@ -71,7 +71,7 @@ def extract_observed_images(shape_sequence_num,total_tsteps_list,max_seq_length)
 				x_2[shape_sequence_index,:,:,timestep] = plt.imread("Shapes/" + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(total_tsteps - 1) + '.png')	
 		
 		#now get x_1_temp
-		x_1[shape_sequence_index,...] = np.concatenate((np.zeros((IMAGE_SIZE,IMAGE_SIZE,1)),x_2[shape_sequence_index,:,:,:total_tsteps - 1],x_2[shape_sequence_index,:,:,total_tsteps:]),axis = 2)
+		x_1[shape_sequence_index,...] = np.concatenate((np.zeros((IMAGE_SIZE,IMAGE_SIZE,1)),x_2[shape_sequence_index,:,:,:SEQ_MAX_LENGTH - 1]),axis = 2)
 	return x_1,x_2
 
 
@@ -79,13 +79,14 @@ def get_binary_loss(total_tsteps_list):
 	"""
 	use the tstep list to get a numpy array of 1s and 0s to zero out the loss as needed
 	"""
-	binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH),dtype = np.float32)
-	for i,max_tstep in enumerate(total_tsteps_list):
-		binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)
+	binary_loss = np.ones((len(total_tsteps_list),SEQ_MAX_LENGTH),dtype = np.float32)
+	#for i,max_tstep in enumerate(total_tsteps_list):
+		#binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)
 	return binary_loss
 
 SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
 print "Sequence Max Length is ",SEQ_MAX_LENGTH
+SEQ_MAX_LENGTH = 1
 x_1_array,x_2_array = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_list,SEQ_MAX_LENGTH)
 binary_loss_array = get_binary_loss(total_tsteps_list)
 #get the previous time step by appending 
@@ -299,7 +300,7 @@ y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_lis
 print joint_angle_state
 #append the joint angle state for that tstep to the joint_angle_state_list
 cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[0])
-loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss,[1,2,3]))
+loss_per_tstep_list.append(cross_entropy_loss)
 joint_angle_state_list.append(joint_angle_state)
 current_output_image_list.append(y_before_sigmoid)
 previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
@@ -315,12 +316,13 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 	previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
 	current_output_image_list.append(y_before_sigmoid)
 	cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[tstep])
-	loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss,[1,2,3]))
+	loss_per_tstep_list.append(cross_entropy_loss)
 
 #pack together the loss into a tensor of size [None,MAX SEQ LENGTH]
 loss_tensor = tf.pack(loss_per_tstep_list,axis = -1)
+print loss_tensor
 #now multiply this by the binary loss tensor to zero out those timesteps in the sequence which you do not want to account for
-loss = tf.reduce_mean(tf.mul(loss_tensor,binary_loss_tensor))
+loss = tf.reduce_mean(loss_per_tstep_list)
 #now pack together the output image list
 output_image_tensor_before_sigmoid = tf.concat(3,current_output_image_list)
 #compute the sigmoid cross entropy between the output activation tensor and the next observed image, hence penalizing outputs deviate from the image at the next step
