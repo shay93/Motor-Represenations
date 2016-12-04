@@ -301,7 +301,7 @@ print joint_angle_state
 loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[0]))
 joint_angle_state_list.append(joint_angle_state)
 current_output_image_list.append(y_before_sigmoid)
-previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid),-1)
+previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
 #now perform the same but for a sequence images
 for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#infer the joint angle
