@@ -38,7 +38,7 @@ if not(os.path.exists(ROOT_DIR + SUMMARY_DIR)):
 	os.makedirs(ROOT_DIR + SUMMARY_DIR)
 
 ##################################################LOAD THE DATA TO TRAIN THE MODEL##########################################
-#####aim for today is load shape sequences in tensor 
+
 
 def find_seq_max_length(num_of_samples):
 	#initialize a list to record the total number of tsteps for each time varying image
@@ -242,7 +242,7 @@ def decode_outputs(hidden_vector, reuse_variables = False):
 	h_deconv5,W_deconv5,b_deconv5 = deconv(h_deconv4,[3,3,output_image_decoder_parameters['deconv_output_channels_5'],output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5",non_linearity = False, trainable = False, reuse_variables = reuse_variables)
 	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
 
-	return tf.squeeze(h_deconv5),decoder_variable_list
+	return h_deconv5,decoder_variable_list
 
 
 
@@ -296,11 +296,12 @@ loss_per_tstep_list = []
 joint_angle_state,input_image_encoder_variable_list = input_image_to_joint_angle(x_concatenated_list[0])
 #now feed this joint angle to the jointangle2image mapping this is necesary in order to compute the loss in pixel space
 y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_list,decoder_variable_list = jointangle2image(joint_angle_state,previous_output_image_list[0])
+print joint_angle_state
 #append the joint angle state for that tstep to the joint_angle_state_list
-loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(tf.expand_dims(y_before_sigmoid,-1),x_2_list[0]))
+loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[0]))
 joint_angle_state_list.append(joint_angle_state)
 current_output_image_list.append(y_before_sigmoid)
-previous_output_image_list.append(tf.expand_dims(tf.nn.sigmoid(y_before_sigmoid),-1))
+previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid),-1)
 #now perform the same but for a sequence images
 for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#infer the joint angle
@@ -310,16 +311,17 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#now pass this inferred joint angle and the previous output image to the second network that produces the output image
 	y_before_sigmoid,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[tstep])
 	#append this output image to the output image list
-	previous_output_image_list.append(tf.expand_dims(tf.nn.sigmoid(y_before_sigmoid),-1))
+	previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
 	current_output_image_list.append(y_before_sigmoid)
-	loss_per_tstep_list.append(tf.nn.sigmoid_cross_entropy_with_logits(tf.expand_dims(y_before_sigmoid, -1),x_2_list[tstep]))
+	cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[tstep])
+	loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss,[1,2,3]))
 
 #pack together the loss into a tensor of size [None,MAX SEQ LENGTH]
 loss_tensor = tf.pack(loss_per_tstep_list,axis = -1)
 #now multiply this by the binary loss tensor to zero out those timesteps in the sequence which you do not want to account for
 loss = tf.reduce_mean(tf.mul(loss_tensor,binary_loss_tensor))
 #now pack together the output image list
-output_image_tensor_before_sigmoid = tf.pack(current_output_image_list,axis = -1)
+output_image_tensor_before_sigmoid = tf.concat(3,current_output_image_list)
 #compute the sigmoid cross entropy between the output activation tensor and the next observed image, hence penalizing outputs deviate from the image at the next step
 y = tf.nn.sigmoid(output_image_tensor_before_sigmoid)
 #define an operation for the optimizer
