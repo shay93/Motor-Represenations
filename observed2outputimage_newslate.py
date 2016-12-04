@@ -86,7 +86,7 @@ def get_binary_loss(total_tsteps_list):
 
 SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
 print "Sequence Max Length is ",SEQ_MAX_LENGTH
-SEQ_MAX_LENGTH = 1
+SEQ_MAX_LENGTH = 2
 x_1_array,x_2_array = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_list,SEQ_MAX_LENGTH)
 binary_loss_array = get_binary_loss(total_tsteps_list)
 #get the previous time step by appending 
@@ -319,8 +319,9 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 	loss_per_tstep_list.append(cross_entropy_loss)
 
 #pack together the loss into a tensor of size [None,MAX SEQ LENGTH]
+print "previous_image_list",previous_image_list
 loss_tensor = tf.pack(loss_per_tstep_list,axis = -1)
-print loss_tensor
+print "loss_tensor",loss_tensor
 #now multiply this by the binary loss tensor to zero out those timesteps in the sequence which you do not want to account for
 loss = tf.reduce_mean(loss_per_tstep_list)
 #now pack together the output image list
@@ -328,20 +329,20 @@ output_image_tensor_before_sigmoid = tf.concat(3,current_output_image_list)
 #compute the sigmoid cross entropy between the output activation tensor and the next observed image, hence penalizing outputs deviate from the image at the next step
 y = tf.nn.sigmoid(output_image_tensor_before_sigmoid)
 #define an operation for the optimizer
-opt = tf.train.AdamOptimizer(learning_rate)
+train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 #define an operation to initialize variables
 #init_op = tf.initialize_all_variables()
 #Add ops to restore all the variables in the second network which is 
 saver = tf.train.Saver(observed_image_encoder_variable_list + joint_encoder_variable_list + decoder_variable_list)
 #compute the gradients for all variables
-grads_and_vars = opt.compute_gradients(loss,input_image_encoder_variable_list + joint_encoder_variable_list + observed_image_encoder_variable_list + decoder_variable_list)
+#grads_and_vars = opt.compute_gradients(loss,input_image_encoder_variable_list + joint_encoder_variable_list + observed_image_encoder_variable_list + decoder_variable_list)
 #define a training operation which applies the gradient updates inorder to tune the parameters of the graph
-train_op = opt.apply_gradients(grads_and_vars)
+#train_op = opt.apply_gradients(grads_and_vars)
 init_op = tf.initialize_all_variables()
 #apply histogram summary nodes for the gradients of all the variables
-gradient_summary_nodes = [tf.histogram_summary(str(gv[1].name) + "_gradient",gv[0]) for gv in grads_and_vars]
+#gradient_summary_nodes = [tf.histogram_summary(str(gv[1].name) + "_gradient",gv[0]) for gv in grads_and_vars]
 #apply histogram summary nodes to the values of all variables
-var_summary_nodes = [tf.histogram_summary(str(gv[1].name),gv[1]) for gv in grads_and_vars]
+#var_summary_nodes = [tf.histogram_summary(str(gv[1].name),gv[1]) for gv in grads_and_vars]
 #Also record the loss
 tf.scalar_summary("loss",loss)
 #save images
