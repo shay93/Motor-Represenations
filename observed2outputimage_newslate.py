@@ -79,14 +79,13 @@ def get_binary_loss(total_tsteps_list):
 	"""
 	use the tstep list to get a numpy array of 1s and 0s to zero out the loss as needed
 	"""
-	binary_loss = np.ones((len(total_tsteps_list),SEQ_MAX_LENGTH),dtype = np.float32)
-	#for i,max_tstep in enumerate(total_tsteps_list):
-		#binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)
+	binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH),dtype = np.float32)
+	for i,max_tstep in enumerate(total_tsteps_list):
+		binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)
 	return binary_loss
 
 SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
 print "Sequence Max Length is ",SEQ_MAX_LENGTH
-SEQ_MAX_LENGTH = 1
 x_1_array,x_2_array = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_list,SEQ_MAX_LENGTH)
 binary_loss_array = get_binary_loss(total_tsteps_list)
 #get the previous time step by appending 
@@ -310,7 +309,7 @@ y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_lis
 print joint_angle_state
 #append the joint angle state for that tstep to the joint_angle_state_list
 cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[0])
-loss_per_tstep_list.append(cross_entropy_loss)
+loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss,[1,2,3]))
 joint_angle_state_list.append(joint_angle_state)
 current_output_image_list.append(y_before_sigmoid)
 previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
@@ -321,19 +320,19 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#append the joint angle op to the list
 	joint_angle_state_list.append(joint_angle_state)
 	#now pass this inferred joint angle and the previous output image to the second network that produces the output image
-	y_before_sigmoid,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[0])
+	y_before_sigmoid,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[tstep], reuse_variables = True)
 	#append this output image to the output image list
 	previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
 	current_output_image_list.append(y_before_sigmoid)
 	cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[tstep])
-	loss_per_tstep_list.append(cross_entropy_loss)
+	loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss, [1,2,3]))
 
 #pack together the loss into a tensor of size [None,MAX SEQ LENGTH]
 print "previous_image_list",previous_output_image_list
 loss_tensor = tf.pack(loss_per_tstep_list,axis = -1)
 print "loss_tensor",loss_tensor
 #now multiply this by the binary loss tensor to zero out those timesteps in the sequence which you do not want to account for
-loss = tf.reduce_mean(loss_per_tstep_list)
+loss = tf.reduce_mean(tf.mul(loss_tensor,binary_loss_tensor))
 #now pack together the output image list
 output_image_tensor_before_sigmoid = tf.concat(3,current_output_image_list)
 #compute the sigmoid cross entropy between the output activation tensor and the next observed image, hence penalizing outputs deviate from the image at the next step
