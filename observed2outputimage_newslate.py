@@ -343,8 +343,6 @@ output_image_tensor_before_sigmoid = tf.concat(3,current_output_image_list)
 y = tf.nn.sigmoid(output_image_tensor_before_sigmoid)
 #define an operation for the optimizer
 opt = tf.train.AdamOptimizer(learning_rate)
-#define an operation to initialize variables
-#init_op = tf.initialize_all_variables()
 #Add ops to restore all the variables in the second network which is 
 saver = tf.train.Saver(observed_image_encoder_variable_list + joint_encoder_variable_list + decoder_variable_list)
 #compute the gradients for all variables
@@ -417,7 +415,7 @@ def eval_in_batches(sess):
 	if size < EVAL_BATCH_SIZE:
 		raise ValueError("batch size for evals larger than dataset: %d" % size)
 
-	predictions = np.ndarray(shape = (size,IMAGE_SIZE,IMAGE_SIZE), dtype = np.float32)
+	predictions = np.ndarray(shape = (size,IMAGE_SIZE,IMAGE_SIZE,SEQ_MAX_LENGTH), dtype = np.float32)
 	test_loss_array = [0] * ((size // EVAL_BATCH_SIZE) + 1)
 	i = 0
 	for begin in xrange(0,size,EVAL_BATCH_SIZE):
