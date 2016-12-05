@@ -132,12 +132,16 @@ def conv(x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables =
 	"""
 
 	with tf.variable_scope(scope) as scope:
-		if reuse_variables:
+		if not(reuse_variables):
+			#initialize the weights for the convolutional layer
+			W = tf.get_variable("W_conv",weight_shape,tf.float32,tf.random_normal_initializer(0.0,stddev),trainable = trainable)
+			#initiaize the biases
+			b = tf.get_variable("b_conv",weight_shape[-1],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
+		else:
 			scope.reuse_variables()
-		#initialize the weights for the convolutional layer
-		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_conv")
-		#initiaize the biases
-		b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-1]]), trainable = trainable, name = "b_conv")
+			W = tf.get_variable("W_conv")
+			b = tf.get_variable("b_conv")
+		
 		#calculate the output from the convolution 
 		conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
 		#compute the activations
@@ -151,14 +155,16 @@ def fc_layer(x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variable
 	Compute the activations of the fc layer
 	"""
 	with tf.variable_scope(scope) as scope:
-		if reuse_variables:
-			scope.reuse_variables()
-	
-		#initialize the weights for the convolutional layer
-		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_fc")
-		#initiaize the biases
-		b = tf.Variable(tf.constant(0.,shape = [weight_shape[-1]]), trainable = trainable, name = "b_fc")
-		#calculate biases
+		if not(reuse_variables):
+			#initialize the weights for the fc layer
+			W = tf.get_variable("W_fc",weight_shape,tf.float32,tf.random_normal_initializer(0.0,stddev), trainable = trainable)
+			#initiaize the biases
+			b = tf.get_variable("b_fc",weight_shape[-1],tf.float32,tf.constant_initializer(0.0),trainable = trainable)
+		else:
+			scope.reuse_variables()			
+			W = tf.get_variable("W_fc")
+			b = tf.get_variable("b_fc")
+			
 		h = tf.nn.relu(tf.matmul(x,W) + b)
 
 	return h,W,b 
@@ -168,12 +174,16 @@ def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,t
 	generalizable deconv function
 	"""
 	with tf.variable_scope(scope) as scope:
-		if reuse_variables:
-			scope.reuse_variables()
-		#initialize the weights for the convolutional layer
-		W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_deconv")
-		#initiaize the biases
-		b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-2]]), trainable = trainable, name = "b_deconv")
+		if not(reuse_variables):
+			#initialize the weights for the deconv layer
+			W = tf.get_variable("W_deconv",weight_shape,tf.float32,tf.random_normal_initializer(0,stddev), trainable = trainable)
+			#initiaize the biases
+			b = tf.get_variable("b_deconv",weight_shape[-2],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
+		else:
+			scope.reuse_variables()			
+			W = tf.get_variable("W_deconv")
+			b = tf.get_variable("b_deconv")
+
 		#calculate the output from the deconvolution
 		deconv = tf.nn.conv2d_transpose(x,W,output_shape,strides = strides)
 		#calculate the activations
