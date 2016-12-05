@@ -12,22 +12,23 @@ import os
 #define a max sequence length
 DOF = 3
 #model globals
-NUM_SHAPE_SEQUENCES = 1000
+NUM_SHAPE_SEQUENCES = 600
 EVAL_SHAPE_SEQUENCES = 6
 TRAIN_SIZE = NUM_SHAPE_SEQUENCES - EVAL_SHAPE_SEQUENCES
 EVAL_SIZE = EVAL_SHAPE_SEQUENCES
 IMAGE_SIZE = 64
-BATCH_SIZE = 50
-learning_rate = 1e-5
+BATCH_SIZE = 500
+learning_rate = 1e-4
 EVAL_BATCH_SIZE = 6
-EPOCHS = 3000
+EPOCHS = 300
 ROOT_DIR = "observed_to_reconstructed_shapes/"
 SUMMARY_DIR = "tmp/summary_logs"
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 OUTPUT_DIR = ROOT_DIR + "Output_Images/"
 EVAL_FREQUENCY = 2000
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
-
+fixed_sequence_boolean = True
+fixed_seq_val = 2
 
 #####THIS MODEL SHOULD TAKE IN TWO INPUT IMAGES x_1 and x_2 and should infer the joint angle that maps x_1 to x_2####################
 #create the Root dir if it does not exist
@@ -79,12 +80,17 @@ def get_binary_loss(total_tsteps_list):
 	"""
 	use the tstep list to get a numpy array of 1s and 0s to zero out the loss as needed
 	"""
-	binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH),dtype = np.float32)
-	for i,max_tstep in enumerate(total_tsteps_list):
-		binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)
+	if not(fixed_sequence_boolean):
+		binary_loss = np.zeros((len(total_tsteps_list),SEQ_MAX_LENGTH),dtype = np.float32)
+		for i,max_tstep in enumerate(total_tsteps_list):
+			binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)
+	else:
+		binary_loss = np.ones((len(total_tsteps_list),SEQ_MAX_LENGTH),dtype = np.float32)	
 	return binary_loss
 
 SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
+if fixed_sequence_boolean:
+	SEQ_MAX_LENGTH = fixed_seq_val
 print "Sequence Max Length is ",SEQ_MAX_LENGTH
 x_1_array,x_2_array = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_list,SEQ_MAX_LENGTH)
 binary_loss_array = get_binary_loss(total_tsteps_list)
@@ -306,10 +312,9 @@ loss_per_tstep_list = []
 joint_angle_state,input_image_encoder_variable_list = input_image_to_joint_angle(x_concatenated_list[0])
 #now feed this joint angle to the jointangle2image mapping this is necesary in order to compute the loss in pixel space
 y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_list,decoder_variable_list = jointangle2image(joint_angle_state,previous_output_image_list[0])
-print joint_angle_state
 #append the joint angle state for that tstep to the joint_angle_state_list
 cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[0])
-loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss,[1,2,3]))
+loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss))
 joint_angle_state_list.append(joint_angle_state)
 current_output_image_list.append(y_before_sigmoid)
 previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
@@ -325,33 +330,32 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 	previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
 	current_output_image_list.append(y_before_sigmoid)
 	cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[tstep])
-	loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss, [1,2,3]))
+	loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss))
 
 #pack together the loss into a tensor of size [None,MAX SEQ LENGTH]
-print "previous_image_list",previous_output_image_list
 loss_tensor = tf.pack(loss_per_tstep_list,axis = -1)
-print "loss_tensor",loss_tensor
 #now multiply this by the binary loss tensor to zero out those timesteps in the sequence which you do not want to account for
-loss = tf.reduce_mean(tf.mul(loss_tensor,binary_loss_tensor))
+#loss = tf.reduce_mean(tf.mul(loss_tensor,binary_loss_tensor))
+loss = tf.reduce_mean(loss_per_tstep_list)
 #now pack together the output image list
 output_image_tensor_before_sigmoid = tf.concat(3,current_output_image_list)
 #compute the sigmoid cross entropy between the output activation tensor and the next observed image, hence penalizing outputs deviate from the image at the next step
 y = tf.nn.sigmoid(output_image_tensor_before_sigmoid)
 #define an operation for the optimizer
-train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+opt = tf.train.AdamOptimizer(learning_rate)
 #define an operation to initialize variables
 #init_op = tf.initialize_all_variables()
 #Add ops to restore all the variables in the second network which is 
 saver = tf.train.Saver(observed_image_encoder_variable_list + joint_encoder_variable_list + decoder_variable_list)
 #compute the gradients for all variables
-#grads_and_vars = opt.compute_gradients(loss,input_image_encoder_variable_list + joint_encoder_variable_list + observed_image_encoder_variable_list + decoder_variable_list)
+grads_and_vars = opt.compute_gradients(loss,input_image_encoder_variable_list + joint_encoder_variable_list + observed_image_encoder_variable_list + decoder_variable_list)
 #define a training operation which applies the gradient updates inorder to tune the parameters of the graph
-#train_op = opt.apply_gradients(grads_and_vars)
+train_op = opt.apply_gradients(grads_and_vars)
 init_op = tf.initialize_all_variables()
 #apply histogram summary nodes for the gradients of all the variables
-#gradient_summary_nodes = [tf.histogram_summary(str(gv[1].name) + "_gradient",gv[0]) for gv in grads_and_vars]
+gradient_summary_nodes = [tf.histogram_summary(str(gv[1].name) + "_gradient",gv[0]) for gv in grads_and_vars]
 #apply histogram summary nodes to the values of all variables
-#var_summary_nodes = [tf.histogram_summary(str(gv[1].name),gv[1]) for gv in grads_and_vars]
+var_summary_nodes = [tf.histogram_summary(str(gv[1].name),gv[1]) for gv in grads_and_vars]
 #Also record the loss
 tf.scalar_summary("loss",loss)
 #save images
@@ -454,6 +458,6 @@ def save_output_images(predictions):
 				plt.imsave(shape_dir + shape_name + str(shape_index) + '_' + str(tstep),predictions[output_image_num,:,:,tstep],cmap = "Greys_r")
 
 
-print len(tf.all_variables())
+print "Length of variables",len(tf.all_variables())
 predictions,training_loss_array,test_loss_array = train_graph()
 save_output_images(predictions)
