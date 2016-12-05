@@ -447,6 +447,8 @@ def save_output_images(predictions):
 		#next figure out the index of the shape being read in i.e. is it Triangle1 or Triangle100
 		shape_index = output_image_num // len(shape_str_array)
 		total_tsteps = 	total_tsteps_list[output_image_num]
+		if total_tsteps > SEQ_MAX_LENGTH:
+			total_tsteps = SEQ_MAX_LENGTH
 		shape_name = shape_str_array[shape_name_index]
 		shape_dir = OUTPUT_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/"
 		#create this directory if it doesnt exist
