@@ -86,7 +86,7 @@ def get_binary_loss(total_tsteps_list):
 
 SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
 print "Sequence Max Length is ",SEQ_MAX_LENGTH
-SEQ_MAX_LENGTH = 2
+SEQ_MAX_LENGTH = 1
 x_1_array,x_2_array = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_list,SEQ_MAX_LENGTH)
 binary_loss_array = get_binary_loss(total_tsteps_list)
 #get the previous time step by appending 
@@ -311,7 +311,7 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#append the joint angle op to the list
 	joint_angle_state_list.append(joint_angle_state)
 	#now pass this inferred joint angle and the previous output image to the second network that produces the output image
-	y_before_sigmoid,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[tstep])
+	y_before_sigmoid,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[0])
 	#append this output image to the output image list
 	previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
 	current_output_image_list.append(y_before_sigmoid)
@@ -319,7 +319,7 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 	loss_per_tstep_list.append(cross_entropy_loss)
 
 #pack together the loss into a tensor of size [None,MAX SEQ LENGTH]
-print "previous_image_list",previous_image_list
+print "previous_image_list",previous_output_image_list
 loss_tensor = tf.pack(loss_per_tstep_list,axis = -1)
 print "loss_tensor",loss_tensor
 #now multiply this by the binary loss tensor to zero out those timesteps in the sequence which you do not want to account for
@@ -445,6 +445,6 @@ def save_output_images(predictions):
 				plt.imsave(shape_dir + shape_name + str(shape_index) + '_' + str(tstep),predictions[output_image_num,:,:,tstep],cmap = "Greys_r")
 
 
-
+print len(tf.all_variables())
 predictions,training_loss_array,test_loss_array = train_graph()
 save_output_images(predictions)
