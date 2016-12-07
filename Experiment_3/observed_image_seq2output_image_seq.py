@@ -12,22 +12,22 @@ import os
 #define a max sequence length
 DOF = 3
 #model globals
-NUM_SHAPE_SEQUENCES = 600
-EVAL_SHAPE_SEQUENCES = 6
+NUM_SHAPE_SEQUENCES = 5000
+EVAL_SHAPE_SEQUENCES = 24
 TRAIN_SIZE = NUM_SHAPE_SEQUENCES - EVAL_SHAPE_SEQUENCES
 EVAL_SIZE = EVAL_SHAPE_SEQUENCES
 IMAGE_SIZE = 64
-BATCH_SIZE = 500
+BATCH_SIZE = 50
 learning_rate = 1e-4
 EVAL_BATCH_SIZE = 6
-EPOCHS = 30
+EPOCHS = 1000
 ROOT_DIR = "observed_to_reconstructed_shapes/"
-SUMMARY_DIR = "tmp/summary_logs"
+SUMMARY_DIR = "tmp/summary_logs_fullseq"
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 OUTPUT_DIR = ROOT_DIR + "Output_Images/"
 EVAL_FREQUENCY = 2000
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
-fixed_sequence_boolean = True
+fixed_sequence_boolean = False
 fixed_seq_val = 2
 
 #####THIS MODEL SHOULD TAKE IN TWO INPUT IMAGES x_1 and x_2 and should infer the joint angle that maps x_1 to x_2####################
@@ -334,6 +334,7 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 
 #pack together the loss into a tensor of size [None,MAX SEQ LENGTH]
 loss_tensor = tf.pack(loss_per_tstep_list,axis = -1)
+joint_angle_state_tensor = tf.pack(joint_angle_state_list,axis = -1)
 #now multiply this by the binary loss tensor to zero out those timesteps in the sequence which you do not want to account for
 #loss = tf.reduce_mean(tf.mul(loss_tensor,binary_loss_tensor))
 loss = tf.reduce_mean(loss_per_tstep_list)
@@ -404,7 +405,8 @@ def train_graph():
 					train_writer.add_summary(merged_summary,step)
 					print step,l			
 
-			predictions,test_loss_array = eval_in_batches(sess)
+			predictions,test_loss_array,joint_angle_state_array= eval_in_batches(sess)
+
 		return predictions,training_loss_array,test_loss_array
 
 
@@ -416,20 +418,21 @@ def eval_in_batches(sess):
 		raise ValueError("batch size for evals larger than dataset: %d" % size)
 
 	predictions = np.ndarray(shape = (size,IMAGE_SIZE,IMAGE_SIZE,SEQ_MAX_LENGTH), dtype = np.float32)
+	joint_angle_state_array = np.ndarray(shape = (size,DOF,SEQ_MAX_LENGTH))
 	test_loss_array = [0] * ((size // EVAL_BATCH_SIZE) + 1)
 	i = 0
 	for begin in xrange(0,size,EVAL_BATCH_SIZE):
 		end = begin + EVAL_BATCH_SIZE
 		
 		if end <= size:
-			predictions[begin:end, ...],l = sess.run([y,loss],feed_dict={x_1_sequence : x_1_image_array_eval[begin:end, ...], x_2_sequence : x_2_image_array_eval[begin:end, ...], binary_loss_tensor: binary_loss_array_eval[begin:end, ...]})
+			predictions[begin:end, ...],l,joint_angle_state_array[begin:end,...] = sess.run([y,loss,joint_angle_state_tensor],feed_dict={x_1_sequence : x_1_image_array_eval[begin:end, ...], x_2_sequence : x_2_image_array_eval[begin:end, ...], binary_loss_tensor: binary_loss_array_eval[begin:end, ...]})
 		else:
-			batch_prediction,l = sess.run([y,loss],feed_dict={x_1_sequence : x_1_image_array_eval[-EVAL_BATCH_SIZE:, ...], x_2_sequence: x_2_image_array_eval[-EVAL_BATCH_SIZE:, ...],binary_loss_tensor: binary_loss_array_eval[-EVAL_BATCH_SIZE:,...]})
+			batch_prediction,l,batch_joint_angle_state_array = sess.run([y,loss,joint_angle_state_tensor],feed_dict={x_1_sequence : x_1_image_array_eval[-EVAL_BATCH_SIZE:, ...], x_2_sequence: x_2_image_array_eval[-EVAL_BATCH_SIZE:, ...],binary_loss_tensor: binary_loss_array_eval[-EVAL_BATCH_SIZE:,...]})
 			predictions[begin:, ...] = batch_prediction[-(size - begin):,...]
-
+			joint_angle_state_array[begin:,...] = batch_joint_angle_state_array
 		test_loss_array[i] = l
 		i += 1
-	return predictions,test_loss_array
+	return predictions,test_loss_array,joint_angle_state_array
 
 def save_output_images(predictions):
 	"""
@@ -459,5 +462,8 @@ def save_output_images(predictions):
 
 
 print "Length of variables",len(tf.all_variables())
-predictions,training_loss_array,test_loss_array = train_graph()
+predictions,training_loss_array,test_loss_array,joint_angle_state_array = train_graph()
 save_output_images(predictions)
+
+with open("joint_angle_seq.npy", "wb") as f:
+	pickle.dump(joint_angle_state_array,f)
