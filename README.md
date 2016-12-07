@@ -9,3 +9,15 @@ As a Baseline we seek to simply reconstruct the output images via an Autoencoder
 ### Task 2 ###
 
 We then seek to demonstrate that an arm should be able to replicate the output image produced by another arm by simply learning the transformation between its state and the latter arm's state. We initially restrict our attention to two two link arms with different link lengths. We attempt to learn the transformation via a variable sequence to sequence mapping implemented in variable_seq2seq.py.
+
+### Experiment 1 ###
+
+Possible to form a hidden representation for rectangles and triangles and then reconstruct them.
+
+### Experiment 2 ###
+
+Demonstrate that one agent may learn a sequence of desired states to achieve a goal by accessing a second agent's state sequence required to perform the same goal.
+
+### Experiment 3 ###
+
+Demonstrate that it is possible for an agent to infer the required state sequence by observing a sequence of the goal outputs.
