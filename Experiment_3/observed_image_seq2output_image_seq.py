@@ -6,7 +6,7 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import pickle
-import training_tools as tt
+#import training_tools as tt
 import os
 
 #define a max sequence length

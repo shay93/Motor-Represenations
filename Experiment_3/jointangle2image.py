@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
 import pickle
-import training_tools as tt
+#import training_tools as tt
 import os
 
 #define a max sequence length
@@ -19,9 +19,9 @@ IMAGE_SIZE = 64
 BATCH_SIZE = 1000
 learning_rate = 1e-3
 display_num = 10
-EVAL_BATCH_SIZE = 200
-EPOCHS = 3000
-EVAL_SIZE = 200
+EVAL_BATCH_SIZE = 1000
+EPOCHS = 5000
+EVAL_SIZE = 1000
 TRAIN_SIZE = NUM_SAMPLES - EVAL_SIZE
 ROOT_DIR = "Joints_to_Image/"
 SUMMARY_DIR = "/tmp/summary_logs"
@@ -34,7 +34,7 @@ DISPLAY = False
 observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4}
 joint_encoder_parameters = {"fc_1" : 200 , "fc_2" : 56}
 #output_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 200}
-#output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4, "deconv_output_channels_5" : 1}
+output_image_decoder_parameters = {"deconv_output_channels_1" : 32, "deconv_output_channels_2" : 16, "deconv_output_channels_3" : 8, "deconv_output_channels_4" : 4, "deconv_output_channels_5" : 1}
 
 
 ##########################HELPER FUNCTION#########################
