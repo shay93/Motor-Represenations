@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import pickle
 #import training_tools as tt
 import os
+import string
 
 #define a max sequence length
 DOF = 3
@@ -22,6 +23,7 @@ learning_rate = 1e-4
 EVAL_BATCH_SIZE = 6
 EPOCHS = 1000
 ROOT_DIR = "observed_to_reconstructed_shapes/"
+SHAPE_DIR = string.join(os.getcwd().split("/")[:-1], "/") + "/Shapes/"
 SUMMARY_DIR = "tmp/summary_logs_fullseq"
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 OUTPUT_DIR = ROOT_DIR + "Output_Images/"
@@ -49,7 +51,7 @@ def find_seq_max_length(num_of_samples):
 		shape_name_index = image_num % len(shape_str_array)
 		#next figure out the index of the shape being read in i.e. is it Triangle1 or Triangle100
 		shape_index = image_num // len(shape_str_array)
-		total_tsteps_list.append(len(os.listdir("Shapes/" + shape_str_array[shape_name_index] + str(shape_index))))
+		total_tsteps_list.append(len(os.listdir(SHAPE_DIR + shape_str_array[shape_name_index] + str(shape_index))))
 	return max(total_tsteps_list),total_tsteps_list	
 
 
@@ -66,10 +68,10 @@ def extract_observed_images(shape_sequence_num,total_tsteps_list,max_seq_length)
 		for timestep in xrange(max_seq_length):
 			if timestep < total_tsteps:
 				#load the next observed image timestep if the max time step has not been reached yet
-				x_2[shape_sequence_index,:,:,timestep] = plt.imread("Shapes/" + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(timestep) + '.png')
+				x_2[shape_sequence_index,:,:,timestep] = plt.imread(SHAPE_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(timestep) + '.png')
 			else:
 				#if the max time step has been reached i.e. the complete shape drawing has been observed then continue loading the last image for the remaining timesteps
-				x_2[shape_sequence_index,:,:,timestep] = plt.imread("Shapes/" + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(total_tsteps - 1) + '.png')	
+				x_2[shape_sequence_index,:,:,timestep] = plt.imread(SHAPE_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(total_tsteps - 1) + '.png')	
 		
 		#now get x_1_temp
 		x_1[shape_sequence_index,...] = np.concatenate((np.zeros((IMAGE_SIZE,IMAGE_SIZE,1)),x_2[shape_sequence_index,:,:,:SEQ_MAX_LENGTH - 1]),axis = 2)
