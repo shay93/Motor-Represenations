@@ -4,7 +4,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import png
 import csv
-from scipy.integrate import ode
 import pickle
 
 
@@ -98,6 +97,18 @@ class shape_maker:
 				right_segment = self.draw_line(start_point,end_point,0.01,0.01)
 				thicken_pos_array.extend(right_segment) 
 		return thicken_pos_array
+
+	def get_points_to_increase_line_thickness(self,pos_list):
+		#initialize a list to store the information needed
+		more_pts = [0] * (len(pos_list))
+		for i,pos in enumerate(pos_list):
+			x,y = pos
+			#use these values of x and y to build a temp array with points needed to thicken the original line
+			temp_list = [(x+1,y),(x-1,y),(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1),(x,y+1),(x,y-1)]
+			more_pts[i] = temp_list
+
+		more_pts_flattened = [pos for sublist in more_pts for pos in more_pts if pos[0] < 64 and pos[1] < 64 and pos[0] > 0 and pos[1] > 0]
+		return more_pts_flattened
 
 
 	def get_vertices(self,shape):
@@ -202,37 +213,6 @@ class two_link_arm:
 		self.link_length = link_length
 
 
-	def forward_dynamics(self,Torques):
-		""" Args: Torques - a 2d array of forces and torques of size [num of forces * length of time]
-		Returns: Accel - a 2d array of accelerations of size [num of degrees of motion * length of time]
-		"""
-		#using Newtonian dyanmics the Torque at each link is related to the angle at that link by T = I*theta''
-		#use the torques to find the thetas generated over a period of time
-		#there are four systems of equations that need to be numerically integrated in order to obtain the correct thetas
-		#initialize a states 
-		I = 1
-		def f(t,y,arg1,arg2):
-			y_prime = [y[1],arg1/I,y[3],arg2/I]
-			return y_prime
-		#set initial displacements and angular velocities to be zero
-		r = ode(f).set_integrator('lsoda')
-		i = 0
-		t0 = 0
-		#get the number of timesteps that are used to generate the torques
-		_,timesteps = np.shape(Torques)
-		#initialize a states array
-		states = np.zeros((4,timesteps))
-		dt = self.t_end / timesteps
-		r.set_initial_value(self.ic, t0).set_f_params(Torques[0,i],Torques[1,i])
-		while r.successful() and r.t < (self.t_end - dt):
-			r.set_f_params(Torques[0,i],Torques[1,i])
-			temp =  r.integrate(r.t + dt)
-			#use the above to integrate the
-			states[:,i] = temp
-			i += 1
-		return states
-
-
 	def forward_kinematics(self,state):
 		""" Args: State -  a 2d array of positions of size [num of degrees of motion * length of time]
 		    Returns: Effector_Position - a list of tuples consisting of (x,y) position of arm effector and with number of entries 
@@ -265,29 +245,6 @@ class two_link_arm:
 	    states = np.vstack((theta_1,theta_2))
 	    return states
 
-	def inverse_dynamics(self,states):
-	    """ Args : Accel -  a 2d array of accelerations of size [num of degrees of motion * length of time]
-	        Returns: Forces - a 2d array of forces and torques of size [num of forces * length of time]
-	    """
-	    
-	    #in case of 2 link arm there are only two forces to worry about call them T_phi and T_theta then using newton's laws
-	    #one may obtain the inverse dynamics
-	    # Assuming that the moment of inertia for the two bars is the same and that we are computing the acceleration at the bottom
-	    #of each bar we may obtain the forces as follows
-	    #one has to use the states signal and use it to get the torques
-	    torques_1 = self.forward_difference(states[1,:])
-	    torques_2 = self.forward_difference(states[3,:])
-	    Torques = np.vstack((torques_1,torques_2))
-	    return Torques
-
-	def forward_difference(self,ndarray):
-		dt = self.t_end /len(ndarray)
-		#zero pad the ndarray
-		ndarray = np.concatenate(([0],ndarray))
-		derivative = np.diff(ndarray) / dt
-		return derivative
-
-
 class three_link_arm:
 
 		def __init__(self,link_length):
@@ -295,7 +252,7 @@ class three_link_arm:
 			self.phi_e = np.pi / 2
 
 		def forward_kinematics(self,state):
-			""" Args: State -  a 3d array of positions of size [num of degrees of motion * length of time]
+			""" Args: State -  a 2d array of positions of size [num of degrees of motion * length of time]
     			Returns: Effector_Position - a list of tuples consisting of (x,y) position of arm effector and with number of entrie
     			equal to the length of time being considered.
 			"""
@@ -306,20 +263,3 @@ class three_link_arm:
 			y_e = self.link_length*(np.sin(theta_1) + np.sin(theta_1 + theta_2) + np.sin(theta_1 + theta_2 + theta_3))
 			effector_position = zip(np.round(x_e),np.round(y_e))
 			return effector_position
-
-		def inverse_kinematics(self,effector_position):
-			theta_1 = [0] * len(effector_position)
-			theta_2 = [0] * len(effector_position)
-			theta_3 = [0] * len(effector_position)
-			for i,pos in enumerate(effector_position):
-				x_e,y_e = pos
-				x_w = x_e - self.link_length*np.cos(self.phi_e)
-				y_w = y_e - self.link_length*np.sin(self.phi_e)
-				alpha = np.arctan(y_w / x_w)
-				beta = np.arccos((2*self.link_length**2 - x_w**2 - y_w**2)/(2*self.link_length**2))
-				theta_2[i] = np.pi - beta
-				gamma = np.arccos((x_w**2 + y_w**2)/(2*self.link_length*(x_w**2 + y_w**2)**0.5))
-				theta_1[i] = alpha - gamma
-				theta_3[i] = self.phi_e - theta_1[i] - theta_2[i]
-			states = np.vstack((theta_1,theta_2,theta_3))
-			return states

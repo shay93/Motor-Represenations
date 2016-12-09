@@ -6,12 +6,21 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import pickle
-#import training_tools as tt
 import os
 import string
+import sys
+
+#####first append to sys path in order to enable import of training tools########
+parent_dir_path = os.path.abspath(os.path.dirname(__file__),'...')
+if not parent_dir_path in sys.path:
+	sys.path.insert(1,parent_dir_path)
+
+
+import training_tools as tt
 
 #define a max sequence length
 DOF = 3
+LINK_LENGTH = 30
 #model globals
 NUM_SHAPE_SEQUENCES = 5000
 EVAL_SHAPE_SEQUENCES = 24
@@ -19,18 +28,19 @@ TRAIN_SIZE = NUM_SHAPE_SEQUENCES - EVAL_SHAPE_SEQUENCES
 EVAL_SIZE = EVAL_SHAPE_SEQUENCES
 IMAGE_SIZE = 64
 BATCH_SIZE = 50
-learning_rate = 1e-4
+learning_rate = float(sys.argv[5])
 EVAL_BATCH_SIZE = 6
 EPOCHS = 1000
-ROOT_DIR = "observed_to_reconstructed_shapes/"
+ROOT_DIR = sys.argv[1]
 SHAPE_DIR = string.join(os.getcwd().split("/")[:-1], "/") + "/Shapes/"
-SUMMARY_DIR = "tmp/summary_logs_fullseq"
+SUMMARY_DIR = "tmp/" + sys.argv[2]
 model_dir = "Joints_to_Image/tmp/model.cpkt"
 OUTPUT_DIR = ROOT_DIR + "Output_Images/"
 EVAL_FREQUENCY = 2000
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
-fixed_sequence_boolean = False
-fixed_seq_val = 2
+fixed_sequence_boolean = sys.argv[3]
+fixed_seq_val = int(sys.argv[4])
+prev_output_boolean = sys.argv[6]
 
 #####THIS MODEL SHOULD TAKE IN TWO INPUT IMAGES x_1 and x_2 and should infer the joint angle that maps x_1 to x_2####################
 #create the Root dir if it does not exist
@@ -319,7 +329,10 @@ cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_
 loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss))
 joint_angle_state_list.append(joint_angle_state)
 current_output_image_list.append(y_before_sigmoid)
-previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
+if prev_output_boolean:
+	previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
+else:
+	previous_output_image_list.append(x_1_list[0])
 #now perform the same but for a sequence images
 for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#infer the joint angle
@@ -329,7 +342,10 @@ for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#now pass this inferred joint angle and the previous output image to the second network that produces the output image
 	y_before_sigmoid,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[tstep], reuse_variables = True)
 	#append this output image to the output image list
-	previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
+	if prev_output_boolean:
+		previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
+	else:
+		previous_output_image_list.append(x_2_list[tstep])
 	current_output_image_list.append(y_before_sigmoid)
 	cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[tstep])
 	loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss))
@@ -436,7 +452,7 @@ def eval_in_batches(sess):
 		i += 1
 	return predictions,test_loss_array,joint_angle_state_array
 
-def save_output_images(predictions):
+def save_output_images(predictions,joint_angle_sequence_batch):
 	"""
 	Save the output shapes to the output root directory
 	"""
@@ -446,6 +462,9 @@ def save_output_images(predictions):
 	#first construct the output root directory if it does not exist
 	if not(os.path.exists(ROOT_DIR)):
 		os.makedirs(ROOT_DIR)
+
+	#initialize the three link arm that will compute the output images from the joint angles inferred
+	three_link_arm = tt.three_link_arm(LINK_LENGTH)
 	for output_image_num in xrange(prediction_size):
 		#Get the shape name and index number in order to save correctly
 		shape_name_index = output_image_num % len(shape_str_array)
@@ -456,16 +475,35 @@ def save_output_images(predictions):
 			total_tsteps = SEQ_MAX_LENGTH
 		shape_name = shape_str_array[shape_name_index]
 		shape_dir = OUTPUT_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/"
+		#index out a joint angle sequence from the batch
+		joint_angle_sequence = joint_angle_sequence_batch[output_image_num,:,:]
 		#create this directory if it doesnt exist
 		if not(os.path.exists(shape_dir)):
 			os.makedirs(shape_dir)
+		
 		for tstep in xrange(total_tsteps):
 				plt.imsave(shape_dir + shape_name + str(shape_index) + '_' + str(tstep),predictions[output_image_num,:,:,tstep],cmap = "Greys_r")
+				#index out the right joing angle state
+				joint_angle_subseq = joint_angle_sequence[:,:tstep]
+				#use the three link arm to get the position list from this
+				effec_pos = three_link_arm.forward_kinematics(joint_angle_subseq)
+				#initialize a grid to store the image
+				image_grid = tt.grid("joint_pred_" + shape_name + str(shape_index) + '_' + str(tstep),shape_dir)
+				#write the effec pos to the grid
+				image_grid.draw_figure(effec_pos)
+				#now get the points from the effec pos to make the figure lines thicker
+				#initialize a shape maker to make this possible
+				sp = tt.shape_maker()
+				more_pts = sp.get_points_to_increase_line_thickness(effec_pos)
+				#write these points to the figure as well
+				image_grid.draw_figure(more_pts)
+				#now save the image
+				image_grid.save_image()
 
 
 print "Length of variables",len(tf.all_variables())
 predictions,training_loss_array,test_loss_array,joint_angle_state_array = train_graph()
 save_output_images(predictions)
 
-with open("joint_angle_seq.npy", "wb") as f:
+with open(ROOT_DIR + "joint_angle_seq.npy", "wb") as f:
 	pickle.dump(joint_angle_state_array,f)
