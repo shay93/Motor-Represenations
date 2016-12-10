@@ -107,7 +107,7 @@ class shape_maker:
 			temp_list = [(x+1,y),(x-1,y),(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1),(x,y+1),(x,y-1)]
 			more_pts[i] = temp_list
 
-		more_pts_flattened = [pos for sublist in more_pts for pos in more_pts]
+		more_pts_flattened = [pos for sublist in more_pts for pos in sublist]
 		return more_pts_flattened
 
 
