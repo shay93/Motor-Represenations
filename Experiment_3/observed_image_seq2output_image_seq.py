@@ -11,7 +11,7 @@ import string
 import sys
 
 #####first append to sys path in order to enable import of training tools########
-parent_dir_path = os.path.abspath(os.path.dirname(__file__),'...')
+parent_dir_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 if not parent_dir_path in sys.path:
 	sys.path.insert(1,parent_dir_path)
 
@@ -30,7 +30,7 @@ IMAGE_SIZE = 64
 BATCH_SIZE = 50
 learning_rate = float(sys.argv[5])
 EVAL_BATCH_SIZE = 6
-EPOCHS = 1000
+EPOCHS = 50
 ROOT_DIR = sys.argv[1]
 SHAPE_DIR = string.join(os.getcwd().split("/")[:-1], "/") + "/Shapes/"
 SUMMARY_DIR = "tmp/" + sys.argv[2]
