@@ -30,7 +30,7 @@ IMAGE_SIZE = 64
 BATCH_SIZE = 50
 learning_rate = float(sys.argv[5])
 EVAL_BATCH_SIZE = 6
-EPOCHS = 50
+EPOCHS = 5
 ROOT_DIR = sys.argv[1]
 SHAPE_DIR = string.join(os.getcwd().split("/")[:-1], "/") + "/Shapes/"
 SUMMARY_DIR = "tmp/" + sys.argv[2]
@@ -425,7 +425,7 @@ def train_graph():
 
 			predictions,test_loss_array,joint_angle_state_array= eval_in_batches(sess)
 
-		return predictions,training_loss_array,test_loss_array
+		return predictions,training_loss_array,test_loss_array,joint_angle_state_array
 
 
 def eval_in_batches(sess):
