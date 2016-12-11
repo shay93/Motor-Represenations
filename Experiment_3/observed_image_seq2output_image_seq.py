@@ -27,10 +27,10 @@ EVAL_SHAPE_SEQUENCES = 24
 TRAIN_SIZE = NUM_SHAPE_SEQUENCES - EVAL_SHAPE_SEQUENCES
 EVAL_SIZE = EVAL_SHAPE_SEQUENCES
 IMAGE_SIZE = 64
-BATCH_SIZE = 50
+BATCH_SIZE = 200
 learning_rate = float(sys.argv[5])
 EVAL_BATCH_SIZE = 6
-EPOCHS = 5
+EPOCHS = 500
 ROOT_DIR = sys.argv[1]
 SHAPE_DIR = string.join(os.getcwd().split("/")[:-1], "/") + "/Shapes/"
 SUMMARY_DIR = "tmp/" + sys.argv[2]
@@ -367,7 +367,7 @@ saver = tf.train.Saver(observed_image_encoder_variable_list + joint_encoder_vari
 #compute the gradients for all variables
 grads_and_vars = opt.compute_gradients(loss,input_image_encoder_variable_list + joint_encoder_variable_list + observed_image_encoder_variable_list + decoder_variable_list)
 #define a training operation which applies the gradient updates inorder to tune the parameters of the graph
-train_op = opt.apply_gradients(grads_and_vars)
+train_op = opt.apply_gradients(grads_and_vars[:len(input_image_encoder_variable_list)])
 init_op = tf.initialize_all_variables()
 #apply histogram summary nodes for the gradients of all the variables
 gradient_summary_nodes = [tf.histogram_summary(str(gv[1].name) + "_gradient",gv[0]) for gv in grads_and_vars]
@@ -503,7 +503,8 @@ def save_output_images(predictions,joint_angle_sequence_batch):
 
 print "Length of variables",len(tf.all_variables())
 predictions,training_loss_array,test_loss_array,joint_angle_state_array = train_graph()
-save_output_images(predictions)
+print np.shape(joint_angle_state_array)
+save_output_images(predictions,joint_angle_state_array)
 
 with open(ROOT_DIR + "joint_angle_seq.npy", "wb") as f:
 	pickle.dump(joint_angle_state_array,f)

@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
 import pickle
+import os
+import sys
 
 parent_dir_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 if not parent_dir_path in sys.path:
