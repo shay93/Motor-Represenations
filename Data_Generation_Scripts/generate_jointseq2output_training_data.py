@@ -16,7 +16,7 @@ if not parent_dir_path in sys.path:
 import training_tools as tt
 
 DOF = 3 
-ROOT_DIR = "Joints_to_Image/"
+ROOT_DIR = parent_dir_path + "Experiment_3/" + "Joints_to_Image/"
 link_length = 30
 
 def generate_input_image_legacy():
@@ -169,7 +169,7 @@ def generate_training_data(num):
 
 #call on training data 
 
-joint_state_array,target_image_array,input_image_array = generate_training_data(20000)
+joint_state_array,target_image_array,input_image_array = generate_training_data(20)
 with open(ROOT_DIR + "joint_state_array_" + str(DOF) + "DOF.npy", "wb") as f:
 	pickle.dump(joint_state_array,f)
 

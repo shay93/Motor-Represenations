@@ -484,7 +484,7 @@ def save_output_images(predictions,joint_angle_sequence_batch):
 		for tstep in xrange(total_tsteps):
 				plt.imsave(shape_dir + shape_name + str(shape_index) + '_' + str(tstep),predictions[output_image_num,:,:,tstep],cmap = "Greys_r")
 				#index out the right joing angle state
-				joint_angle_subseq = joint_angle_sequence[:,:tstep]
+				joint_angle_subseq = joint_angle_sequence[:,:tstep + 1]
 				#use the three link arm to get the position list from this
 				effec_pos = three_link_arm.forward_kinematics(joint_angle_subseq)
 				#initialize a grid to store the image
