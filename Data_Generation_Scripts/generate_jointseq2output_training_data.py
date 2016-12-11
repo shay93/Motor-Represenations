@@ -5,6 +5,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
 import pickle
+
+parent_dir_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
+if not parent_dir_path in sys.path:
+	sys.path.insert(1,parent_dir_path)
+
+
 import training_tools as tt
 
 DOF = 3 
