@@ -162,7 +162,7 @@ def conv(x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables =
 		#calculate the output from the convolution 
 		conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
 		#compute the activations
-		h = tf.nn.relu(tf.nn.bias_add(conv,b))
+		h = tf.nn.relu(tf.nn.bias_add(conv,b), name = "h_conv")
 
 	return h,W,b
 
@@ -182,7 +182,7 @@ def fc_layer(x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variable
 			W = tf.get_variable("W_fc")
 			b = tf.get_variable("b_fc")
 			
-		h = tf.nn.relu(tf.matmul(x,W) + b)
+		h = tf.nn.relu(tf.matmul(x,W) + b, name = "h_fc")
 
 	return h,W,b 
 
@@ -205,9 +205,9 @@ def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,t
 		deconv = tf.nn.conv2d_transpose(x,W,output_shape,strides = strides)
 		#calculate the activations
 		if non_linearity:
-			h = tf.nn.relu(tf.nn.bias_add(deconv,b))
+			h = tf.nn.relu(tf.nn.bias_add(deconv,b), name = "h_deconv_relu")
 		else:
-			h = tf.nn.bias_add(deconv,b)
+			h = tf.nn.bias_add(deconv,b, name = "h_deconv")
 
 	return h,W,b
 
@@ -234,8 +234,9 @@ def encode_previous_output_image(previous_output_image, reuse_variables = False)
 	#pass flattened activations to a fully connected layer
 	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],1024 - 56],"fc_layer_encode_output",trainable = False, reuse_variables = reuse_variables)
 	output_image_encoder_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
+	output_image_encoder_activatations = [h_connv1,h_conv2,h_conv3,h_conv4,h_conv5,h_fc1]
 
-	return h_fc1,output_image_encoder_variable_list 
+	return h_fc1,output_image_encoder_variable_list,output_image_encoder_activatations
 
 def encode_joints(x_joints, reuse_variables = False):
 	"""
@@ -245,8 +246,9 @@ def encode_joints(x_joints, reuse_variables = False):
 	#pass the activations to a second fc layer
 	h_fc2,W_fc2,b_fc2 = fc_layer(h_fc1,[joint_encoder_parameters["fc_1"], joint_encoder_parameters["fc_2"]],"fc_joint_encoder_2",trainable = False, reuse_variables = reuse_variables)
 	joint_encoder_variable_list = [W_fc1,b_fc1,W_fc2,b_fc2]
+	joint_encoder_activations = [h_fc1,h_fc2]
 
-	return h_fc2,joint_encoder_variable_list
+	return h_fc2,joint_encoder_variable_list,joint_encoder_activations
 
 
 def decode_outputs(hidden_vector, reuse_variables = False):
@@ -269,8 +271,9 @@ def decode_outputs(hidden_vector, reuse_variables = False):
 	#calculate activations for fifth deconv layer
 	h_deconv5,W_deconv5,b_deconv5 = deconv(h_deconv4,[3,3,output_image_decoder_parameters['deconv_output_channels_5'],output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5",non_linearity = False, trainable = False, reuse_variables = reuse_variables)
 	decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
+	decoder_activations = [h_deconv1,h_deconv2,h_deconv3,h_deconv4,h_deconv5]
 
-	return h_deconv5,decoder_variable_list
+	return h_deconv5,decoder_variable_list,decoder_activations
 
 
 
@@ -292,7 +295,8 @@ def input_image_to_joint_angle(x, reuse_variables = False):
 	#pass flattened activations to a fully connected layer
 	h_fc1,W_fc1,b_fc1 = fc_layer(h_conv5_reshape,[4*observed_image_encoder_parameters["conv5_kernels"],DOF],"fc_layer_encode_input_image",reuse_variables = reuse_variables)
 	input_image_encoder_variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
-	return h_fc1,input_image_encoder_variable_list
+	input_image_encoder_activations = [h_conv1,h_conv2,h_conv3,h_conv4,h_conv5,h_fc1]
+	return h_fc1,input_image_encoder_variable_list,input_image_encoder_activations
 
 
 
@@ -301,13 +305,14 @@ def jointangle2image(joint_angle,previous_image,reuse_variables = False):
 	"""
 	Calls on the respective decoder and encoders in order to map a joint angle state to an output image joint_angle and previous image are both tensors
 	"""
-	encoded_joint_angle,joint_encoder_variable_list = encode_joints(joint_angle, reuse_variables = reuse_variables)
-	previous_image_encoded,image_encode_variable_list = encode_previous_output_image(previous_image, reuse_variables = reuse_variables)
+	encoded_joint_angle,joint_encoder_variable_list,joint_encoder_activations = encode_joints(joint_angle, reuse_variables = reuse_variables)
+	previous_image_encoded,image_encode_variable_list,output_image_encoder_activatations = encode_previous_output_image(previous_image, reuse_variables = reuse_variables)
 	#now concatenate to obtain encoded vector
 	encoded_vector = tf.concat(1,[encoded_joint_angle,previous_image_encoded])
 	#pass to a decoder in order to get the output
-	y_before_sigmoid,decoder_variable_list = decode_outputs(encoded_vector, reuse_variables = reuse_variables)
-	return y_before_sigmoid,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list
+	y_before_sigmoid,decoder_variable_list,decoder_activations = decode_outputs(encoded_vector, reuse_variables = reuse_variables)
+	environment_activations = joint_encoder_activations + output_image_encoder_activatations + decoder_activations
+	return y_before_sigmoid,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list, environment_activations
 
 #get the batch size
 batch_size_tensor = tf.shape(x_concatenated_list[0])[0]
@@ -321,9 +326,10 @@ current_output_image_list = []
 loss_per_tstep_list = []
 ####NOW COMPUTE THE OUTPUT THE FIRST TIMESTEP
 #compute the joint angle state from the input images
-joint_angle_state,input_image_encoder_variable_list = input_image_to_joint_angle(x_concatenated_list[0])
+joint_angle_state,input_image_encoder_variable_list,input_image_encoder_activations = input_image_to_joint_angle(x_concatenated_list[0])
 #now feed this joint angle to the jointangle2image mapping this is necesary in order to compute the loss in pixel space
-y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_list,decoder_variable_list = jointangle2image(joint_angle_state,previous_output_image_list[0])
+y_before_sigmoid,joint_encoder_variable_list,observed_image_encoder_variable_list,decoder_variable_list, environment_activations = jointangle2image(joint_angle_state,previous_output_image_list[0])
+activation_list = environment_activations + input_image_encoder_activations
 #append the joint angle state for that tstep to the joint_angle_state_list
 cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(y_before_sigmoid,x_2_list[0])
 loss_per_tstep_list.append(tf.reduce_mean(cross_entropy_loss))
@@ -336,11 +342,11 @@ else:
 #now perform the same but for a sequence images
 for tstep in xrange(1,SEQ_MAX_LENGTH):
 	#infer the joint angle
-	joint_angle_state,_ = input_image_to_joint_angle(x_concatenated_list[tstep], reuse_variables = True)
+	joint_angle_state,_,_ = input_image_to_joint_angle(x_concatenated_list[tstep], reuse_variables = True)
 	#append the joint angle op to the list
 	joint_angle_state_list.append(joint_angle_state)
 	#now pass this inferred joint angle and the previous output image to the second network that produces the output image
-	y_before_sigmoid,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[tstep], reuse_variables = True)
+	y_before_sigmoid,_,_,_,_= jointangle2image(joint_angle_state,previous_output_image_list[tstep], reuse_variables = True)
 	#append this output image to the output image list
 	if prev_output_boolean:
 		previous_output_image_list.append(tf.nn.sigmoid(y_before_sigmoid))
@@ -373,6 +379,7 @@ init_op = tf.initialize_all_variables()
 gradient_summary_nodes = [tf.histogram_summary(str(gv[1].name) + "_gradient",gv[0]) for gv in grads_and_vars]
 #apply histogram summary nodes to the values of all variables
 var_summary_nodes = [tf.histogram_summary(str(gv[1].name),gv[1]) for gv in grads_and_vars]
+activation_summary_nodes = [tf.histogram_summary(str(activation.name),activation) for activation in activation_list]
 #Also record the loss
 tf.scalar_summary("loss",loss)
 #save images
