@@ -6,7 +6,7 @@ import os
 
 class graph_construction_helper:
 	
-	def conv(x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables = False):
+	def conv(self,x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables = False):
 		"""
 		x should be the 4d tensor which is being convolved
 		weight shape should be a list of the form [Kernel Width, Kernel Width, input channels, output channels]
@@ -28,10 +28,12 @@ class graph_construction_helper:
 		return h,W,b
 
 
-	def fc_layer(x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variables = False):
+	def fc_layer(self,x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variables = False):
 		"""
 		Compute the activations of the fc layer
+
 		"""
+		
 		with tf.variable_scope(scope) as scope:
 			if reuse_variables:
 				scope.reuse_variables()
@@ -45,7 +47,7 @@ class graph_construction_helper:
 
 		return h,W,b 
 
-	def deconv(x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False,non_linearity = True):
+	def deconv(self,x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False,non_linearity = True):
 		"""
 		generalizable deconv function
 		"""
@@ -143,7 +145,7 @@ class physics_emulator:
 		#calculate activations for fourth deconv layer
 		h_deconv4,W_deconv4,b_deconv4 = self.gc.deconv(h_deconv3,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,32,32,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4")
 		#calculate activations for fifth deconv layer
-		h_deconv5,W_deconv5,b_deconv5 = deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_5'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5",non_linearity = False)
+		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_5'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5",non_linearity = False)
 		decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
 
 		return tf.squeeze(h_deconv5),decoder_variable_list
@@ -188,4 +190,5 @@ class physics_emulator:
 		self.op_dict['init_op'] = tf.initialize_all_variables()
 		# Add ops to save and restore all the variables.
 		self.op_dict["saver"] = tf.train.Saver(joint_encoder_variable_list+image_encode_variable_list+decoder_variable_list)
-		return op_dict
+		return self.op_dict
+
