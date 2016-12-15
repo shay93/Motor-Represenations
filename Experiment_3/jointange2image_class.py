@@ -164,11 +164,11 @@ class physics_emulator:
 	def build_graph(self):
 		
 		self.op_dict["x_image"] = tf.placeholder(tf.float32,shape = [None,64,64])
-		self.op_dict["x_joint"] = tf.placeholder(tf.float32,shape = [None,DOF])
+		self.op_dict["x_joint"] = tf.placeholder(tf.float32,shape = [None,self.dof])
 		y_ = tf.placeholder(tf.float32,shape = [None,64,64])
 
 		#pass the input image and joint angle tensor to jointangle2image to get y_before_sigmoid
-		y_before_sigmoid,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list = jointangle2image(self.op_dict["x_joint"],self.op_dict["x_image"])
+		y_before_sigmoid,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list = self.jointangle2image(self.op_dict["x_joint"],self.op_dict["x_image"])
 		#apply sigmoid to get y
 		y = tf.nn.sigmoid(y_before_sigmoid)
 		#copy the output tensor to the operation dict
@@ -185,7 +185,7 @@ class physics_emulator:
 		merged = tf.merge_all_summaries()
 		train_op = opt.apply_gradients(grads_and_vars)
 		#define an op to initialize variables
-		init_op = tf.initialize_all_variables()
+		self.op_dict['init_op'] = tf.initialize_all_variables()
 		# Add ops to save and restore all the variables.
 		self.op_dict["saver"] = tf.train.Saver(joint_encoder_variable_list+image_encode_variable_list+decoder_variable_list)
 		return op_dict
