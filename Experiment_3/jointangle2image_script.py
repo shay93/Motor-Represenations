@@ -1,4 +1,9 @@
+from __future__ import division
 from model_classes import physics_emulator_3dof
+import numpy as np
+import os
+import pickle
+import matplotlib.pyplot as plt
 
 eval_set_size = 200
 Epochs = 10
@@ -12,19 +17,19 @@ if not os.path.exists(log_dir):
 
 output_dir = root_dir + "Output_Images/"
 
-if not os.path.exists(log_dir):
+if not os.path.exists(output_dir):
 	os.makedirs(output_dir)
 
 
 #load the data first
 def load_data(num):
-	with open(ROOT_DIR + "joint_state_array_" + str(DOF) + "DOF" + ".npy","rb") as f:
+	with open("Joints_to_Image/" + "joint_state_array_" + str(3) + "DOF" + ".npy","rb") as f:
 		joint_state_array = pickle.load(f)[:num,...]
 
-	with open(ROOT_DIR + "target_image_array_" + str(DOF) + "DOF" + ".npy","rb") as f:
+	with open("Joints_to_Image/" + "target_image_array_" + str(3) + "DOF" + ".npy","rb") as f:
 		target_image_array = pickle.load(f)[:num,...]
 
-	with open(ROOT_DIR + "input_image_array_" + str(DOF) + "DOF" + ".npy","rb") as f:
+	with open("Joints_to_Image/" + "input_image_array_" + str(3) + "DOF" + ".npy","rb") as f:
 		input_image_array = pickle.load(f)[:num,...]
 
 
@@ -35,8 +40,7 @@ def load_data(num):
 joint_state_array,target_image_array,input_image_array = load_data(5000)
 
 #form get the delta image
-deta_image_array = target_image_array - input_image_array
-
+delta_image_array = np.expand_dims(target_image_array - input_image_array,-1)
 #now separate the arrays into the training and eval sets
 joint_state_array_train = joint_state_array[eval_set_size:,...]
 delta_image_array_train = delta_image_array[eval_set_size:,...]
@@ -56,14 +60,14 @@ placeholder_train_dict[op_dict["y_"]] = delta_image_array_train
 placeholder_train_dict[op_dict["x"]] = joint_state_array_train
 
 #pass the placeholder dict to the train graph function
-pe.train_graph(Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["init_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
+sess = pe.train_graph(Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["init_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
 
 #form the placeholder eval dict
 placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["y_"]] = delta_image_array_eval
 placeholder_eval_dict[op_dict["x"]] = joint_state_array_eval
 
-predictions,test_loss_array = pe.evaluate_graph(eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"])
+predictions,test_loss_array = pe.evaluate_graph(eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["y_"],sess)
 
 
 def calculate_IOU(predictions,target,directory):
@@ -72,7 +76,7 @@ def calculate_IOU(predictions,target,directory):
 	for i,threshold in enumerate(threshold_list):
 		good_mapping_count = 0
 		bad_mapping_count = 0
-		for i in range(EVAL_SIZE):
+		for i in range(eval_set_size):
 			arr_pred = np.nonzero(np.round(predictions[i,...]))
 			pos_list_pred = zip(arr_pred[0],arr_pred[1])
 			arr_input = np.nonzero(target[i,...])
@@ -84,7 +88,7 @@ def calculate_IOU(predictions,target,directory):
 			else:
 				bad_mapping_count += 1
 
-		IoU_list.append(good_mapping_count / TRAIN_SIZE)
+		IoU_list.append(good_mapping_count / eval_set_size)
 
 
 	with open(directory + "percentage_correct.npy","wb") as f:
@@ -93,8 +97,8 @@ def calculate_IOU(predictions,target,directory):
 
 def save_images(predictions,target,directory):
 	for i in range(eval_set_size):
-		plt.imsave(directory + "output_image" + str(i) + ".png", predictions[i,...], cmap = "Greys_r")
-		plt.imsave(directory + "target_image" + str(i) + ".png", target[i,...], cmap = "Greys_r")
+		plt.imsave(directory + "output_image" + str(i) + ".png", predictions[i,:,:,0], cmap = "Greys_r")
+		plt.imsave(directory + "target_image" + str(i) + ".png", target[i,:,:,0], cmap = "Greys_r")
 
 
 calculate_IOU(predictions,delta_image_array_eval,root_dir)

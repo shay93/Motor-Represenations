@@ -87,35 +87,36 @@ class tensorflow_graph:
 		config = tf.ConfigProto()
 		#configure a sessions object such that the gpu usage grows
 		config.gpu_options.allow_growth = True
-		with tf.Session(config = config) as sess:
-			#if we have a merge summary op initialize a summary writer
-			if merge_summary_op is not(None):
-				#initialize a summary writer and pass the graph to it
-				summary_writer = tf.train.SummaryWriter(log_dir,sess.graph)
+		sess = tf.Session(config = config)
+		#if we have a merge summary op initialize a summary writer
+		if merge_summary_op is not(None):
+			#initialize a summary writer and pass the graph to it
+			summary_writer = tf.train.SummaryWriter(log_dir,sess.graph)
 
-			#initialize the variables in the graph
-			sess.run(init_op)
-			#now loop through all the iterations compute,apply parameter updates and record values of interest
-			for step in xrange(int(Epochs * num_samples) // batch_size):
-				#first step is to get a random offset into the dataset
-				random_offset = np.random.randint(0,num_samples - batch_size)
-				#initialize an empty feed_dict for each step
-				feed_dict = {}
-				for op in placeholder_dict.keys():
-					#construct a dictionary that stores the spliced input batch data keyed by the tensor placeholders
-					feed_dict[op] = placeholder_dict[op][random_offset:random_offset + batch_size,...]
-				#every 20 steps record the outputs from the summary if a merge_summary_op is provided
-				if (step % summary_writer_freq == 0) and (merge_summary_op is not(None)):
-					_,merged_summary,l = sess.run([train_op,merge_summary_op,loss_op], feed_dict = feed_dict)
-					print l,step
-					#pass the summary to the writer to record in the log file
-					summary_writer.add_summary(merged_summary,step)
-				else:
-					#use the feed dict along with the train_op to compute, and apply gradients
-					_ = sess.run(train_op,feed_dict = feed_dict)
+		#initialize the variables in the graph
+		sess.run(init_op)
+		#now loop through all the iterations compute,apply parameter updates and record values of interest
+		for step in xrange(int(Epochs * num_samples) // batch_size):
+			#first step is to get a random offset into the dataset
+			random_offset = np.random.randint(0,num_samples - batch_size)
+			#initialize an empty feed_dict for each step
+			feed_dict = {}
+			for op in placeholder_dict.keys():
+				#construct a dictionary that stores the spliced input batch data keyed by the tensor placeholders
+				feed_dict[op] = placeholder_dict[op][random_offset:random_offset + batch_size,...]
+			#every 20 steps record the outputs from the summary if a merge_summary_op is provided
+			if (step % summary_writer_freq == 0) and (merge_summary_op is not(None)):
+				_,merged_summary,l = sess.run([train_op,merge_summary_op,loss_op], feed_dict = feed_dict)
+				print l,step
+				#pass the summary to the writer to record in the log file
+				summary_writer.add_summary(merged_summary,step)
+			else:
+				#use the feed dict along with the train_op to compute, and apply gradients
+				_ = sess.run(train_op,feed_dict = feed_dict)
+		return sess
 
 
-	def evaluate_graph(self,eval_batch_size,placeholder_dict,y_op,loss_op):
+	def evaluate_graph(self,eval_batch_size,placeholder_dict,y_op,loss_op,y_label_op,sess):
 		"""
 		Pass in the eval set data to compute predictions, this function returns the predictions whatever those may be
 		"""
@@ -125,36 +126,31 @@ class tensorflow_graph:
 			raise ValueError("batch size for evals larger than dataset: %d" % eval_batch_size)
 
 		#initialize an empty array for predictions using the provided shape
-		predictions = np.ndarray(shape = np.shape(placeholder_dict[y_op]),dtype = np.float32)
-		#initialize a configuration protobuf object that can be used to initialize a session
-		config = tf.ConfigProto()
-		#configure a sessions object such that the gpu usage grows
-		config.gpu_options.allow_growth = True
+		predictions = np.ndarray(shape = np.shape(placeholder_dict[y_label_op]),dtype = np.float32)
 		#furthermore initialize a list to record the test set loss
 		test_loss_array = [0]*((num_samples // eval_batch_size) + 1)
-		with tf.Session(config = config) as sess:
-			#initialize a variable to record how many eval iterations have taken place
-			step = 0
-			#loop through all the eval data
-			for begin in xrange(0,num_samples,eval_batch_size):
-				#specify the index of the end of the batch
-				end = begin + eval_batch_size
-				#now construct the feed dict based whether a whole batch is available or not
-				feed_dict = {}
-				if end <= size:
-					for op in placeholder_dict.keys():
-						feed_dict[op] = placeholder_dict[op][begin:end, ...]
-					predictions[begin:end,...],l = ses.run([y_op,loss_op],feed_dict = feed_dict) 
-				else:
-					for op in placeholder_dict.keys():
-						feed_dict[op] = placeholder_dict[op][-eval_batch_size,...]
-					batch_predictions,l = sess.run([y_op,loss_op], feed_dict = feed_dict)
-					predictions[begin:, ...] = batch_predictions[-(num_samples - begin):,...]
+		#initialize a variable to record how many eval iterations have taken place
+		step = 0
+		#loop through all the eval data
+		for begin in xrange(0,num_samples,eval_batch_size):
+			#specify the index of the end of the batch
+			end = begin + eval_batch_size
+			#now construct the feed dict based whether a whole batch is available or not
+			feed_dict = {}
+			if end <= num_samples:
+				for op in placeholder_dict.keys():
+					feed_dict[op] = placeholder_dict[op][begin:end, ...]
+				predictions[begin:end,...],l = sess.run([y_op,loss_op],feed_dict = feed_dict) 
+			else:
+				for op in placeholder_dict.keys():
+					feed_dict[op] = placeholder_dict[op][-eval_batch_size,...]
+				batch_predictions,l = sess.run([y_op,loss_op], feed_dict = feed_dict)
+				predictions[begin:, ...] = batch_predictions[-(num_samples - begin):,...]
 
-				#append the loss
-				test_loss_array[step] = l
-				#increment the step variable
-				step += 1
+			#append the loss
+			test_loss_array[step] = l
+			#increment the step variable
+			step += 1
 		return predictions,test_loss_array
 
 
@@ -336,7 +332,7 @@ class physics_emulator_3dof(tensorflow_graph):
 		#initialize placeholder for labels
 		self.op_dict["y_"] = tf.placeholder(tf.float32, shape = [None,64,64,1])
 		#add a fully connected layer to encode the joint angles
-		h1_fc,_,_ = self.gc.fc_layer(self.op_dict["x"],[3,32*4*4])
+		h1_fc,_,_ = self.gc.fc_layer(self.op_dict["x"],[3,32*4*4],"fc_layer_1")
 		#now reshape this to get a 4d image
 		h1_fc_reshaped = tf.reshape(h1_fc,shape = [-1,4,4,32])
 		#find the batch size of the input data in order to use later
@@ -350,15 +346,16 @@ class physics_emulator_3dof(tensorflow_graph):
 		#calculate activations for fourth deconv layer
 		h_deconv4,W_deconv4,b_deconv4 = self.gc.deconv(h_deconv3,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,32,32,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4")
 		#calculate activations for fifth deconv layer
-		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_5'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5",non_linearity = False)
+		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv5",non_linearity = False)
 		#define a loss op between the generated output and the label
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
 		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(h_deconv5,self.op_dict["y_"]))
 		#add a summary node to record the loss
-		tf.scalar_summary("loss summary",loss)
+		#tf.scalar_summary("loss summary",self.op_dict['loss'])
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],tf.all_variables())
+		self.op_dict["y"] = h_deconv5
 		#add summary nodes for the gradients
 		gradient_summary_nodes = [tf.histogram_summary(gv[1].name + "_gradients",gv[0]) for gv in grads_and_vars]
 		var_summary_nodes = [tf.histogram_summary(var.name,var) for var in tf.all_variables()]
