@@ -23,24 +23,22 @@ if not os.path.exists(output_dir):
 
 #load the data first
 def load_data(num):
-	with open("Joints_to_Image/" + "joint_state_array_" + str(3) + "DOF" + ".npy","rb") as f:
+	with open("joint_angle_array.npy","rb") as f:
 		joint_state_array = pickle.load(f)[:num,...]
 
-	with open("Joints_to_Image/" + "target_image_array_" + str(3) + "DOF" + ".npy","rb") as f:
-		target_image_array = pickle.load(f)[:num,...]
 
-	with open("Joints_to_Image/" + "input_image_array_" + str(3) + "DOF" + ".npy","rb") as f:
-		input_image_array = pickle.load(f)[:num,...]
+	with open("image_batch_array.npy","rb") as f:
+		delta_image_array = pickle.load(f)[:num,...]
 
 
-	return joint_state_array,target_image_array,input_image_array
+	return joint_state_array,input_image_array
 
 
 
-joint_state_array,target_image_array,input_image_array = load_data(5000)
+joint_state_array,delta_image_array = load_data(5000)
 
 #form get the delta image
-delta_image_array = np.expand_dims(target_image_array - input_image_array,-1)
+delta_image_array = np.expand_dims(delta_image_array,-1)
 #now separate the arrays into the training and eval sets
 joint_state_array_train = joint_state_array[eval_set_size:,...]
 delta_image_array_train = delta_image_array[eval_set_size:,...]
