@@ -1,5 +1,5 @@
 from __future__ import division
-from model_classes import physics_emulator_3dof
+from model_classes import onetstep_observed_to_output
 import numpy as np
 import os
 import pickle
@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 
 eval_set_size = 200
 Epochs = 10
-batch_size = 200
+batch_size = 1000
 eval_batch_size =  20
-root_dir = "joint2image/"
+root_dir = "end2end_onetstep_script/"
 log_dir = root_dir + "tmp/summary/"
-save_dir = root_dir + "model/" 
+save_dir = root_dir + "model/"
+saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
 
 if not os.path.exists(log_dir):
 	os.makedirs(log_dir)
@@ -23,6 +24,7 @@ if not os.path.exists(output_dir):
 
 if not os.path.exists(save_dir):
 	os.makedirs(save_dir)
+
 
 #load the data first
 def load_data(num):
@@ -38,38 +40,39 @@ def load_data(num):
 
 
 
-joint_state_array,delta_image_array = load_data(600)
+joint_state_array,delta_image_array = load_data(20000)
 
 #form get the delta image
 delta_image_array = np.expand_dims(delta_image_array,-1)
 #now separate the arrays into the training and eval sets
-joint_state_array_train = joint_state_array[eval_set_size:,...]
 delta_image_array_train = delta_image_array[eval_set_size:,...]
-#now specify the eval se
-joint_state_array_eval = joint_state_array[:eval_set_size,...]
+#now specify the eval set
 delta_image_array_eval = delta_image_array[:eval_set_size,...]
 #instantiate physics emulator graph
-pe = physics_emulator_3dof(1e-3)
+model_graph = onetstep_observed_to_output(1e-3)
 
 #build the graph
-op_dict,sess = pe.build_graph()
-#initialize the variables
-pe.init_graph_vars(sess,op_dict["init_op"])
+op_dict,sess = model_graph.build_graph()
+
+train_size = 20000 - eval_set_size
 
 #use the opt_dict to construct the placeholder dict
 placeholder_train_dict = {}
-placeholder_train_dict[op_dict["y_"]] = delta_image_array_train
-placeholder_train_dict[op_dict["x"]] = joint_state_array_train
+placeholder_train_dict[op_dict["x_2"]] = delta_image_array_train
+placeholder_train_dict[op_dict["x_1"]] = tf.zeros([train_size,64,64,1])
+
+#load the saved variables for the model graph
+model_graph.load_graph_vars(sess,op_dict["save_op"],saved_variable_directory)
 
 #pass the placeholder dict to the train graph function
-pe.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
-pe.save_graph_vars(sess,op_dict["saver"],save_dir + "model.ckpt")
+sess = model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["init_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
+model_graph.save_graph_vars(sess,op_dict["saver"],save_dir)
 #form the placeholder eval dict
 placeholder_eval_dict = {}
-placeholder_eval_dict[op_dict["y_"]] = delta_image_array_eval
-placeholder_eval_dict[op_dict["x"]] = joint_state_array_eval
+placeholder_eval_dict[op_dict["x_2"]] = delta_image_array_eval
+placeholder_eval_dict[op_dict["x_1"]] = tf.zeros([eval_set_size,64,64,1])
 
-predictions,test_loss_array = pe.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["y_"])
+predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["y_"])
 
 
 def calculate_IOU(predictions,target,directory):
