@@ -41,7 +41,7 @@ def load_data(num):
 joint_state_array,delta_image_array = load_data(20000)
 
 #form get the delta image
-delta_image_array = np.expand_dims(delta_image_array,-1)
+delta_image_array = np.expand_dims(delta_image_array,-1)/255.
 #now separate the arrays into the training and eval sets
 joint_state_array_train = joint_state_array[eval_set_size:,...]
 delta_image_array_train = delta_image_array[eval_set_size:,...]
