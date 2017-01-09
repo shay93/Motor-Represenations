@@ -413,7 +413,10 @@ class physics_emulator_3dof(tensorflow_graph):
 
 	def add_model_ops(self,reuse_variables = False):
 		#add a fully connected layer to encode the joint angles
-		h1_fc,_,_ = self.gc.fc_layer(self.op_dict["x"],[3,32*4*4],"fc_layer_1")
+		x_pos = tf.cos(self.op_dict["x"][:,0]) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:1],1)) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:2],1))
+		y_pos = tf.sin(self.op_dict["x"][:,0]) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:1],1)) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:2],1))
+		pos_tensor = tf.pack([x_pos,y_pos],-1)
+		h1_fc,_,_ = self.gc.fc_layer(pos_tensor,[2,32*4*4],"fc_layer_1")
 		#now reshape this to get a 4d image
 		h1_fc_reshaped = tf.reshape(h1_fc,shape = [-1,4,4,32])
 		#find the batch size of the input data in order to use later
@@ -444,7 +447,7 @@ class physics_emulator_3dof(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y"],self.op_dict["y_"]))#tf.reduce_mean(tf.square(self.op_dict["y"] - self.op_dict["y_"]))
+		self.op_dict["loss"] = tf.reduce_mean(tf.square(self.op_dict["y"] - self.op_dict["y_"]))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
