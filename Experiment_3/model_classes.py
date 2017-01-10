@@ -416,7 +416,7 @@ class physics_emulator_3dof(tensorflow_graph):
 		x_pos = tf.cos(self.op_dict["x"][:,0]) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:2],1)) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:3],1))
 		y_pos = tf.sin(self.op_dict["x"][:,0]) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:2],1)) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:3],1))
 		pos_tensor = tf.pack([x_pos,y_pos],-1)
-		h1_fc,_,_ = self.gc.fc_layer(pos_tensor,[2,32*4*4],"fc_layer_1")
+		h1_fc,_,_ = self.gc.fc_layer(self.op_dict["x"],[3,32*4*4],"fc_layer_1")
 		#now reshape this to get a 4d image
 		h1_fc_reshaped = tf.reshape(h1_fc,shape = [-1,4,4,32])
 		#find the batch size of the input data in order to use later
@@ -430,7 +430,7 @@ class physics_emulator_3dof(tensorflow_graph):
 		#calculate activations for fourth deconv layer
 		h_deconv4,W_deconv4,b_deconv4 = self.gc.deconv(h_deconv3,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,32,32,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4")
 		#calculate activations for fifth deconv layer
-		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv5")
+		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv5", non_linearity = False)
 		self.op_dict["y"] = h_deconv5
 		var_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
 		for var in var_list:
@@ -447,7 +447,7 @@ class physics_emulator_3dof(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.square(self.op_dict["y"] - self.op_dict["y_"]))
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(op_dict["y"],op_dict["y_"]/255.))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
@@ -502,7 +502,7 @@ class onetstep_observed_to_output(tensorflow_graph):
 		#flatten the activations in the final conv layer in order to obtain an output image
 		h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*self.observed_image_encoder_parameters["conv5_kernels"]])
 		#pass flattened activations to a fully connected layer
-		h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(h_conv5_reshape,[4*self.observed_image_encoder_parameters["conv5_kernels"],self.dof],"fc_layer_encode_input_image", reuse_variables = reuse_variables)
+		h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(h_conv5_reshape,[4*self.observed_image_encoder_parameters["conv5_kernels"],self.dof],"fc_layer_encode_input_image", reuse_variables = reuse_variables, non_linearity = False)
 		#now get the graph for the physics emulator
 		pe = physics_emulator_3dof(1e-3)
 		#add h_fc1 as the input tensor for the physics emulator
