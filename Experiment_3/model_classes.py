@@ -413,8 +413,8 @@ class physics_emulator_3dof(tensorflow_graph):
 
 	def add_model_ops(self,reuse_variables = False):
 		#add a fully connected layer to encode the joint angles
-		x_pos = tf.cos(self.op_dict["x"][:,0]) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:1],1)) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:2],1))
-		y_pos = tf.sin(self.op_dict["x"][:,0]) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:1],1)) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:2],1))
+		x_pos = tf.cos(self.op_dict["x"][:,0]) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:2],1)) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:3],1))
+		y_pos = tf.sin(self.op_dict["x"][:,0]) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:2],1)) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:3],1))
 		pos_tensor = tf.pack([x_pos,y_pos],-1)
 		h1_fc,_,_ = self.gc.fc_layer(pos_tensor,[2,32*4*4],"fc_layer_1")
 		#now reshape this to get a 4d image
