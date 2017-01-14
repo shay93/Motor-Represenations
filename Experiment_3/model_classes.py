@@ -3,7 +3,6 @@ import numpy as np
 import tensorflow as tf
 import os
 
-
 class graph_construction_helper:
 	
 	def conv(self,x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables = False):
@@ -68,12 +67,20 @@ class graph_construction_helper:
 
 		return h,W,b
 
-
 class tensorflow_graph:
 	#all graphs should be a subclass of the tensorflow graph object which has methods that can be used to train and evaluate the graph
 	#so given the model the trainer or evaluator calls on the train_op in the graph to construct the graph
+
+	def create_session(self):
+		#initialize a configuration protobuf object that can be used to initialize a session
+		config = tf.ConfigProto()
+		#configure a sessions object such that the gpu usage grows
+		config.gpu_options.allow_growth = True
+		sess = tf.Session(config = config)
+		return sess
+
 	
-	def train_graph(self,Epochs,batch_size,placeholder_dict,train_op,init_op, loss_op, merge_summary_op = None,log_dir = None,summary_writer_freq = 20):
+	def train_graph(self,sess,Epochs,batch_size,placeholder_dict,train_op,loss_op, merge_summary_op = None,log_dir = None,summary_writer_freq = 20):
 		"""
 		1)Epochs is the number determines the number of iterations and hence the number of times that parameter updates are made
 		2)placeholder dict holds the placholder ops of the graph and the data that needs to be passed into the graph in order to compute gradients and train parameters
@@ -83,18 +90,12 @@ class tensorflow_graph:
 		"""
 		#first get the number of samples by getting finding the shape of the first data variable
 		num_samples = np.shape(placeholder_dict[placeholder_dict.keys()[0]])[0]
-		#initialize a configuration protobuf object that can be used to initialize a session
-		config = tf.ConfigProto()
-		#configure a sessions object such that the gpu usage grows
-		config.gpu_options.allow_growth = True
-		sess = tf.Session(config = config)
 		#if we have a merge summary op initialize a summary writer
 		if merge_summary_op is not(None):
 			#initialize a summary writer and pass the graph to it
 			summary_writer = tf.train.SummaryWriter(log_dir,sess.graph)
 
-		#initialize the variables in the graph
-		sess.run(init_op)
+
 		#now loop through all the iterations compute,apply parameter updates and record values of interest
 		for step in xrange(int(Epochs * num_samples) // batch_size):
 			#first step is to get a random offset into the dataset
@@ -112,11 +113,27 @@ class tensorflow_graph:
 				summary_writer.add_summary(merged_summary,step)
 			else:
 				#use the feed dict along with the train_op to compute, and apply gradients
-				_ = sess.run(train_op,feed_dict = feed_dict)
-		return sess
+				_ ,l = sess.run([train_op,loss_op],feed_dict = feed_dict)
+				if (step % 20) == 0:
+					print l,step
+
+	def save_graph_vars(self,sess,save_op,save_directory):
+		#save_directory = os.path.abspath(save_directory)
+		save_op.save(sess,save_directory)
+		print "Variables have been saved"
 
 
-	def evaluate_graph(self,eval_batch_size,placeholder_dict,y_op,loss_op,y_label_op,sess):
+	def load_graph_vars(self,sess,save_op,load_path):
+		load_path = os.path.abspath(load_path)
+		save_op.restore(sess,load_path)
+		print "Model Restored"
+
+	def init_graph_vars(self,sess,init_op):
+		#initialize the variables in the graph
+		sess.run(init_op)
+		print "Variables have been initialized"
+	
+	def evaluate_graph(self,sess,eval_batch_size,placeholder_dict,y_op,loss_op,y_label_op):
 		"""
 		Pass in the eval set data to compute predictions, this function returns the predictions whatever those may be
 		"""
@@ -153,9 +170,15 @@ class tensorflow_graph:
 			step += 1
 		return predictions,test_loss_array
 
-
-
-
+	def build_graph(self):
+		#add the placeholder ops
+		self.add_placeholder_ops()
+		#add the model ops
+		self.add_model_ops()
+		#finally add all the training ops the summary ops the saver and initialization op
+		self.add_auxillary_ops()
+		#return the session environment in which the graph is defined and dictionary of the operations
+		return self.op_dict,self.create_session()
 
 class physics_emulator(tensorflow_graph):
 	
@@ -280,43 +303,93 @@ class physics_emulator(tensorflow_graph):
 		self.op_dict["saver"] = tf.train.Saver(joint_encoder_variable_list+image_encode_variable_list+decoder_variable_list)
 		return self.op_dict
 
-
 class one_layer_fc(tensorflow_graph):
 
 	def __init__(self,fc_units,learning_rate):
 		self.fc_units = fc_units
 		self.lr = learning_rate
-		#initialize a placeholder dict that can be used for training the graph
-		self.op_dict = {}
+		#initialize a graph constructor object
 		self.gc = graph_construction_helper()
+		#intitialize dictionaries to store the operations of the graph as well as the network activations and variables
+		#graph operations may refer to any intermediate tensors in graph computations
+		self.op_dict = {}
+		self.activation_dict = {}
+		self.var_dict = {}
 	
-
-	def build_graph(self):
+	def add_placeholder_ops(self):
+		"""
+		Add input and output placeholders for data to be fed into and read from the model
+		furthermore add these placeholders to the op_dict and their key will always be "x" and "y_"
+		"""
 		#initialize a placedholder for the output and the input
-		self.op_dict['x'] = tf.placeholder(tf.float32,shape = [None,2])
+		self.op_dict['x'] = tf.placeholder(tf.float32,shape = [None,1])
 		#now a placeholder for the labels
 		self.op_dict['y_'] = tf.placeholder(tf.float32, shape = [None,1])
-		#now add the fc layer
-		h1,W1,b1 = self.gc.fc_layer(self.op_dict['x'],[2,self.fc_units],"fc_layer")
-		self.op_dict["y"],W2,b2 = self.gc.fc_layer(h1,[self.fc_units,1],"readout")
+		return self.op_dict
+
+	def add_model_ops(self):
+		"""
+		This function will add the operations to the graph which will be responsible for feedforward computations
+		This function will add the final output tensor to the op dict
+		This will also add the intermediate activations to the activation dict
+		It will finally add the variable tensors required for computations to the var dict
+		"""
+		#Add the first layer which is a fc layer
+		h1,W1,b1 = self.gc.fc_layer(self.op_dict['x'],[1,self.fc_units],"fc_layer",stddev = 0.5)
+		#add another layer of readout neurons get the output activations
+		self.op_dict["y"],W2,b2 = self.gc.fc_layer(h1,[self.fc_units,1],"readout",stddev = 0.5)
+		#now add the weight and bias variables to the var dict but in order to make this process easier first list all the variabls
+		var_list = [W1,b1,W2,b2]
+		#loop through the list and add the variables the dict keyed by their previously specified name
+		for var in var_list:
+			self.var_dict[var.name] = var
+		#add the intermediate activations to a list
+		activation_list = [h1]
+		for act in activation_list:
+			self.activation_dict[act.name] = act
+
+		return self.op_dict
+
+	def add_auxillary_ops(self):
+		"""
+		Add operations which are not central to the forward model these operations and tensors include
+		those pertaining to training ops via back prop as well as summary ops
+		add a loss op the op_dict as well as a train op a merge summary op and an init_op
+		"""
 		#define a means square loss between the predicted and label
 		self.op_dict["loss"] = tf.reduce_mean(tf.square(self.op_dict["y"] - self.op_dict["y_"]))
 		#intialize the optimizer
 		opt = tf.train.AdamOptimizer(self.lr)
-		#get all the variables and compute gradients
-		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],tf.all_variables())
+		#compute gradients for variables in 
+		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
 		gradient_summary_nodes = [tf.histogram_summary(gv[1].name + "_gradients",gv[0]) for gv in grads_and_vars]
-		var_summary_nodes = [tf.histogram_summary(var.name,var) for var in tf.all_variables()]
+		var_summary_nodes = [tf.histogram_summary(var_item[0],var_item[1]) for var_item in self.var_dict.items() ]
 		#add a scalar summary for the loss
 		tf.scalar_summary("loss summary",self.op_dict["loss"])
 		#merge the summaries
 		self.op_dict["merge_summary_op"] = tf.merge_all_summaries()
+		#add a training operation
 		self.op_dict["train_op"] = opt.apply_gradients(grads_and_vars)
+		#add an initialization operation
 		self.op_dict["init_op"] = tf.initialize_all_variables()
+		#add a save op
+		self.op_dict["save_op"] = tf.train.Saver(self.var_dict)
 		return self.op_dict
 
 
+	def build_graph(self):
+		"""
+		Should call on the other functions and construct the graph which consists of the placeholder ops
+		and add the model graph ops and then the auxillary ops
+		"""
+		#add placeholder ops
+		self.add_placeholder_ops()
+		#add model ops
+		self.add_model_ops()
+		#add training ops
+		self.add_auxillary_ops()
+		return self.op_dict,self.create_session()
 
 class physics_emulator_3dof(tensorflow_graph):
 
@@ -324,15 +397,25 @@ class physics_emulator_3dof(tensorflow_graph):
 		self.output_image_decoder_parameters = {"deconv_output_channels_1" : 16, "deconv_output_channels_2" : 8, "deconv_output_channels_3" : 4, "deconv_output_channels_4" : 1}
 		self.lr = learning_rate
 		self.gc = graph_construction_helper()
+		
+		###initialize dictionaries to store the model's operations, variables and resulting activations
 		self.op_dict = {}
-	
-	def build_graph(self):
+		self.var_dict = {}
+		self.activation_dict = {}
+
+	def add_placeholder_ops(self):
 		#initialize placeholder for joint angle inputs
 		self.op_dict["x"] = tf.placeholder(tf.float32,shape = [None,3])
 		#initialize placeholder for labels
 		self.op_dict["y_"] = tf.placeholder(tf.float32, shape = [None,64,64,1])
+		return self.op_dict
+
+	def add_model_ops(self,reuse_variables = False):
 		#add a fully connected layer to encode the joint angles
-		h1_fc,_,_ = self.gc.fc_layer(self.op_dict["x"],[3,32*4*4],"fc_layer_1")
+		x_pos = tf.cos(self.op_dict["x"][:,0]) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:2],1)) + tf.cos(tf.reduce_sum(self.op_dict["x"][:,:3],1))
+		y_pos = tf.sin(self.op_dict["x"][:,0]) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:2],1)) + tf.sin(tf.reduce_sum(self.op_dict["x"][:,:3],1))
+		pos_tensor = tf.pack([x_pos,y_pos],-1)
+		h1_fc,W_fc1,b_fc1 = self.gc.fc_layer(self.op_dict["x"],[3,32*4*4],"fc_layer_1")
 		#now reshape this to get a 4d image
 		h1_fc_reshaped = tf.reshape(h1_fc,shape = [-1,4,4,32])
 		#find the batch size of the input data in order to use later
@@ -346,25 +429,192 @@ class physics_emulator_3dof(tensorflow_graph):
 		#calculate activations for fourth deconv layer
 		h_deconv4,W_deconv4,b_deconv4 = self.gc.deconv(h_deconv3,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,32,32,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4")
 		#calculate activations for fifth deconv layer
-		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv5")
-		#define a loss op between the generated output and the label
+		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv5", non_linearity = False)
+		self.op_dict["y_before_sigmoid"] = h_deconv5
+		self.op_dict["y"] = tf.sigmoid(h_deconv5)
+		var_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5,W_fc1,b_fc1]
+		for var in var_list:
+			self.var_dict[var.name] = var
+
+		#specify the activation list
+		activation_list = [h1_fc,h_deconv1,h_deconv2,h_deconv3,h_deconv4,h_deconv5]
+
+		for act in activation_list:
+			self.activation_dict[act.name] = act
+		
+		return self.op_dict
+	
+	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.square(h_deconv5 - self.op_dict["y_"]))
-		#add a summary node to record the loss
-		#tf.scalar_summary("loss summary",self.op_dict['loss'])
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_before_sigmoid"],self.op_dict["y_"]/255.))
 		#get all the variables and compute gradients
-		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],tf.all_variables())
-		self.op_dict["y"] = h_deconv5
+		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
 		gradient_summary_nodes = [tf.histogram_summary(gv[1].name + "_gradients",gv[0]) for gv in grads_and_vars]
-		var_summary_nodes = [tf.histogram_summary(var.name,var) for var in tf.all_variables()]
+		var_summary_nodes = [tf.histogram_summary(var_item[0],var_item[1]) for var_item in self.var_dict.items()]
 		#add a scalar summary for the loss
 		tf.scalar_summary("loss summary",self.op_dict["loss"])
 		#merge the summaries
 		self.op_dict["merge_summary_op"] = tf.merge_all_summaries()
+		#add the training operation to the graph
 		self.op_dict["train_op"] = opt.apply_gradients(grads_and_vars)
+		#add the initialization operation
+		self.op_dict["init_op"] = tf.initialize_all_variables()
+		#add a saving operation
+		self.op_dict["saver"] = tf.train.Saver(self.var_dict)
+		return self.op_dict
+
+class onetstep_observed_to_output(tensorflow_graph):
+
+	def __init__(self,learning_rate = 1e-3, gc = graph_construction_helper()):
+		self.lr = learning_rate
+		self.gc = gc
+		self.op_dict = {}
+		self.var_dict = {}
+		self.activation_dict = {}
+		self.dof = 3
+		self.observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
+
+
+	def add_placeholder_ops(self):
+		#add placeholder for observed image at first timestep
+		self.op_dict["x_1"] = tf.placeholder(tf.float32,shape = [None,64,64,1])
+		#add another placeholder for observed image at second timestep
+		self.op_dict["x_2"] = tf.placeholder(tf.float32,shape = [None,64,64,1])
+		return self.op_dict
+
+
+	def add_model_ops(self, add_save_op = True, reuse_variables = False):
+		#concatenate the two input channels to form x which is passed through the conv layers
+		x = tf.concat(3,[self.op_dict["x_1"],self.op_dict["x_2"]])
+		#pass the 2 channel observed images through a sequence of conv layers in order to encode the image and infer the joint angle
+		h_conv1,W_conv1,b_conv1 = self.gc.conv(x,[3,3,2,self.observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_input", reuse_variables = reuse_variables)
+		#find the activations of the second conv layer
+		h_conv2,W_conv2,b_conv2 = self.gc.conv(h_conv1,[3,3,self.observed_image_encoder_parameters["conv1_kernels"],self.observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_input", reuse_variables = reuse_variables)
+		#find the activations of the third conv layer
+		h_conv3,W_conv3,b_conv3 = self.gc.conv(h_conv2,[3,3,self.observed_image_encoder_parameters["conv2_kernels"],self.observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_input", reuse_variables = reuse_variables)
+		#find the activations of the fourth conv layer
+		h_conv4,W_conv4,b_conv4 = self.gc.conv(h_conv3,[3,3,self.observed_image_encoder_parameters["conv3_kernels"],self.observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_input", reuse_variables = reuse_variables)
+		#find the activations of the fifth conv layer
+		h_conv5,W_conv5,b_conv5 = self.gc.conv(h_conv4,[3,3,self.observed_image_encoder_parameters["conv4_kernels"],self.observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_input", reuse_variables = reuse_variables)
+		#flatten the activations in the final conv layer in order to obtain an output image
+		h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*self.observed_image_encoder_parameters["conv5_kernels"]])
+		#pass flattened activations to a fully connected layer
+		h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(h_conv5_reshape,[4*self.observed_image_encoder_parameters["conv5_kernels"],self.dof],"fc_layer_encode_input_image", reuse_variables = reuse_variables, non_linearity = False)
+		#now get the graph for the physics emulator
+		pe = physics_emulator_3dof(1e-3)
+		#add h_fc1 as the input tensor for the physics emulator
+		pe.op_dict["x"] = h_fc1
+		#now add the model ops to the pe graph
+		pe_op_dict = pe.add_model_ops(reuse_variables = reuse_variables)
+		#designate the output from the physics emulator to be the output of the onetstep model
+		self.op_dict["delta"] = pe_op_dict["y"]
+		self.op_dict["y"] = self.op_dict["delta"] + self.op_dict["x_1"]
+		variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
+		activation_list = [h_conv1,h_conv2,h_conv3,h_conv4,h_conv5,h_fc1]
+
+		for var in variable_list:
+			self.var_dict[var.name] = var
+
+		for act in activation_list:
+			self.activation_dict[act.name] = act
+
+		if add_save_op:
+			self.op_dict["saver"] = tf.train.Saver(pe.var_dict)
+
+		return self.op_dict
+
+	def add_auxillary_ops(self):
+		opt = tf.train.AdamOptimizer(self.lr)
+		#define the loss op using the y before sigmoid and in the cross entropy sense
+		self.op_dict["loss"] = tf.reduce_mean(tf.square(self.op_dict["y"] - self.op_dict["x_2"]))
+		#get all the variables and compute gradients
+		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
+		#add summary nodes for the gradients
+		gradient_summary_nodes = [tf.histogram_summary(gv[1].name + "_gradients",gv[0]) for gv in grads_and_vars]
+		var_summary_nodes = [tf.histogram_summary(var_item[0],var_item[1]) for var_item in self.var_dict.items()]
+		#add a scalar summary for the loss
+		tf.scalar_summary("loss summary",self.op_dict["loss"])
+		#merge the summaries
+		self.op_dict["merge_summary_op"] = tf.merge_all_summaries()
+		#add the training operation to the graph but only apply gradients to variables from the model 
+		self.op_dict["train_op"] = opt.apply_gradients(grads_and_vars)
+		#add the initialization operation
 		self.op_dict["init_op"] = tf.initialize_all_variables()
 		return self.op_dict
+
+class observed_to_output_seq2seq(tensorflow_graph):
+	"""
+	Model should create a list of objects
+	"""
+
+	def __init__(self,learning_rate,seq_max_length, gc = graph_construction_helper()):
+		self.lr = learning_rate
+		self.var_dict = {}
+		self.op_dict = {}
+		self.activation_dict = {}
+		self.gc = gc
+		self.seq_max = seq_max_length
+
+	def add_placeholder_ops(self):
+		#add placeholder for observed image sequence at tstep 1
+		self.op_dict['x_1_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,SEQ_MAX_LENGTH],name = "x_t1_sequence_tensor")
+		#now define a placeholder for the second image
+		self.op_dict['x_2_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,SEQ_MAX_LENGTH], name = "x_t2_sequence_tensor")
+		return self.op_dict
+
+	def add_model_ops(self):
+		"""
+		Create a list of onetstep objects and specify x_1 to be the output from the previous tstep
+		"""
+		#split the input tensors into a list so that we may loop through the list and append to 
+		onetstep_graph_objects = [onetstep_observed_to_output(gc = gc)] * self.seq_max
+		graph_op_dict_list = [onetstep_graph_objects[0].add_model_ops()]
+		#get a list of the tensors that form the output
+		x_1_list = tf.split(3,self.seq_max,self.op_dict['x_1_sequence'],name = "x_t1_list")
+		x_2_list = tf.split(3,self.seq_max,self.op_dict['x_2_sequence'],name = "x_t2_list")
+		#now append objects to the onetstep_end2end_list with the op dict
+		#add the correct inputs ot the first model in the model
+		graph_op_dict_list[0].op_dict["x_1"] = x_1_list[0]
+		graph_op_dict_list[0].op_dict["x_2"] = x_2_list[0]
+		#initialize a list to record the output tensors at each tstep
+		delta_output_list = [graph_op_dict_list[0].op_dict["delta"]]
 		
+		for tstep in range(1,self.seq_max_length):
+			graph_op_dict_list.append(onetstep_graph_objects[tstep].add_model_ops(add_save_op = False, reuse_variables = True))
+			graph_op_dict_list[tstep].op_dict["x_1"] = x_1_list[tstep]
+			graph_op_dict_list[tstep].op_dict["x_2"] = x_2_list[tstep]
+			delta_output_list.append(graph_op_dict_list[tstep].op_dict["y"])
+
+		#before computing loss is now necessary to sum up the deltas at each timestep to obtain the output image at each timestep
+		output_image_list = []
+		for tstep in range(self.seq_max_length):
+			output_image_list.append(tf.reduce_sum(delta_output_list[:tstep]),0)
+
+		#now define a loss between this output and the observed x_2_sequence define it in the meansquare sense
+		#first pack the list into a tensor
+		self.op_dict["y"] = tf.pack(output_image_list,-1)
+		self.var_dict = onetstep_graph_objects[0].var_dict
+		return self.op_dict
+
+
+	def add_auxillary_ops(self):
+		opt = tf.train.AdamOptimizer(self.lr)
+		#define the loss op using the y before sigmoid and in the cross entropy sense
+		self.op_dict["loss"] = tf.reduce_mean(tf.square(self.op_dict["y"] - self.op_dict["x_2_sequence"]))
+		#get all the variables and compute gradients
+		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
+		#add summary nodes for the gradients
+		gradient_summary_nodes = [tf.histogram_summary(gv[1].name + "_gradients",gv[0]) for gv in grads_and_vars]
+		var_summary_nodes = [tf.histogram_summary(var_item[0],var_item[1]) for var_item in self.var_dict.items()]
+		#add a scalar summary for the loss
+		tf.scalar_summary("loss summary",self.op_dict["loss"])
+		#merge the summaries
+		self.op_dict["merge_summary_op"] = tf.merge_all_summaries()
+		#add the training operation to the graph but only apply gradients to variables from the model 
+		self.op_dict["train_op"] = opt.apply_gradients(grads_and_vars)
+		#add the initialization operation
+		self.op_dict["init_op"] = tf.initialize_all_variables()
+		return self.op_dict
 
