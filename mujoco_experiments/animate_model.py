@@ -50,15 +50,12 @@ Sets initial torques/controls for the joints
 '''
 def set_init_ctrl(MW,DEBUG=False):
     if DEBUG:
-        ctrl = np.zeros(13)
+        ctrl = np.zeros(6)
     else:
-        #ctrl = np.random.rand(13)
-        ctrl = np.ones(13)
-        ctrl[5] = 0.5
-        ctrl[0] = - 2*ctrl[0] # to induce right side roll
-        ctrl[1:3] = 0.
-        ctrl[7] = 0.
-        ctrl[11] = 0.
+        ctrl = np.zeros(6)
+        tmp = np.random.rand(3)
+        ctrl[:3] = tmp
+        ctrl[3:] = -tmp
         print ctrl
     MW.data.ctrl = ctrl
 
@@ -82,7 +79,7 @@ def execute_grasp(MW,DEBUG=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Parser to create arguments for the multi sphere land')
-    parser.add_argument('--fname',type=str, default='../models/MPL/MPL_Basic.xml',help ='The path to the model file name from which to generate data')
+    parser.add_argument('--fname',type=str, default='../mujoco_model/arm_3link_push.xml',help ='The path to the model file name from which to generate data')
     args = parser.parse_args()
     print ("Parsing arguments")
     fname = args.fname
@@ -102,9 +99,9 @@ if __name__ == "__main__":
     #MW,vel = set_init_vel(MW,True)
     MW,ctrl_init = set_init_ctrl(MW,False)
     for ii in range(500):
-        print ("Step once")
+        # print ("Step once")
         MW.step()
-        print ("Loop once")
+        #print ("Loop once")
         viewer.loop_once()
         data, width, height = viewer.get_image()
         convert_string_ascii(data,ii,'test')

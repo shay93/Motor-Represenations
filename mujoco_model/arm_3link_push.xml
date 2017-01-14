@@ -9,7 +9,7 @@
     
     <worldbody>
         <body name="palm" pos="0.2 .1 0">
-            <geom name="capsulepalm"  type="capsule" fromto="-0.1 0 0 0.1 0 0" size="0.12"/>
+            <geom name="shoulder1"  type="capsule" fromto="-0.1 0 0 0.1 0 0" size="0.12"/>
             <body name="proximal_1" pos="0 0 0">
                 <geom name="capsuleproximal"  type="capsule"  fromto="0 0 0 0 0.8 0" size="0.1" contype="1" conaffinity="1"/>
                 <joint name="proximal_j_2" type="hinge" pos="0 0 0" axis="0 0 1" range="-0.75 .75" damping="1.0" />
@@ -20,15 +20,15 @@
                  </body>
               </body>
         </body>
-        <body name="palm_2" pos="0.2 2.5 0.">
-            <geom name="capsulepalm_2"  type="capsule" fromto="-0.1 0 0 0.1 0 0" size="0.12"/>
+        <body name="palm_2" pos="0.2 3.0 0.">
+            <geom name="shoulder2"  type="capsule" fromto="-0.1 0 0 0.1 0 0" size="0.12"/>
             <body name="proximal_1_2" pos="0 0 0">
                 <geom name="capsuleproximal_2"  type="capsule"  fromto="0 0 0 0 -0.8 0" size="0.1" contype="1" conaffinity="1"/>
                 <joint name="proximal_j_2_2" type="hinge" pos="0 0 0" axis="0 0 1" range="-0.75 .75" damping="1.0" />
                 <joint name="proximal_j_1_2" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.9 1.0" damping="1.0" />
-                <body name="distal_1_2" pos="0 -0.8 0">
+                <body name="distal_1_2" pos="0 -.8 0">
                     <joint name="distal_j_1_2" type="hinge" pos="0 0 0" axis="1 0 0" range="-1. 0" damping="1.0"/>
-                    <geom name="capsuledistal_2" type="capsule"  fromto="0 0 0 0 0.4 0" size="0.08" contype="1" conaffinity="1"/>
+                    <geom name="capsuledistal_2" type="capsule"  fromto="0 0 0 0 -0.4 0" size="0.08" contype="1" conaffinity="1"/>
                 </body>
             </body>
          </body>
@@ -48,5 +48,8 @@
         <motor joint="proximal_j_1" ctrlrange="-2 2" ctrllimited="true"/>
         <motor joint="proximal_j_2" ctrlrange="-2 2" ctrllimited="true"/>
         <motor joint="distal_j_1" ctrlrange="-2 2" ctrllimited="true"/>
+        <motor joint="proximal_j_1_2" ctrlrange="-2 2" ctrllimited="true"/>
+        <motor joint="proximal_j_2_2" ctrlrange="-2 2" ctrllimited="true"/>
+        <motor joint="distal_j_1_2" ctrlrange="-2 2" ctrllimited="true"/>
     </actuator>
 </mujoco>
