@@ -510,6 +510,7 @@ class onetstep_observed_to_output(tensorflow_graph):
 		pe_op_dict = pe.add_model_ops(reuse_variables = reuse_variables)
 		#designate the output from the physics emulator to be the output of the onetstep model
 		self.op_dict["delta"] = pe_op_dict["y"]
+		self.op_dict["delta_before_sigmoid"] = pe_op_dict["y_before_sigmoid"]
 		self.op_dict["y"] = self.op_dict["delta"] + self.op_dict["x_1"]
 		variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
 		activation_list = [h_conv1,h_conv2,h_conv3,h_conv4,h_conv5,h_fc1]
@@ -528,7 +529,7 @@ class onetstep_observed_to_output(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.square(self.op_dict["y"] - self.op_dict["x_2"]))
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["delta_before_sigmoid"],self.op_dict["x_2"]/255.))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
