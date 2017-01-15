@@ -41,7 +41,7 @@ def load_data(num):
 joint_state_array,delta_image_array = load_data(600)
 
 #form get the delta image
-delta_image_array = np.expand_dims(delta_image_array,-1)/255.
+delta_image_array = np.expand_dims(delta_image_array,-1)
 #now separate the arrays into the training and eval sets
 joint_state_array_train = joint_state_array[eval_set_size:,...]
 delta_image_array_train = delta_image_array[eval_set_size:,...]
@@ -49,7 +49,7 @@ delta_image_array_train = delta_image_array[eval_set_size:,...]
 joint_state_array_eval = joint_state_array[:eval_set_size,...]
 delta_image_array_eval = delta_image_array[:eval_set_size,...]
 #instantiate physics emulator graph
-pe = physics_emulator_3dof(1e-3)
+pe = physics_emulator_3dof(1e-2)
 
 #build the graph
 op_dict,sess = pe.build_graph()
