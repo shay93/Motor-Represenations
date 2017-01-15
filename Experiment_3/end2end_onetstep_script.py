@@ -59,18 +59,18 @@ train_size = 20000 - eval_set_size
 #use the opt_dict to construct the placeholder dict
 placeholder_train_dict = {}
 placeholder_train_dict[op_dict["x_2"]] = delta_image_array_train
-placeholder_train_dict[op_dict["x_1"]] = tf.zeros([train_size,64,64,1])
-
+placeholder_train_dict[op_dict["x_1"]] = np.zeros([train_size,64,64,1])
+model_graph.init_graph_vars(sess,op_dict["init_op"])
 #load the saved variables for the model graph
-model_graph.load_graph_vars(sess,op_dict["save_op"],saved_variable_directory)
+model_graph.load_graph_vars(sess,op_dict["saver"],saved_variable_directory)
 
 #pass the placeholder dict to the train graph function
-sess = model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["init_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
-model_graph.save_graph_vars(sess,op_dict["saver"],save_dir)
+sess = model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
+#model_graph.save_graph_vars(sess,op_dict["saver"],save_dir)
 #form the placeholder eval dict
 placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x_2"]] = delta_image_array_eval
-placeholder_eval_dict[op_dict["x_1"]] = tf.zeros([eval_set_size,64,64,1])
+placeholder_eval_dict[op_dict["x_1"]] = np.zeros([eval_set_size,64,64,1])
 
 predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["y_"])
 

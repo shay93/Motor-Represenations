@@ -501,7 +501,7 @@ class onetstep_observed_to_output(tensorflow_graph):
 		#flatten the activations in the final conv layer in order to obtain an output image
 		h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*self.observed_image_encoder_parameters["conv5_kernels"]])
 		#pass flattened activations to a fully connected layer
-		h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(h_conv5_reshape,[4*self.observed_image_encoder_parameters["conv5_kernels"],self.dof],"fc_layer_encode_input_image", reuse_variables = reuse_variables, non_linearity = False)
+		h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(h_conv5_reshape,[4*self.observed_image_encoder_parameters["conv5_kernels"],self.dof],"fc_layer_encode_input_image", reuse_variables = reuse_variables)
 		#now get the graph for the physics emulator
 		pe = physics_emulator_3dof(1e-3)
 		#add h_fc1 as the input tensor for the physics emulator

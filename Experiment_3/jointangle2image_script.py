@@ -6,8 +6,8 @@ import pickle
 import matplotlib.pyplot as plt
 
 eval_set_size = 200
-Epochs = 10
-batch_size = 200
+Epochs = 10000
+batch_size = 500
 eval_batch_size =  20
 root_dir = "joint2image/"
 log_dir = root_dir + "tmp/summary/"
@@ -38,7 +38,7 @@ def load_data(num):
 
 
 
-joint_state_array,delta_image_array = load_data(600)
+joint_state_array,delta_image_array = load_data(20000)
 
 #form get the delta image
 delta_image_array = np.expand_dims(delta_image_array,-1)
