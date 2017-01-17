@@ -13,14 +13,15 @@ import sys
 import IPython
 from PIL import Image
 
-def convert_string_ascii(data,idx,fname='test.png'):
+def convert_string_ascii(data,idx,fname='test.png',DEBUG=True):
     #im = Image.fromstring("RGB",(500,500),data)
     im = Image.frombytes("RGB",(500,500),data)
     im = im.rotate(180).transpose(Image.FLIP_LEFT_RIGHT)
-    if idx is not None:
-        im.save(fname+str(idx)+'.png')
-    else:
-        im.save(fname)
+    if DEBUG is False:
+        if idx is not None:
+            im.save(fname+str(idx)+'.png')
+        else:
+            im.save(fname)
     return
 '''
 This sets the Initial positions of the joints
@@ -34,13 +35,7 @@ def set_init_pos(MW,table_pos,DEBUG=False):
         #If not, the joints act like springs and recoil sharply creating very abnormal
         #behavior
         pos = np.zeros(6)
-        pos[0] = np.random.uniform(-.75,.75) #proximal rot x
-        pos[1] = np.random.uniform(-.65,0.3) #proximal rot z(-.1,0.4),0.45 is the magical contact number
-        pos[2] = np.random.uniform(-.7,0.0) #distal rot z
-        pos[3] = np.random.uniform(-0.5,0.5) #obj x
-        pos[4] = np.random.uniform(0.25,0.6) #obj y
-        #pos[5] = -0.5 + table_pos #where 0.1 is the object's z size
-        pos[5] = table_pos  #where 0.1 is the object's z size
+        pos = np.random.randn(6)
     MW.data.qpos = pos
 
     return MW,pos
@@ -95,8 +90,8 @@ if __name__ == "__main__":
     viewer.cam.azimuth = 90
     viewer.cam.distance = 1. 
     viewer.cam.elevation = -45
-    #MW,pos = set_init_pos(MW,new_table_height,False)
-    #MW,vel = set_init_vel(MW,True)
+    MW,pos = set_init_pos(MW,True)
+    MW,vel = set_init_vel(MW,True)
     MW,ctrl_init = set_init_ctrl(MW,False)
     for ii in range(500):
         # print ("Step once")
@@ -105,4 +100,3 @@ if __name__ == "__main__":
         viewer.loop_once()
         data, width, height = viewer.get_image()
         convert_string_ascii(data,ii,'test')
-    IPython.embed()
