@@ -11,14 +11,17 @@ class graph_construction_helper:
 		weight shape should be a list of the form [Kernel Width, Kernel Width, input channels, output channels]
 		scope should be string specifying the scope of the variables in question
 		"""
-
 		with tf.variable_scope(scope) as scope:
-			if reuse_variables:
+			if not(reuse_variables):
+				#initialize the weights for the convolutional layer
+				W = tf.get_variable("W_conv",weight_shape,tf.float32,tf.random_normal_initializer(0.0,stddev),trainable = trainable)
+				#initiaize the biases
+				b = tf.get_variable("b_conv",weight_shape[-1],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
+			else:
 				scope.reuse_variables()
-			#initialize the weights for the convolutional layer
-			W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_conv")
-			#initiaize the biases
-			b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-1]]), trainable = trainable, name = "b_conv")
+				W = tf.get_variable("W_conv")
+				b = tf.get_variable("b_conv")
+			
 			#calculate the output from the convolution 
 			conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
 			#compute the activations
@@ -32,41 +35,47 @@ class graph_construction_helper:
 		Compute the activations of the fc layer
 
 		"""
-		
 		with tf.variable_scope(scope) as scope:
-			if reuse_variables:
-				scope.reuse_variables()
-		
-			#initialize the weights for the convolutional layer
-			W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_fc")
-			#initiaize the biases
-			b = tf.Variable(tf.constant(0.,shape = [weight_shape[-1]]), trainable = trainable, name = "b_fc")
-			#calculate biases
+			if not(reuse_variables):
+				#initialize the weights for the fc layer
+				W = tf.get_variable("W_fc",weight_shape,tf.float32,tf.random_normal_initializer(0.0,stddev), trainable = trainable)
+				#initiaize the biases
+				b = tf.get_variable("b_fc",weight_shape[-1],tf.float32,tf.constant_initializer(0.0),trainable = trainable)
+			else:
+				scope.reuse_variables()			
+				W = tf.get_variable("W_fc")
+				b = tf.get_variable("b_fc")
+				
 			h = tf.nn.relu(tf.matmul(x,W) + b, name = "activations_fc")
 
 		return h,W,b 
+		
 
 	def deconv(self,x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False,non_linearity = True):
 		"""
 		generalizable deconv function
 		"""
 		with tf.variable_scope(scope) as scope:
-			if reuse_variables:
-				scope.reuse_variables()
-			#initialize the weights for the convolutional layer
-			W = tf.Variable(tf.truncated_normal(weight_shape,stddev = stddev), trainable = trainable, name = "W_deconv")
-			#initiaize the biases
-			b = tf.Variable(tf.constant(0.1,shape = [weight_shape[-2]]), trainable = trainable, name = "b_deconv")
+			if not(reuse_variables):
+				#initialize the weights for the deconv layer
+				W = tf.get_variable("W_deconv",weight_shape,tf.float32,tf.random_normal_initializer(0,stddev), trainable = trainable)
+				#initiaize the biases
+				b = tf.get_variable("b_deconv",weight_shape[-2],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
+			else:
+				scope.reuse_variables()			
+				W = tf.get_variable("W_deconv")
+				b = tf.get_variable("b_deconv")
+
 			#calculate the output from the deconvolution
 			deconv = tf.nn.conv2d_transpose(x,W,output_shape,strides = strides)
 			#calculate the activations
 			if non_linearity:
-				h = tf.nn.relu(tf.nn.bias_add(deconv,b), name = "activations_deconv")
+				h = tf.nn.relu(tf.nn.bias_add(deconv,b), name = "activations_deconv_relu")
 			else:
 				h = tf.nn.bias_add(deconv,b, name = "activations_deconv")
 
 		return h,W,b
-
+		
 class tensorflow_graph:
 	#all graphs should be a subclass of the tensorflow graph object which has methods that can be used to train and evaluate the graph
 	#so given the model the trainer or evaluator calls on the train_op in the graph to construct the graph
@@ -563,6 +572,8 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		self.op_dict['x_1_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,SEQ_MAX_LENGTH],name = "x_t1_sequence_tensor")
 		#now define a placeholder for the second image
 		self.op_dict['x_2_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,SEQ_MAX_LENGTH], name = "x_t2_sequence_tensor")
+		#define an input tensor to store the binary loss, this should be the same shape as the input sequence
+		self.op_dict["binary_loss_tensor"] = tf.placeholder(tf.float32, shape = [None,SEQ_MAX_LENGTH], name = "binary_loss")
 		return self.op_dict
 
 	def add_model_ops(self):
@@ -580,13 +591,13 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		graph_op_dict_list[0].op_dict["x_1"] = x_1_list[0]
 		graph_op_dict_list[0].op_dict["x_2"] = x_2_list[0]
 		#initialize a list to record the output tensors at each tstep
-		delta_output_list = [graph_op_dict_list[0].op_dict["delta"]]
+		delta_output_list = [graph_op_dict_list[0].op_dict["delta_before_sigmoid"]]
 		
 		for tstep in range(1,self.seq_max_length):
 			graph_op_dict_list.append(onetstep_graph_objects[tstep].add_model_ops(add_save_op = False, reuse_variables = True))
 			graph_op_dict_list[tstep].op_dict["x_1"] = x_1_list[tstep]
 			graph_op_dict_list[tstep].op_dict["x_2"] = x_2_list[tstep]
-			delta_output_list.append(graph_op_dict_list[tstep].op_dict["y"])
+			delta_output_list.append(graph_op_dict_list[tstep].op_dict["delta_before_sigmoid"])
 
 		#before computing loss is now necessary to sum up the deltas at each timestep to obtain the output image at each timestep
 		output_image_list = []
@@ -595,7 +606,8 @@ class observed_to_output_seq2seq(tensorflow_graph):
 
 		#now define a loss between this output and the observed x_2_sequence define it in the meansquare sense
 		#first pack the list into a tensor
-		self.op_dict["y"] = tf.pack(output_image_list,-1)
+		self.op_dict["y_before_sigmoid"] = tf.pack(output_image_list,-1)
+		self.op_dict["y"] = tf.nn.sigmoid(self.op_dict["y_before_sigmoid"])
 		self.var_dict = onetstep_graph_objects[0].var_dict
 		return self.op_dict
 
@@ -603,7 +615,8 @@ class observed_to_output_seq2seq(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.square(self.op_dict["y"] - self.op_dict["x_2_sequence"]))
+		self.op_dict["loss_per_tstep"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_before_sigmoid"],self.op_dict["x_2_sequence"]/255.),[1,2])
+		self.op_dict["loss"] = tf.reduce_mean(tf.matmul(self.op_dict["loss_per_tstep"],self.op_dict["binary_loss_tensor"]))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients

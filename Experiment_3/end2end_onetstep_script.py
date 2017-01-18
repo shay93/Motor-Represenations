@@ -6,8 +6,8 @@ import pickle
 import matplotlib.pyplot as plt
 
 eval_set_size = 200
-Epochs = 10
-batch_size = 1000
+Epochs = 10000
+batch_size = 500
 eval_batch_size =  20
 root_dir = "end2end_onetstep_script/"
 log_dir = root_dir + "tmp/summary/"
@@ -72,7 +72,7 @@ placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x_2"]] = delta_image_array_eval
 placeholder_eval_dict[op_dict["x_1"]] = np.zeros([eval_set_size,64,64,1])
 
-predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["y_"])
+predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x_2"])
 
 
 def calculate_IOU(predictions,target,directory):
