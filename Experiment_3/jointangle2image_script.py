@@ -29,10 +29,8 @@ def load_data(num):
 	with open("joint_angle_array.npy","rb") as f:
 		joint_state_array = pickle.load(f)[:num,...]
 
-
 	with open("image_batch_array.npy","rb") as f:
 		delta_image_array = pickle.load(f)[:num,...]
-
 
 	return joint_state_array,delta_image_array
 
