@@ -86,9 +86,9 @@ def load_images(num_samples,num_shape_sequences):
 	#zip together these random indices so that they are easier to work with
 	random_image_pos_tuple = zip(random_shape_sequence_index,random_image_index)
 	#use the random positions to load random observed images into the earlier initialized arrays
-	for pos_tuple in random_image_pos_tuple:
-		x_1 = x_1_array[pos_tuple[0],:,:,pos_tuple[1]]
-		x_2 = x_2_array[pos_tuple[0],:,:,pos_tuple[1]]
+	for pos_tuple,i in enumerate(random_image_pos_tuple):
+		x_1[i,:,:,0] = x_1_array[pos_tuple[0],:,:,pos_tuple[1]]
+		x_2[i,:,:,0] = x_2_array[pos_tuple[0],:,:,pos_tuple[1]]
 
 	return x_1,x_2
 
