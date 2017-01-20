@@ -6,8 +6,8 @@ import pickle
 import matplotlib.pyplot as plt
 
 eval_set_size = 200
-Epochs = 10000
-batch_size = 500
+Epochs = 5000
+batch_size = 1000
 eval_batch_size =  20
 root_dir = "joint2image/"
 log_dir = root_dir + "tmp/summary/"
@@ -47,7 +47,7 @@ delta_image_array_train = delta_image_array[eval_set_size:,...]
 joint_state_array_eval = joint_state_array[:eval_set_size,...]
 delta_image_array_eval = delta_image_array[:eval_set_size,...]
 #instantiate physics emulator graph
-pe = physics_emulator_3dof(1e-2)
+pe = physics_emulator_3dof(1e-3)
 
 #build the graph
 op_dict,sess = pe.build_graph()
