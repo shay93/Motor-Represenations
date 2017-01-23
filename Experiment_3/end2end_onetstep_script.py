@@ -5,13 +5,13 @@ import os
 import pickle
 import matplotlib.pyplot as plt
 
-eval_set_size = 200
-Epochs = 1
-batch_size = 500
+eval_set_size = 400
+Epochs = 10000
+batch_size = 1000
 eval_batch_size =  20
 #also specify the number of samples
-num_shape_sequences = 10
-num_samples = 1000
+num_shape_sequences = 500
+num_samples = 20000
 root_dir = "end2end_onetstep/"
 learning_rate = 1e-3
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
@@ -86,7 +86,7 @@ def load_images(num_samples,num_shape_sequences):
 	#zip together these random indices so that they are easier to work with
 	random_image_pos_tuple = zip(random_shape_sequence_index,random_image_index)
 	#use the random positions to load random observed images into the earlier initialized arrays
-	for pos_tuple,i in enumerate(random_image_pos_tuple):
+	for i,pos_tuple in enumerate(random_image_pos_tuple):
 		x_1[i,:,:,0] = x_1_array[pos_tuple[0],:,:,pos_tuple[1]]
 		x_2[i,:,:,0] = x_2_array[pos_tuple[0],:,:,pos_tuple[1]]
 
@@ -158,6 +158,6 @@ def save_images(predictions,target,directory):
 		plt.imsave(directory + "target_image" + str(i) + ".png", target[i,:,:,0], cmap = "Greys_r")
 
 
-calculate_IOU(predictions,delta_image_array_eval,root_dir)
+calculate_IOU(predictions,x_2_eval,root_dir)
 
-save_images(predictions,delta_image_array_eval,output_dir)
+save_images(predictions,x_2_eval,output_dir)
