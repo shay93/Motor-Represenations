@@ -107,8 +107,8 @@ def save_images(predictions,target,directory):
 	image_array = np.zeros([2,64*64,eval_set_size])
 	#now loop through all these images and construct an array that may be used to store the images
 	for i in range(eval_set_size):
-		image_array[0,:,i] = target[i,:,:,0]
-		image_array[1,:,i] = predictions[i,:,:,0]
+		image_array[0,:,i] = target[i,:,:,0].flatten()
+		image_array[1,:,i] = predictions[i,:,:,0].flatten()
 	#now that the image array consists of the targets and the prediction split it into a list of images and use the raster function to get the tiled images and png to saver the image appropriately
 	image_array_list = np.split(image_array,eval_set_size,2)
 	for i,image in enumerate(image_array_list):
