@@ -4,6 +4,13 @@ import numpy as np
 import os
 import pickle
 import matplotlib.pyplot as plt
+import sys
+import png
+
+sys.path.append(os.path.dirname(os.getcwd()))
+
+import results_handling as rh
+
 
 eval_set_size = 200
 Epochs = 5000
@@ -96,9 +103,21 @@ def calculate_IOU(predictions,target,directory):
 
 
 def save_images(predictions,target,directory):
+	#initialize an empty array to store the flattenen images so that they may be passed to the tile raster function
+	image_array = np.zeros([2,64*64,eval_set_size])
+	#now loop through all these images and construct an array that may be used to store the images
 	for i in range(eval_set_size):
-		plt.imsave(directory + "output_image" + str(i) + ".png", predictions[i,:,:,0], cmap = "Greys_r")
-		plt.imsave(directory + "target_image" + str(i) + ".png", target[i,:,:,0], cmap = "Greys_r")
+		image_array[0,:,i] = target[i,:,:,0]
+		image_array[1,:,i] = predictions[i,:,:,0]
+	#now that the image array consists of the targets and the prediction split it into a list of images and use the raster function to get the tiled images and png to saver the image appropriately
+	image_array_list = np.split(image_array,eval_set_size,2)
+	for i,image in enumerate(image_array_list):
+		image = np.squeeze(image)
+		#now pass this to the raster function to obtain the tiled image that may be saved using the png module
+		tiled_image = rh.tile_raster_images(image, (64,64), (1,2))
+		#now save the tiled image using png
+		png.from_array(tiled_image.tolist(),'L').save(directory + "output_image" + str(i) + ".png")
+
 
 
 calculate_IOU(predictions,delta_image_array_eval,root_dir)
