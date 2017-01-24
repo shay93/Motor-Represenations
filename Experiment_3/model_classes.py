@@ -571,11 +571,11 @@ class observed_to_output_seq2seq(tensorflow_graph):
 
 	def add_placeholder_ops(self):
 		#add placeholder for observed image sequence at tstep 1
-		self.op_dict['x_1_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,SEQ_MAX_LENGTH],name = "x_t1_sequence_tensor")
+		self.op_dict['x_1_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,self.seq_max],name = "x_t1_sequence_tensor")
 		#now define a placeholder for the second image
-		self.op_dict['x_2_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,SEQ_MAX_LENGTH], name = "x_t2_sequence_tensor")
+		self.op_dict['x_2_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,self.seq_max], name = "x_t2_sequence_tensor")
 		#define an input tensor to store the binary loss, this should be the same shape as the input sequence
-		self.op_dict["binary_loss_tensor"] = tf.placeholder(tf.float32, shape = [None,SEQ_MAX_LENGTH], name = "binary_loss")
+		self.op_dict["binary_loss_tensor"] = tf.placeholder(tf.float32, shape = [None,self.seq_max], name = "binary_loss")
 		return self.op_dict
 
 	def add_model_ops(self):

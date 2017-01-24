@@ -6,7 +6,7 @@ import pickle
 import matplotlib.pyplot as plt
 import png
 import sys
-
+import string
 sys.path.append(os.path.dirname(os.getcwd()))
 
 import results_handling as rh
@@ -22,7 +22,7 @@ saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
 NUM_SHAPE_SEQUENCES = 2000
 DOF = 3
 LINK_LENGTH = 30
-
+shape_str_array = ['Rectangle','Square','Triangle']
 
 
 if not os.path.exists(log_dir):
@@ -51,8 +51,8 @@ def find_seq_max_length(num_of_samples):
 
 def extract_observed_images(shape_sequence_num,total_tsteps_list,max_seq_length):
 
-	x_1 = np.ndarray(shape = (shape_sequence_num,IMAGE_SIZE,IMAGE_SIZE,max_seq_length), dtype = np.float32)
-	x_2 = np.ndarray(shape = (shape_sequence_num,IMAGE_SIZE,IMAGE_SIZE,max_seq_length), dtype = np.float32)
+	x_1 = np.ndarray(shape = (shape_sequence_num,64,64,max_seq_length), dtype = np.float32)
+	x_2 = np.ndarray(shape = (shape_sequence_num,64,64,max_seq_length), dtype = np.float32)
 	for shape_sequence_index in xrange(shape_sequence_num):
 		#figure out which shape control needs to be loaded
 		shape_name_index = shape_sequence_index % len(shape_str_array)
@@ -68,19 +68,16 @@ def extract_observed_images(shape_sequence_num,total_tsteps_list,max_seq_length)
 				x_2[shape_sequence_index,:,:,timestep] = plt.imread(shape_dir + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(total_tsteps - 1) + '.png')	
 		
 		#now get x_1_temp
-		x_1[shape_sequence_index,...] = np.concatenate((np.zeros((IMAGE_SIZE,IMAGE_SIZE,1)),x_2[shape_sequence_index,:,:,:max_seq_length - 1]),axis = 2)
+		x_1[shape_sequence_index,...] = np.concatenate((np.zeros((64,64,1)),x_2[shape_sequence_index,:,:,:max_seq_length - 1]),axis = 2)
 	return x_1,x_2
 
 def get_binary_loss(total_tsteps_list,max_seq_length):
 	"""
-	use the tstep list to get a numpy array of 1s and 0s to zero out the loss as needed
+	use the tstep list to get a numpy array of 1s and 0s to zero out the loss
 	"""
-	if not(fixed_sequence_boolean):
-		binary_loss = np.zeros((len(total_tsteps_list),max_seq_length),dtype = np.float32)
-		for i,max_tstep in enumerate(total_tsteps_list):
-			binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)
-	else:
-		binary_loss = np.ones((len(total_tsteps_list),max_seq_length),dtype = np.float32)	
+	binary_loss = np.zeros((len(total_tsteps_list),max_seq_length),dtype = np.float32)
+	for i,max_tstep in enumerate(total_tsteps_list):
+		binary_loss[i,:max_tstep- 4] = np.ones(max_tstep - 4,dtype = np.float32)	
 	return binary_loss
 
 SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
@@ -99,17 +96,18 @@ x_2_image_array_eval = x_2_array[:eval_set_size,...]
 x_1_image_array_eval = x_1_array[:eval_set_size,...]
 binary_loss_array_eval = binary_loss_array[:eval_set_size,...]
 
+#instantiate physics emulator graph
+model_graph = observed_to_output_seq2seq(1e-3,SEQ_MAX_LENGTH)
+
+#build the graph
+op_dict,sess = model_graph.build_graph()
+
 #use the opt_dict to construct the placeholder dict
 placeholder_train_dict = {}
 placeholder_train_dict[op_dict["x_2_sequence"]] = x_2_image_array_train
 placeholder_train_dict[op_dict["x_1_sequence"]] = x_1_image_array_train
 placeholder_train_dict[op_dict["binary_loss_tensor"]] = binary_loss_array_train
 
-#instantiate physics emulator graph
-model_graph = observed_to_output_seq2seq(1e-3,SEQ_MAX_LENGTH)
-
-#build the graph
-op_dict,sess = model_graph.build_graph()
 
 train_size = 20000 - eval_set_size
 
