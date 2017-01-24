@@ -599,14 +599,14 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		delta_output_list = [onetstep_opdict_list[0]["delta_before_sigmoid"]]
 		#initialize a list to store the joint angle state
 		joint_angle_state_list = [onetstep_opdict_list[0]["joint_angle_state"]]
-		for tstep in range(1,self.seq_max_length):
+		for tstep in range(1,self.seq_max):
 			onetstep_opdict_list.append(onetstep_graph_objects[tstep].add_model_ops(add_save_op = False, reuse_variables = True))
 			delta_output_list.append(onetstep_opdict_list[tstep]["delta_before_sigmoid"])
 			joint_angle_state_list.append(onetstep_opdict_list[tstep]["joint_angle_state"])
 
 		#before computing loss is now necessary to sum up the deltas at each timestep to obtain the output image at each timestep
 		output_image_list = []
-		for tstep in range(self.seq_max_length):
+		for tstep in range(self.seq_max):
 			output_image_list.append(tf.reduce_sum(delta_output_list[:tstep]),0)
 
 		#now define a loss between this output and the observed x_2_sequence define it in the meansquare sense
