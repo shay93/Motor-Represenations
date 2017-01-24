@@ -512,9 +512,11 @@ class onetstep_observed_to_output(tensorflow_graph):
 		#pass flattened activations to a fully connected layer
 		h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(h_conv5_reshape,[4*self.observed_image_encoder_parameters["conv5_kernels"],self.dof],"fc_layer_encode_input_image", reuse_variables = reuse_variables)
 		#now get the graph for the physics emulator
+		#save the hidden layer as  joint angle state
+		self.op_dict["joint_angle_state"] = h_fc1
 		pe = physics_emulator_3dof(1e-3)
 		#add h_fc1 as the input tensor for the physics emulator
-		pe.op_dict["x"] = h_fc1
+		pe.op_dict["x"] = self.op_dict["joint_angle_state"]
 		#now add the model ops to the pe graph
 		pe_op_dict = pe.add_model_ops(reuse_variables = reuse_variables)
 		#designate the output from the physics emulator to be the output of the onetstep model
@@ -538,7 +540,7 @@ class onetstep_observed_to_output(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["delta_before_sigmoid"],self.op_dict["x_2"]/255.))
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["delta_before_sigmoid"] + self.op_dict['x_1'],self.op_dict["x_2"]))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
@@ -581,23 +583,25 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		Create a list of onetstep objects and specify x_1 to be the output from the previous tstep
 		"""
 		#split the input tensors into a list so that we may loop through the list and append to 
-		onetstep_graph_objects = [onetstep_observed_to_output(gc = gc)] * self.seq_max
-		graph_op_dict_list = [onetstep_graph_objects[0].add_model_ops()]
+		onetstep_graph_objects = [onetstep_observed_to_output(gc = self.gc)] * self.seq_max
+		onetstep_opdict_list = [onetstep_graph_objects[0].add_model_ops()]
 		#get a list of the tensors that form the output
 		x_1_list = tf.split(3,self.seq_max,self.op_dict['x_1_sequence'],name = "x_t1_list")
 		x_2_list = tf.split(3,self.seq_max,self.op_dict['x_2_sequence'],name = "x_t2_list")
 		#now append objects to the onetstep_end2end_list with the op dict
 		#add the correct inputs ot the first model in the model
-		graph_op_dict_list[0].op_dict["x_1"] = x_1_list[0]
-		graph_op_dict_list[0].op_dict["x_2"] = x_2_list[0]
+		onetstep_opdict_list[0]["x_1"] = x_1_list[0]
+		onetstep_opdict_list[0]["x_2"] = x_2_list[0]
 		#initialize a list to record the output tensors at each tstep
-		delta_output_list = [graph_op_dict_list[0].op_dict["delta_before_sigmoid"]]
-		
+		delta_output_list = [onetstep_opdict_list[0]["delta_before_sigmoid"]]
+		#initialize a list to store the joint angle state
+		joint_angle_state_list = [onetstep_opdict_list[0]["joint_angle_state"]]
 		for tstep in range(1,self.seq_max_length):
 			graph_op_dict_list.append(onetstep_graph_objects[tstep].add_model_ops(add_save_op = False, reuse_variables = True))
-			graph_op_dict_list[tstep].op_dict["x_1"] = x_1_list[tstep]
-			graph_op_dict_list[tstep].op_dict["x_2"] = x_2_list[tstep]
-			delta_output_list.append(graph_op_dict_list[tstep].op_dict["delta_before_sigmoid"])
+			graph_op_dict_list[tstep]["x_1"] = x_1_list[tstep]
+			graph_op_dict_list[tstep]["x_2"] = x_2_list[tstep]
+			delta_output_list.append(onetstep_opdict_list[tstep]["delta_before_sigmoid"])
+			joint_angle_state_list.append(onetstep_opdict_list[tstep]["joint_angle_state"])
 
 		#before computing loss is now necessary to sum up the deltas at each timestep to obtain the output image at each timestep
 		output_image_list = []
@@ -607,15 +611,17 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		#now define a loss between this output and the observed x_2_sequence define it in the meansquare sense
 		#first pack the list into a tensor
 		self.op_dict["y_before_sigmoid"] = tf.pack(output_image_list,-1)
+		self.op_dict["joint_angle_sequence"] = tf.pack(joint_angle_state_list,-1)
 		self.op_dict["y"] = tf.nn.sigmoid(self.op_dict["y_before_sigmoid"])
 		self.var_dict = onetstep_graph_objects[0].var_dict
+		self.op_dict["saver"] = onetstep_opdict_list[0]["saver"]
 		return self.op_dict
 
 
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss_per_tstep"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_before_sigmoid"],self.op_dict["x_2_sequence"]/255.),[1,2])
+		self.op_dict["loss_per_tstep"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_before_sigmoid"],self.op_dict["x_2_sequence"]),[1,2])
 		self.op_dict["loss"] = tf.reduce_mean(tf.matmul(self.op_dict["loss_per_tstep"],self.op_dict["binary_loss_tensor"]))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())

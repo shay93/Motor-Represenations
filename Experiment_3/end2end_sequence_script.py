@@ -4,6 +4,12 @@ import numpy as np
 import os
 import pickle
 import matplotlib.pyplot as plt
+import png
+import sys
+
+sys.path.append(os.path.dirname(os.getcwd()))
+
+import results_handling as rh
 
 eval_set_size = 200
 Epochs = 10
@@ -14,6 +20,8 @@ log_dir = root_dir + "tmp/summary/"
 save_dir = root_dir + "model/"
 saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
 NUM_SHAPE_SEQUENCES = 2000
+DOF = 3
+LINK_LENGTH = 30
 
 
 
@@ -28,7 +36,7 @@ if not os.path.exists(output_dir):
 if not os.path.exists(save_dir):
 	os.makedirs(save_dir)
 
-SHAPE_DIR = string.join(os.getcwd().split("/")[:-1], "/") + "/Shapes/"
+shape_dir = string.join(os.getcwd().split("/")[:-1], "/") + "/Shapes/"
 
 def find_seq_max_length(num_of_samples):
 	#initialize a list to record the total number of tsteps for each time varying image
@@ -38,9 +46,8 @@ def find_seq_max_length(num_of_samples):
 		shape_name_index = image_num % len(shape_str_array)
 		#next figure out the index of the shape being read in i.e. is it Triangle1 or Triangle100
 		shape_index = image_num // len(shape_str_array)
-		total_tsteps_list.append(len(os.listdir(SHAPE_DIR + shape_str_array[shape_name_index] + str(shape_index))))
+		total_tsteps_list.append(len(os.listdir(shape_dir + shape_str_array[shape_name_index] + str(shape_index))))
 	return max(total_tsteps_list),total_tsteps_list	
-
 
 def extract_observed_images(shape_sequence_num,total_tsteps_list,max_seq_length):
 
@@ -55,15 +62,14 @@ def extract_observed_images(shape_sequence_num,total_tsteps_list,max_seq_length)
 		for timestep in xrange(max_seq_length):
 			if timestep < total_tsteps:
 				#load the next observed image timestep if the max time step has not been reached yet
-				x_2[shape_sequence_index,:,:,timestep] = plt.imread(SHAPE_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(timestep) + '.png')
+				x_2[shape_sequence_index,:,:,timestep] = plt.imread(shape_dir + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(timestep) + '.png')
 			else:
 				#if the max time step has been reached i.e. the complete shape drawing has been observed then continue loading the last image for the remaining timesteps
-				x_2[shape_sequence_index,:,:,timestep] = plt.imread(SHAPE_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(total_tsteps - 1) + '.png')	
+				x_2[shape_sequence_index,:,:,timestep] = plt.imread(shape_dir + shape_str_array[shape_name_index] + str(shape_index) + "/" + shape_str_array[shape_name_index] + str(shape_index) + "_" + str(total_tsteps - 1) + '.png')	
 		
 		#now get x_1_temp
 		x_1[shape_sequence_index,...] = np.concatenate((np.zeros((IMAGE_SIZE,IMAGE_SIZE,1)),x_2[shape_sequence_index,:,:,:max_seq_length - 1]),axis = 2)
 	return x_1,x_2
-
 
 def get_binary_loss(total_tsteps_list,max_seq_length):
 	"""
@@ -112,7 +118,8 @@ model_graph.init_graph_vars(sess,op_dict["init_op"])
 model_graph.load_graph_vars(sess,op_dict["saver"],saved_variable_directory)
 
 #pass the placeholder dict to the train graph function
-sess = model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
+model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
+
 #model_graph.save_graph_vars(sess,op_dict["saver"],save_dir)
 #form the placeholder eval dict
 placeholder_eval_dict = {}
@@ -122,6 +129,9 @@ placeholder_eval_dict[op_dict["binary_loss_tensor"]] = binary_loss_array_eval
 
 
 predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x_2_sequence"])
+#also get the joint angle sequence
+joint_angle_sequence = sess.run(op_dict["joint_angle_sequence"])
+
 
 def calculate_IOU(predictions,target,directory):
 	threshold_list = np.arange(0,0.9,step = 0.025)
@@ -148,16 +158,14 @@ def calculate_IOU(predictions,target,directory):
 		pickle.dump(IoU_list,f)
 
 
-def save_output_images(predictions,joint_angle_sequence_batch):
+def save_output_images(predictions,joint_angle_sequence_batch,target):
 	"""
 	Save the output shapes to the output root directory
 	"""
 	prediction_size = np.shape(predictions)[0]
 	#multiply predictions by scalar 255 so that they can be sved as grey map images
 	predictions = predictions * 255
-	#first construct the output root directory if it does not exist
-	if not(os.path.exists(ROOT_DIR)):
-		os.makedirs(ROOT_DIR)
+
 
 	#initialize the three link arm that will compute the output images from the joint angles inferred
 	three_link_arm = tt.three_link_arm(LINK_LENGTH)
@@ -170,7 +178,7 @@ def save_output_images(predictions,joint_angle_sequence_batch):
 		if total_tsteps > SEQ_MAX_LENGTH:
 			total_tsteps = SEQ_MAX_LENGTH
 		shape_name = shape_str_array[shape_name_index]
-		shape_dir = OUTPUT_DIR + shape_str_array[shape_name_index] + str(shape_index) + "/"
+		shape_output_dir = output_dir + shape_str_array[shape_name_index] + str(shape_index) + "/"
 		#index out a joint angle sequence from the batch
 		joint_angle_sequence = joint_angle_sequence_batch[output_image_num,:,:]
 		#create this directory if it doesnt exist
@@ -178,13 +186,12 @@ def save_output_images(predictions,joint_angle_sequence_batch):
 			os.makedirs(shape_dir)
 		
 		for tstep in xrange(total_tsteps):
-				plt.imsave(shape_dir + shape_name + str(shape_index) + '_' + str(tstep),predictions[output_image_num,:,:,tstep],cmap = "Greys_r")
 				#index out the right joing angle state
 				joint_angle_subseq = joint_angle_sequence[:,:tstep + 1]
 				#use the three link arm to get the position list from this
 				effec_pos = three_link_arm.forward_kinematics(joint_angle_subseq)
 				#initialize a grid to store the image
-				image_grid = tt.grid("joint_pred_" + shape_name + str(shape_index) + '_' + str(tstep),shape_dir)
+				image_grid = tt.grid("joint_pred_" + shape_name + str(shape_index) + '_' + str(tstep),shape_output_dir)
 				#write the effec pos to the grid
 				image_grid.draw_figure(effec_pos)
 				#now get the points from the effec pos to make the figure lines thicker
@@ -192,11 +199,19 @@ def save_output_images(predictions,joint_angle_sequence_batch):
 				sp = tt.shape_maker()
 				more_pts = sp.get_points_to_increase_line_thickness(effec_pos)
 				#write these points to the figure as well
-				image_grid.draw_figure(more_pts)
-				#now save the image
-				image_grid.save_image()
+				image_grid_array = image_grid.draw_figure(more_pts)
+				#flatten the two images and 
+				flattened_image_array = np.zeros([3,64*64])
+				flattened_image_array[0,:] = target[output_image_num,:,:,tstep].flatten()
+				flattened_image_array[1,:] = predictions[output_image_num,:,:,tstep].flatten()
+				flattened_image_array[2,:] = image_grid_array.flatten()
+				tiled_image = rh.tile_raster_images(image, (64,64), (1,3))
+				#now save the tiled image using png
+				png.from_array(tiled_image.tolist(),'L').save(shape_output_dir + shape_name + str(shape_index) + '_' + str(tstep) + '.png')
 
 
-calculate_IOU(predictions,delta_image_array_eval,root_dir)
 
-save_images(predictions,delta_image_array_eval,output_dir)
+
+calculate_IOU(predictions,x_2_image_array_eval,root_dir)
+
+save_images(predictions,joint_angle_sequence,x_2_image_array_eval)
