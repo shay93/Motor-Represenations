@@ -582,24 +582,25 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		"""
 		Create a list of onetstep objects and specify x_1 to be the output from the previous tstep
 		"""
-		#split the input tensors into a list so that we may loop through the list and append to 
+		#initialize a list of onetstep graph objects
 		onetstep_graph_objects = [onetstep_observed_to_output(gc = self.gc)] * self.seq_max
-		onetstep_opdict_list = [onetstep_graph_objects[0].add_model_ops()]
-		#get a list of the tensors that form the output
+		#split the input tensors into a list so that we may loop through them and append to them
 		x_1_list = tf.split(3,self.seq_max,self.op_dict['x_1_sequence'],name = "x_t1_list")
 		x_2_list = tf.split(3,self.seq_max,self.op_dict['x_2_sequence'],name = "x_t2_list")
+		#now loop through the graph objects and specify the inputs at each timestep
+		for tstep in range(self.seq_max):
+			onetstep_graph_objects[tstep].op_dict["x_1"] = x_1_list[tstep]
+			onetstep_graph_objects[tstep].op_dict["x_2"] = x_2_list[tstep]
+
+		#initialize a list of the op dict for each tstep
+		onetstep_opdict_list = [onetstep_graph_objects[0].add_model_ops()]
 		#now append objects to the onetstep_end2end_list with the op dict
-		#add the correct inputs ot the first model in the model
-		onetstep_opdict_list[0]["x_1"] = x_1_list[0]
-		onetstep_opdict_list[0]["x_2"] = x_2_list[0]
-		#initialize a list to record the output tensors at each tstep
+		#initialize a list to record the output delta tensors at each tstep
 		delta_output_list = [onetstep_opdict_list[0]["delta_before_sigmoid"]]
 		#initialize a list to store the joint angle state
 		joint_angle_state_list = [onetstep_opdict_list[0]["joint_angle_state"]]
 		for tstep in range(1,self.seq_max_length):
-			graph_op_dict_list.append(onetstep_graph_objects[tstep].add_model_ops(add_save_op = False, reuse_variables = True))
-			graph_op_dict_list[tstep]["x_1"] = x_1_list[tstep]
-			graph_op_dict_list[tstep]["x_2"] = x_2_list[tstep]
+			onetstep_opdict_list.append(onetstep_graph_objects[tstep].add_model_ops(add_save_op = False, reuse_variables = True))
 			delta_output_list.append(onetstep_opdict_list[tstep]["delta_before_sigmoid"])
 			joint_angle_state_list.append(onetstep_opdict_list[tstep]["joint_angle_state"])
 
