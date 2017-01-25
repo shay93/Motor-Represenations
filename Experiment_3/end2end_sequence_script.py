@@ -10,10 +10,10 @@ import string
 sys.path.append(os.path.dirname(os.getcwd()))
 
 import results_handling as rh
-
-eval_set_size = 200
-Epochs = 10
-batch_size = 1000
+import training_tools as tt
+eval_set_size = 40
+Epochs = 200
+batch_size = 50
 eval_batch_size =  20
 root_dir = "end2end_sequence/"
 log_dir = root_dir + "tmp/summary/"
@@ -97,7 +97,7 @@ x_1_image_array_eval = x_1_array[:eval_set_size,...]
 binary_loss_array_eval = binary_loss_array[:eval_set_size,...]
 
 #instantiate physics emulator graph
-model_graph = observed_to_output_seq2seq(1e-3,SEQ_MAX_LENGTH)
+model_graph = observed_to_output_seq2seq(1e-4,SEQ_MAX_LENGTH)
 
 #build the graph
 op_dict,sess = model_graph.build_graph()
@@ -128,7 +128,7 @@ placeholder_eval_dict[op_dict["binary_loss_tensor"]] = binary_loss_array_eval
 
 predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x_2_sequence"])
 #also get the joint angle sequence
-joint_angle_sequence = sess.run(op_dict["joint_angle_sequence"])
+joint_angle_sequence = sess.run(op_dict["joint_angle_sequence"], feed_dict = placeholder_eval_dict)
 
 
 def calculate_IOU(predictions,target,directory):
@@ -180,8 +180,8 @@ def save_output_images(predictions,joint_angle_sequence_batch,target):
 		#index out a joint angle sequence from the batch
 		joint_angle_sequence = joint_angle_sequence_batch[output_image_num,:,:]
 		#create this directory if it doesnt exist
-		if not(os.path.exists(shape_dir)):
-			os.makedirs(shape_dir)
+		if not(os.path.exists(shape_output_dir)):
+			os.makedirs(shape_output_dir)
 		
 		for tstep in xrange(total_tsteps):
 				#index out the right joing angle state
@@ -203,7 +203,7 @@ def save_output_images(predictions,joint_angle_sequence_batch,target):
 				flattened_image_array[0,:] = target[output_image_num,:,:,tstep].flatten()
 				flattened_image_array[1,:] = predictions[output_image_num,:,:,tstep].flatten()
 				flattened_image_array[2,:] = image_grid_array.flatten()
-				tiled_image = rh.tile_raster_images(image, (64,64), (1,3))
+				tiled_image = rh.tile_raster_images(flattened_image_array, (64,64), (1,3))
 				#now save the tiled image using png
 				png.from_array(tiled_image.tolist(),'L').save(shape_output_dir + shape_name + str(shape_index) + '_' + str(tstep) + '.png')
 
@@ -212,4 +212,4 @@ def save_output_images(predictions,joint_angle_sequence_batch,target):
 
 calculate_IOU(predictions,x_2_image_array_eval,root_dir)
 
-save_images(predictions,joint_angle_sequence,x_2_image_array_eval)
+save_output_images(predictions,joint_angle_sequence,x_2_image_array_eval)
