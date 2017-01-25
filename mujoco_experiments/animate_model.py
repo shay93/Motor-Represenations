@@ -27,7 +27,7 @@ def convert_string_ascii(data,idx,fname='test.png',DEBUG=True):
 This sets the Initial positions of the joints
 and object
 '''
-def set_init_pos(MW,table_pos,DEBUG=False):
+def set_init_pos(MW,DEBUG=False):
     if DEBUG:
         pos = np.zeros(6)
     else:
@@ -35,7 +35,8 @@ def set_init_pos(MW,table_pos,DEBUG=False):
         #If not, the joints act like springs and recoil sharply creating very abnormal
         #behavior
         pos = np.zeros(6)
-        pos = np.random.randn(6)
+        pos[:3] = np.random.randn(3)
+        pos[3:] = pos[:3]
     MW.data.qpos = pos
 
     return MW,pos
@@ -48,9 +49,10 @@ def set_init_ctrl(MW,DEBUG=False):
         ctrl = np.zeros(6)
     else:
         ctrl = np.zeros(6)
-        tmp = np.random.rand(3)
+        tmp = np.random.randn(3)
         ctrl[:3] = tmp
         ctrl[3:] = -tmp
+        ctrl[4] = -1*ctrl[4]
         print ctrl
     MW.data.ctrl = ctrl
 
@@ -88,8 +90,10 @@ if __name__ == "__main__":
     viewer.start()
     print ("Setting azimuth so we can see the arm")
     viewer.cam.azimuth = 90
-    viewer.cam.distance = 1. 
-    viewer.cam.elevation = -45
+    viewer.cam.distance = 2.
+    #viewer.cam.elevation = -45
+    viewer.cam.elevation = 0
+    viewer.cam.trackbodyid = -1
     MW,pos = set_init_pos(MW,True)
     MW,vel = set_init_vel(MW,True)
     MW,ctrl_init = set_init_ctrl(MW,False)
@@ -99,4 +103,4 @@ if __name__ == "__main__":
         #print ("Loop once")
         viewer.loop_once()
         data, width, height = viewer.get_image()
-        convert_string_ascii(data,ii,'test')
+        convert_string_ascii(data,ii,'test',False)
