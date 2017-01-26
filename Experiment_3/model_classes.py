@@ -402,7 +402,7 @@ class one_layer_fc(tensorflow_graph):
 
 class physics_emulator_3dof(tensorflow_graph):
 
-	def __init__(self,learning_rate):
+	def __init__(self,learning_rate = 1e-3):
 		self.output_image_decoder_parameters = {"deconv_output_channels_1" : 16, "deconv_output_channels_2" : 8, "deconv_output_channels_3" : 4, "deconv_output_channels_4" : 1}
 		self.lr = learning_rate
 		self.gc = graph_construction_helper()
@@ -639,3 +639,80 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		self.op_dict["init_op"] = tf.initialize_all_variables()
 		return self.op_dict
 
+class onetstep_delta_to_output(tensorflow_graph)
+	
+	def __init__(self,learning_rate = 1e-3, gc = graph_construction_helper()):
+		
+		self.lr = learning_rate
+		self.gc = gc
+		self.op_dict = {}
+		self.var_dict = {}
+		self.activation_dict = {}
+		self.dof = 3
+		self.observed_image_encoder_parameters = {"conv1_kernels": 64, "conv2_kernels": 32, "conv3_kernels": 16, "conv4_kernels": 8, "conv5_kernels": 4, "fc_1" : 20}
+
+
+	def add_placeholder_ops(self):
+		#add placeholder for input delta
+		self.op_dict["x"] = tf.placeholder(tf.float32,shape = [None,64,64,1])
+		return self.op_dict
+
+
+	def add_model_ops(self, add_save_op = True, reuse_variables = False):
+		#pass the 2 channel observed images through a sequence of conv layers in order to encode the image and infer the joint angle
+		h_conv1,W_conv1,b_conv1 = self.gc.conv(self.op_dict["x"],[3,3,1,self.observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_input", reuse_variables = reuse_variables)
+		#find the activations of the second conv layer
+		h_conv2,W_conv2,b_conv2 = self.gc.conv(h_conv1,[3,3,self.observed_image_encoder_parameters["conv1_kernels"],self.observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_input", reuse_variables = reuse_variables)
+		#find the activations of the third conv layer
+		h_conv3,W_conv3,b_conv3 = self.gc.conv(h_conv2,[3,3,self.observed_image_encoder_parameters["conv2_kernels"],self.observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_input", reuse_variables = reuse_variables)
+		#find the activations of the fourth conv layer
+		h_conv4,W_conv4,b_conv4 = self.gc.conv(h_conv3,[3,3,self.observed_image_encoder_parameters["conv3_kernels"],self.observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_input", reuse_variables = reuse_variables)
+		#find the activations of the fifth conv layer
+		h_conv5,W_conv5,b_conv5 = self.gc.conv(h_conv4,[3,3,self.observed_image_encoder_parameters["conv4_kernels"],self.observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_input", reuse_variables = reuse_variables)
+		#flatten the activations in the final conv layer in order to obtain an output image
+		h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*self.observed_image_encoder_parameters["conv5_kernels"]])
+		#pass flattened activations to a fully connected layer
+		h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(h_conv5_reshape,[4*self.observed_image_encoder_parameters["conv5_kernels"],self.dof],"fc_layer_encode_input_image", reuse_variables = reuse_variables)
+		#now get the graph for the physics emulator
+		#save the hidden layer as  joint angle state
+		self.op_dict["joint_angle_state"] = h_fc1
+		pe = physics_emulator_3dof()
+		#add h_fc1 as the input tensor for the physics emulator
+		pe.op_dict["x"] = self.op_dict["joint_angle_state"]
+		#now add the model ops to the pe graph
+		pe_op_dict = pe.add_model_ops(reuse_variables = reuse_variables)
+		#designate the output from the physics emulator to be the output of the onetstep model
+		self.op_dict["y"] = pe_op_dict["y"]
+		self.op_dict["y_before_sigmoid"] = pe_op_dict["y_before_sigmoid"]
+		variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
+		activation_list = [h_conv1,h_conv2,h_conv3,h_conv4,h_conv5,h_fc1]
+
+		for var in variable_list:
+			self.var_dict[var.name] = var
+
+		for act in activation_list:
+			self.activation_dict[act.name] = act
+
+		if add_save_op:
+			self.op_dict["saver"] = tf.train.Saver(pe.var_dict)
+
+		return self.op_dict
+
+	def add_auxillary_ops(self):
+		opt = tf.train.AdamOptimizer(self.lr)
+		#define the loss op using the y before sigmoid and in the cross entropy sense
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_before_sigmoid"],self.op_dict["x"]))
+		#get all the variables and compute gradients
+		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
+		#add summary nodes for the gradients
+		gradient_summary_nodes = [tf.histogram_summary(gv[1].name + "_gradients",gv[0]) for gv in grads_and_vars]
+		var_summary_nodes = [tf.histogram_summary(var_item[0],var_item[1]) for var_item in self.var_dict.items()]
+		#add a scalar summary for the loss
+		tf.scalar_summary("loss summary",self.op_dict["loss"])
+		#merge the summaries
+		self.op_dict["merge_summary_op"] = tf.merge_all_summaries()
+		#add the training operation to the graph but only apply gradients to variables from the model 
+		self.op_dict["train_op"] = opt.apply_gradients(grads_and_vars)
+		#add the initialization operation
+		self.op_dict["init_op"] = tf.initialize_all_variables()
+		return self.op_dict
