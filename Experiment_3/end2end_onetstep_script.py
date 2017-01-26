@@ -98,6 +98,9 @@ def load_images(num_samples,num_shape_sequences):
 	return x_1,x_2
 
 x_1,x_2 = load_images(num_samples,num_shape_sequences)
+#renormalize the input images to 254
+x_1 = x_1 * 255
+x_2 = x_2 * 255
 print np.shape(x_1)
 #now separate the arrays into the training and eval sets
 x_1_train = x_1[eval_set_size:,...]
