@@ -5,14 +5,14 @@ import os
 import pickle
 import matplotlib.pyplot as plt
 import sys
-
+import png
 sys.path.append(os.path.dirname(os.getcwd()))
-
+import tensorflow as tf
 import results_handling as rh
 
 eval_set_size = 400
 Epochs = 10000
-batch_size = 1000
+batch_size = 500
 eval_batch_size =  20
 #also specify the number of samples
 num_shape_sequences = 500
@@ -22,7 +22,7 @@ learning_rate = 1e-3
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
 
 #specify all the relevant directories
-log_dir = root_dir + "tmp/summary/"
+log_dir = root_dir + "tmp/summary_25th/"
 save_dir = root_dir + "model/"
 output_dir = root_dir + "Output_Images/"
 saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
@@ -107,9 +107,9 @@ x_1_eval = x_1[:eval_set_size,...]
 x_2_eval = x_2[:eval_set_size,...]
 #instantiate physics emulator graph
 model_graph = onetstep_observed_to_output(learning_rate)
-
 #build the graph
 op_dict,sess = model_graph.build_graph()
+print len(tf.all_variables())
 
 train_size = num_samples - eval_set_size
 

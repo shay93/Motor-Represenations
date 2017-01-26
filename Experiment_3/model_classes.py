@@ -639,7 +639,7 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		self.op_dict["init_op"] = tf.initialize_all_variables()
 		return self.op_dict
 
-class onetstep_delta_to_output(tensorflow_graph)
+class onetstep_delta_to_output(tensorflow_graph):
 	
 	def __init__(self,learning_rate = 1e-3, gc = graph_construction_helper()):
 		
@@ -701,7 +701,7 @@ class onetstep_delta_to_output(tensorflow_graph)
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_before_sigmoid"],self.op_dict["x"]))
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_before_sigmoid"],self.op_dict["x"]/255.))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
