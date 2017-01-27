@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 import sys
 
 sys.path.append(os.path.dirname(os.getcwd()))
-
+import png
 import results_handling as rh
 
 eval_set_size = 400
-Epochs = 10000
+Epochs = 500
 batch_size = 1000
 eval_batch_size =  20
 #also specify the number of samples
@@ -20,7 +20,7 @@ num_samples = 20000
 root_dir = "delta_onetstep/"
 learning_rate = 1e-3
 #specify all the relevant directories
-log_dir = root_dir + "tmp/summary/"
+log_dir = root_dir + "tmp/summary_26th/"
 save_dir = root_dir + "model/"
 output_dir = root_dir + "Output_Images/"
 saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
@@ -48,11 +48,9 @@ def load_data(num):
 
 
 
-joint_state_array,delta_image_array = load_data(20000)
-
-
-
-_,x = load_images(num_samples,num_shape_sequences)
+_,x = load_data(20000)
+#expand the dimension of the training images
+x = np.expand_dims(x,-1)
 #now separate the arrays into the training and eval sets
 x_train = x[eval_set_size:,...]
 #now specify the eval set
@@ -78,8 +76,8 @@ model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["t
 #form the placeholder eval dict
 placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x"]] = x_eval
-print np.shape(x_1_eval)
-predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x_2"])
+print np.shape(x_eval)
+predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x"])
 
 
 def calculate_IOU(predictions,target,directory):

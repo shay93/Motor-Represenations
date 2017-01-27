@@ -514,7 +514,7 @@ class onetstep_observed_to_output(tensorflow_graph):
 		#now get the graph for the physics emulator
 		#save the hidden layer as  joint angle state
 		self.op_dict["joint_angle_state"] = h_fc1
-		pe = physics_emulator_3dof(1e-3)
+		pe = physics_emulator_3dof()
 		#add h_fc1 as the input tensor for the physics emulator
 		pe.op_dict["x"] = self.op_dict["joint_angle_state"]
 		#now add the model ops to the pe graph
@@ -540,7 +540,7 @@ class onetstep_observed_to_output(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["delta_before_sigmoid"] + self.op_dict['x_1']/255.,self.op_dict["x_2"]/255.))
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["delta_before_sigmoid"] + self.op_dict['x_1'],self.op_dict["x_2"]))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
