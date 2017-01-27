@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 import sys
 
 sys.path.append(os.path.dirname(os.getcwd()))
-
+import png
 import results_handling as rh
+import training_tools as tt
 
 eval_set_size = 400
-Epochs = 10000
+Epochs = 500
 batch_size = 1000
 eval_batch_size =  20
 #also specify the number of samples
@@ -20,7 +21,7 @@ num_samples = 20000
 root_dir = "delta_onetstep/"
 learning_rate = 1e-3
 #specify all the relevant directories
-log_dir = root_dir + "tmp/summary/"
+log_dir = root_dir + "tmp/summary_26th/"
 save_dir = root_dir + "model/"
 output_dir = root_dir + "Output_Images/"
 saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
@@ -48,11 +49,10 @@ def load_data(num):
 
 
 
-joint_state_array,delta_image_array = load_data(20000)
-
-
-
-_,x = load_images(num_samples,num_shape_sequences)
+_,x = load_data(20000)
+#expand the dimension of the training images
+x = np.expand_dims(x,-1)
+print np.max(x)
 #now separate the arrays into the training and eval sets
 x_train = x[eval_set_size:,...]
 #now specify the eval set
@@ -78,9 +78,10 @@ model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["t
 #form the placeholder eval dict
 placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x"]] = x_eval
-print np.shape(x_1_eval)
-predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x_2"])
-
+print np.shape(x_eval)
+predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x"])
+#also get the joint angles that are predicted using the sessions object and the placeholder_dict
+joint_angle_predictions = sess.eval(op_dict["joint_angle_state"],feed_dict = placeholder_eval_dict)
 
 def calculate_IOU(predictions,target,directory):
 	threshold_list = np.arange(0,0.9,step = 0.025)
@@ -107,19 +108,35 @@ def calculate_IOU(predictions,target,directory):
 		pickle.dump(IoU_list,f)
 
 
-def save_images(predictions,target,directory):
+def save_images(predictions,target,joint_angle_predictions,directory):
+	#initialize a three link arm to check whether joint angles have been inferred or not
+	three_link_arm = tt.three_link_arm(30)
 	#initialize an empty array to store the flattenen images so that they may be passed to the tile raster function
-	image_array = np.zeros([2,64*64,eval_set_size])
+	image_array = np.zeros([3,64*64,eval_set_size])
 	#now loop through all these images and construct an array that may be used to store the images
 	for i in range(eval_set_size):
 		image_array[0,:,i] = target[i,:,:,0].flatten()
 		image_array[1,:,i] = predictions[i,:,:,0].flatten()
+		#use the three link arm to get the position list from this
+		effec_pos = three_link_arm.forward_kinematics(joint_angle_predictions[i,...])
+		#initialize a grid to store the image
+		joint_angle_image_grid = tt.grid("None","None")
+		#write the effec pos to the grid
+		joint_angle_image_grid.draw_figure(effec_pos)
+		#now get the points from the effec pos to make the figure lines thicker
+		#initialize a shape maker to make this possible
+		sp = tt.shape_maker()
+		more_pts = sp.get_points_to_increase_line_thickness(effec_pos)
+		#write these points to the figure as well
+		joint_angle_image = joint_angle_image_grid.draw_figure(more_pts)
+		image_array[2,:,i] = joint_angle_image.flatten()
+	
 	#now that the image array consists of the targets and the prediction split it into a list of images and use the raster function to get the tiled images and png to saver the image appropriately
 	image_array_list = np.split(image_array,eval_set_size,2)
 	for i,image in enumerate(image_array_list):
 		image = np.squeeze(image)
 		#now pass this to the raster function to obtain the tiled image that may be saved using the png module
-		tiled_image = rh.tile_raster_images(image, (64,64), (1,2))
+		tiled_image = rh.tile_raster_images(image, (64,64), (1,3))
 		#now save the tiled image using png
 		png.from_array(tiled_image.tolist(),'L').save(directory + "output_image" + str(i) + ".png")
 
