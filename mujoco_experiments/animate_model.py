@@ -90,14 +90,15 @@ if __name__ == "__main__":
     viewer.start()
     print ("Setting azimuth so we can see the arm")
     viewer.cam.azimuth = 90
-    viewer.cam.distance = 2.
+    viewer.cam.distance = 2.5
     #viewer.cam.elevation = -45
     viewer.cam.elevation = 0
     viewer.cam.trackbodyid = -1
+    viewer.cam.lookat[0] = 0.
     MW,pos = set_init_pos(MW,True)
     MW,vel = set_init_vel(MW,True)
     MW,ctrl_init = set_init_ctrl(MW,False)
-    for ii in range(500):
+    for ii in range(200):
         # print ("Step once")
         MW.step()
         #print ("Loop once")
