@@ -32,6 +32,25 @@ if not os.path.exists(save_dir):
 	os.makedirs(save_dir)
 
 #load the data first
+
+def increase_point_thickness(pt,grid_size):
+	"""
+	Returns a list of tuple with each element in a list corresponding to the (x,y) position of a point in the grid
+	"""
+
+	if grid_size % 2 == 0:
+		return ValueError("Grid Size must be odd")
+	
+	grid_width = int((grid_size -1) / 2)
+	pt_list = []
+	for j in range(-grid_width,grid_width + 1):
+		left_list = [(pt[0] - j,pt[1] - i) for i in range(1,grid_width + 1)]
+		right_list = [(pt[0] - j,pt[1] + i) for i in range(1,grid_width + 1)]
+		middle_list = left_list + [(pt[0] - j,pt[1])] + right_list
+		pt_list.extend(middle_list)
+
+	return pt_list
+
 def load_data(num):
 	with open("joint_angle_array.npy","rb") as f:
 		joint_state_array = pickle.load(f)[:num,...]
@@ -49,9 +68,13 @@ joint_state_array,delta_image_array = load_data(20000)
 delta_image_array = np.expand_dims(delta_image_array,-1)
 for image_index in xrange(20000):
 	#generate a random array list of tuples
-	rand_pos_list = zip(np.random.randint(0,63,20),np.random.randint(0,63,20))
-	for rand_pos in rand_pos_list:
-		delta_image_array[i,rand_pos[0],rand_pos[1],0] = 255.
+	rand_pos_list = zip(np.random.randint(4,58,20),np.random.randint(4,58,20))
+	for rand_pt in rand_pos_list:
+		#get extended point range
+		rand_pt_list = increase_point_thickness(rand_pt,grid_size)
+		for pt in rand_pt_list:
+			delta_image_array[image_index,pt[0],pt[1],0] = 255.
+
 #now separate the arrays into the training and eval sets
 joint_state_array_train = joint_state_array[eval_set_size:,...]
 delta_image_array_train = delta_image_array[eval_set_size:,...]
