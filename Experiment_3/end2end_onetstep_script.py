@@ -109,6 +109,7 @@ print np.max(x_1)
 x_1_logits = np.zeros(np.shape(x_1))
 x_1_logits[x_1 == 0.] = 1e-6
 x_1_logits[x_1 == 255.] = 1. - 1e-6
+x_1_logits = scipy.special.logit(x_1_logits)
 #now separate the arrays into the training and eval sets
 x_1_train = x_1[eval_set_size:,...]
 x_2_train = x_2[eval_set_size:,...]
