@@ -9,6 +9,8 @@ import png
 sys.path.append(os.path.dirname(os.getcwd()))
 import tensorflow as tf
 import results_handling as rh
+import training_tools as tt
+import scipy
 
 eval_set_size = 400
 Epochs = 50
@@ -101,13 +103,20 @@ x_1,x_2 = load_images(num_samples,num_shape_sequences)
 #renormalize the input images to 254
 x_1 = 255*x_1
 x_2 = 255*x_2
-print np.shape(x_1)
+print np.max(x_1)
+
+#now initialize an array of zeros of the same shape as x_1 to get the logits
+x_1_logits = np.zeros(np.shape(x_1))
+x_1_logits[x_1 == 0.] = 1e-6
+x_1_logits[x_1 == 255.] = 1. - 1e-6
 #now separate the arrays into the training and eval sets
 x_1_train = x_1[eval_set_size:,...]
 x_2_train = x_2[eval_set_size:,...]
+x_1_logits_train = x_1_logits[eval_set_size:,...]
 #now specify the eval set
 x_1_eval = x_1[:eval_set_size,...]
 x_2_eval = x_2[:eval_set_size,...]
+x_1_logits_eval = x_1_logits[:eval_set_size,...]
 #instantiate physics emulator graph
 model_graph = onetstep_observed_to_output(learning_rate)
 #build the graph
@@ -120,6 +129,8 @@ train_size = num_samples - eval_set_size
 placeholder_train_dict = {}
 placeholder_train_dict[op_dict["x_2"]] = x_2_train
 placeholder_train_dict[op_dict["x_1"]] = x_1_train
+placeholder_train_dict[op_dict["x_1_logits"]] = x_1_logits_train
+print np.max(x_1_logits_train)
 model_graph.init_graph_vars(sess,op_dict["init_op"])
 #load the saved variables for the model graph
 model_graph.load_graph_vars(sess,op_dict["saver"],saved_variable_directory)
@@ -131,8 +142,10 @@ model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["t
 placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x_2"]] = x_2_eval
 placeholder_eval_dict[op_dict["x_1"]] = x_1_eval
-print np.shape(x_1_eval)
+placeholder_eval_dict[op_dict["x_1_logits"]] = x_1_logits_eval
+print np.max(x_1_logits_eval)
 predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x_2"])
+joint_angle_predictions = sess.eval(op_dict["joint_angle_state"],feed_dict = placeholder_eval_dict)
 
 
 def calculate_IOU(predictions,target,directory):
@@ -160,23 +173,41 @@ def calculate_IOU(predictions,target,directory):
 		pickle.dump(IoU_list,f)
 
 
-def save_images(predictions,target,directory):
+def save_images(predictions,target,joint_angle_predictions,directory):
+	#initialize a three link arm to check whether joint angles have been inferred or not
+	three_link_arm = tt.three_link_arm(30)
 	#initialize an empty array to store the flattenen images so that they may be passed to the tile raster function
-	image_array = np.zeros([2,64*64,eval_set_size])
+	image_array = np.zeros([3,64*64,eval_set_size])
 	#now loop through all these images and construct an array that may be used to store the images
 	for i in range(eval_set_size):
 		image_array[0,:,i] = target[i,:,:,0].flatten()
 		image_array[1,:,i] = predictions[i,:,:,0].flatten()
+		#use the three link arm to get the position list from this
+		effec_pos = three_link_arm.forward_kinematics(joint_angle_predictions[i,...])
+		#initialize a grid to store the image
+		joint_angle_image_grid = tt.grid("None","None")
+		#write the effec pos to the grid
+		joint_angle_image_grid.draw_figure(effec_pos)
+		#now get the points from the effec pos to make the figure lines thicker
+		#initialize a shape maker to make this possible
+		sp = tt.shape_maker()
+		more_pts = sp.get_points_to_increase_line_thickness(effec_pos)
+		#write these points to the figure as well
+		joint_angle_image = joint_angle_image_grid.draw_figure(more_pts)
+		image_array[2,:,i] = joint_angle_image.flatten()
+	
 	#now that the image array consists of the targets and the prediction split it into a list of images and use the raster function to get the tiled images and png to saver the image appropriately
 	image_array_list = np.split(image_array,eval_set_size,2)
 	for i,image in enumerate(image_array_list):
 		image = np.squeeze(image)
 		#now pass this to the raster function to obtain the tiled image that may be saved using the png module
-		tiled_image = rh.tile_raster_images(image, (64,64), (1,2))
+		tiled_image = rh.tile_raster_images(image, (64,64), (1,3))
 		#now save the tiled image using png
 		png.from_array(tiled_image.tolist(),'L').save(directory + "output_image" + str(i) + ".png")
 
 
+
+
 calculate_IOU(predictions,x_2_eval/255.,root_dir)
 
-save_images(predictions,x_2_eval/255.,output_dir)
+save_images(predictions,x_2_eval/255.,joint_angle_predictions,output_dir)
