@@ -13,7 +13,7 @@ import results_handling as rh
 
 
 eval_set_size = 200
-Epochs = 10
+Epochs = 100
 batch_size = 1000
 eval_batch_size =  20
 root_dir = "joint_plus_image2image/"
