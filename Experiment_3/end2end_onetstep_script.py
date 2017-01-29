@@ -11,7 +11,7 @@ import tensorflow as tf
 import results_handling as rh
 
 eval_set_size = 400
-Epochs = 10000
+Epochs = 50
 batch_size = 500
 eval_batch_size =  20
 #also specify the number of samples
@@ -22,7 +22,7 @@ learning_rate = 1e-3
 shape_str_array = ['Rectangle', 'Square', 'Triangle']
 
 #specify all the relevant directories
-log_dir = root_dir + "tmp/summary_25th/"
+log_dir = root_dir + "tmp/summary_27th/"
 save_dir = root_dir + "model/"
 output_dir = root_dir + "Output_Images/"
 saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
@@ -92,15 +92,15 @@ def load_images(num_samples,num_shape_sequences):
 	random_image_pos_tuple = zip(random_shape_sequence_index,random_image_index)
 	#use the random positions to load random observed images into the earlier initialized arrays
 	for i,pos_tuple in enumerate(random_image_pos_tuple):
-		x_1[i,:,:,0] = x_1_array[pos_tuple[0],:,:,pos_tuple[1]]
-		x_2[i,:,:,0] = x_2_array[pos_tuple[0],:,:,pos_tuple[1]]
+		x_1[i,:,:,0] = x_1_array[pos_tuple[0],:,:,15]
+		x_2[i,:,:,0] = x_2_array[pos_tuple[0],:,:,15]
 
 	return x_1,x_2
 
 x_1,x_2 = load_images(num_samples,num_shape_sequences)
 #renormalize the input images to 254
-x_1 = x_1 * 255
-x_2 = x_2 * 255
+x_1 = 255*x_1
+x_2 = 255*x_2
 print np.shape(x_1)
 #now separate the arrays into the training and eval sets
 x_1_train = x_1[eval_set_size:,...]
@@ -177,6 +177,6 @@ def save_images(predictions,target,directory):
 		png.from_array(tiled_image.tolist(),'L').save(directory + "output_image" + str(i) + ".png")
 
 
-calculate_IOU(predictions,x_2_eval,root_dir)
+calculate_IOU(predictions,x_2_eval/255.,root_dir)
 
-save_images(predictions,x_2_eval,output_dir)
+save_images(predictions,x_2_eval/255.,output_dir)
