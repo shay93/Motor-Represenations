@@ -191,7 +191,7 @@ class tensorflow_graph:
 
 class physics_emulator(tensorflow_graph):
 	
-	def __init__(self):
+	def __init__(self,lr):
 		#initialize a graph constructor helper object
 		self.gc = graph_construction_helper()
 		#initialize parameter dictionaries which will be used to construct the graph
@@ -205,7 +205,7 @@ class physics_emulator(tensorflow_graph):
 		#specify the number of dof's for the arm for which the physics emulator is learning the forward kinematics
 		self.dof = 3
 		#define the learning rate
-		self.lr = 1e-3
+		self.lr = lr
 		#initialize an empty operation dictionary to store the variables
 		self.op_dict = {}
 		#initialize a var dict
@@ -278,7 +278,7 @@ class physics_emulator(tensorflow_graph):
 		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_5'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5",non_linearity = False)
 		decoder_variable_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5]
 
-		return tf.squeeze(h_deconv5),decoder_variable_list
+		return h_deconv5,decoder_variable_list
 
 
 	def jointangle2image(self,joint_angle,previous_image):
@@ -291,7 +291,7 @@ class physics_emulator(tensorflow_graph):
 		encoded_vector = tf.concat(1,[encoded_joint_angle,previous_image_encoded])
 		#pass to a decoder in order to get the output
 		y_logits,decoder_variable_list = self.decode_outputs(encoded_vector)
-		return y_before_sigmoid,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list
+		return y_logits,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list
 
 	def add_model_ops(self):
 		#pass the input image and joint angle tensor to jointangle2image to get y_before_sigmoid
