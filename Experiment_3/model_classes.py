@@ -576,6 +576,8 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		self.op_dict['x_1_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,self.seq_max],name = "x_t1_sequence_tensor")
 		#now define a placeholder for the second image
 		self.op_dict['x_2_sequence'] = tf.placeholder(tf.float32,shape = [None,64,64,self.seq_max], name = "x_t2_sequence_tensor")
+		#define an input tensor for the logit sequence
+		self.op_dict["x_1_logit_sequence"] = tf.placeholder(tf.float32, shape = [None,64,64,self.seq_max], name = "x_1_logit_tensor")
 		#define an input tensor to store the binary loss, this should be the same shape as the input sequence
 		self.op_dict["binary_loss_tensor"] = tf.placeholder(tf.float32, shape = [None,self.seq_max], name = "binary_loss")
 		return self.op_dict
@@ -589,21 +591,23 @@ class observed_to_output_seq2seq(tensorflow_graph):
 		#split the input tensors into a list so that we may loop through them and append to them
 		x_1_list = tf.split(3,self.seq_max,self.op_dict['x_1_sequence'],name = "x_t1_list")
 		x_2_list = tf.split(3,self.seq_max,self.op_dict['x_2_sequence'],name = "x_t2_list")
+		x_1_logit_list = tf.split(3,self.seq_max,self.op_dict["x_1_logit_sequence"], name = "x_1_logit_list")
 		#now loop through the graph objects and specify the inputs at each timestep
 		for tstep in range(self.seq_max):
 			onetstep_graph_objects[tstep].op_dict["x_1"] = x_1_list[tstep]
 			onetstep_graph_objects[tstep].op_dict["x_2"] = x_2_list[tstep]
+			onetstep_graph_objects[tstep].op_dict["x_1_logits"] = x_1_logit_list[tstep]
 
 		#initialize a list of the op dict for each tstep
 		onetstep_opdict_list = [onetstep_graph_objects[0].add_model_ops()]
 		#now append objects to the onetstep_end2end_list with the op dict
 		#initialize a list to record the output delta tensors at each tstep
-		delta_output_list = [onetstep_opdict_list[0]["delta_before_sigmoid"]]
+		delta_output_list = [onetstep_opdict_list[0]["delta_logits"]]
 		#initialize a list to store the joint angle state
 		joint_angle_state_list = [onetstep_opdict_list[0]["joint_angle_state"]]
 		for tstep in range(1,self.seq_max):
 			onetstep_opdict_list.append(onetstep_graph_objects[tstep].add_model_ops(add_save_op = False, reuse_variables = True))
-			delta_output_list.append(onetstep_opdict_list[tstep]["delta_before_sigmoid"])
+			delta_output_list.append(onetstep_opdict_list[tstep]["delta_logits"])
 			joint_angle_state_list.append(onetstep_opdict_list[tstep]["joint_angle_state"])
 
 		#before computing loss is now necessary to sum up the deltas at each timestep to obtain the output image at each timestep
@@ -613,9 +617,9 @@ class observed_to_output_seq2seq(tensorflow_graph):
 
 		#now define a loss between this output and the observed x_2_sequence define it in the meansquare sense
 		#first pack the list into a tensor
-		self.op_dict["y_before_sigmoid"] = tf.concat(3,output_image_list)
+		self.op_dict["y_logits"] = tf.concat(3,output_image_list)
 		self.op_dict["joint_angle_sequence"] = tf.pack(joint_angle_state_list,-1)
-		self.op_dict["y"] = tf.nn.sigmoid(self.op_dict["y_before_sigmoid"])
+		self.op_dict["y"] = tf.nn.sigmoid(self.op_dict["y_logits"])
 		self.var_dict = onetstep_graph_objects[0].var_dict
 		self.op_dict["saver"] = onetstep_opdict_list[0]["saver"]
 		return self.op_dict
@@ -624,7 +628,7 @@ class observed_to_output_seq2seq(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss_per_tstep"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_before_sigmoid"],self.op_dict["x_2_sequence"]),[1,2])
+		self.op_dict["loss_per_tstep"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_logits"],self.op_dict["x_2_sequence"]),[1,2])
 		self.op_dict["loss"] = tf.reduce_mean(tf.mul(self.op_dict["loss_per_tstep"],self.op_dict["binary_loss_tensor"]))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
