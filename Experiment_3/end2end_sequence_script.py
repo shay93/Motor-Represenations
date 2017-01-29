@@ -11,8 +11,9 @@ sys.path.append(os.path.dirname(os.getcwd()))
 
 import results_handling as rh
 import training_tools as tt
+import tensorflow as tf
 eval_set_size = 40
-Epochs = 200
+Epochs = 1
 batch_size = 50
 eval_batch_size =  20
 root_dir = "end2end_sequence/"
@@ -101,7 +102,7 @@ model_graph = observed_to_output_seq2seq(1e-4,SEQ_MAX_LENGTH)
 
 #build the graph
 op_dict,sess = model_graph.build_graph()
-
+print len(tf.all_variables())
 #use the opt_dict to construct the placeholder dict
 placeholder_train_dict = {}
 placeholder_train_dict[op_dict["x_2_sequence"]] = x_2_image_array_train

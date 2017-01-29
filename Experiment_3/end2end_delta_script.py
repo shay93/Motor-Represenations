@@ -12,7 +12,7 @@ import results_handling as rh
 import training_tools as tt
 
 eval_set_size = 400
-Epochs = 500
+Epochs = 2000
 batch_size = 1000
 eval_batch_size =  20
 #also specify the number of samples
@@ -21,7 +21,7 @@ num_samples = 20000
 root_dir = "delta_onetstep/"
 learning_rate = 1e-3
 #specify all the relevant directories
-log_dir = root_dir + "tmp/summary_26th/"
+log_dir = root_dir + "tmp/summary_27th/"
 save_dir = root_dir + "model/"
 output_dir = root_dir + "Output_Images/"
 saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
@@ -81,7 +81,7 @@ placeholder_eval_dict[op_dict["x"]] = x_eval
 print np.shape(x_eval)
 predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x"])
 #also get the joint angles that are predicted using the sessions object and the placeholder_dict
-joint_angle_predictions = sess.eval(op_dict["joint_angle_state"],feed_dict = placeholder_eval_dict)
+joint_angle_predictions = sess.run(op_dict["joint_angle_state"],feed_dict = placeholder_eval_dict)
 
 def calculate_IOU(predictions,target,directory):
 	threshold_list = np.arange(0,0.9,step = 0.025)
@@ -118,7 +118,7 @@ def save_images(predictions,target,joint_angle_predictions,directory):
 		image_array[0,:,i] = target[i,:,:,0].flatten()
 		image_array[1,:,i] = predictions[i,:,:,0].flatten()
 		#use the three link arm to get the position list from this
-		effec_pos = three_link_arm.forward_kinematics(joint_angle_predictions[i,...])
+		effec_pos = three_link_arm.forward_kinematics(np.expand_dims(joint_angle_predictions[i,...],-1))
 		#initialize a grid to store the image
 		joint_angle_image_grid = tt.grid("None","None")
 		#write the effec pos to the grid
@@ -143,4 +143,4 @@ def save_images(predictions,target,joint_angle_predictions,directory):
 
 calculate_IOU(predictions,x_eval,root_dir)
 
-save_images(predictions,x_eval,output_dir)
+save_images(predictions,x_eval, joint_angle_predictions,output_dir)

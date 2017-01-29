@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.getcwd()))
 import tensorflow as tf
 import results_handling as rh
 import training_tools as tt
-import scipy
+from scipy import special
 
 eval_set_size = 400
 Epochs = 50
@@ -109,7 +109,7 @@ print np.max(x_1)
 x_1_logits = np.zeros(np.shape(x_1))
 x_1_logits[x_1 == 0.] = 1e-6
 x_1_logits[x_1 == 255.] = 1. - 1e-6
-x_1_logits = scipy.special.logit(x_1_logits)
+x_1_logits = special.logit(x_1_logits)
 #now separate the arrays into the training and eval sets
 x_1_train = x_1[eval_set_size:,...]
 x_2_train = x_2[eval_set_size:,...]
@@ -146,7 +146,7 @@ placeholder_eval_dict[op_dict["x_1"]] = x_1_eval
 placeholder_eval_dict[op_dict["x_1_logits"]] = x_1_logits_eval
 print np.max(x_1_logits_eval)
 predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x_2"])
-joint_angle_predictions = sess.eval(op_dict["joint_angle_state"],feed_dict = placeholder_eval_dict)
+joint_angle_predictions = sess.run(op_dict["joint_angle_state"],feed_dict = placeholder_eval_dict)
 
 
 def calculate_IOU(predictions,target,directory):
@@ -184,7 +184,7 @@ def save_images(predictions,target,joint_angle_predictions,directory):
 		image_array[0,:,i] = target[i,:,:,0].flatten()
 		image_array[1,:,i] = predictions[i,:,:,0].flatten()
 		#use the three link arm to get the position list from this
-		effec_pos = three_link_arm.forward_kinematics(joint_angle_predictions[i,...])
+		effec_pos = three_link_arm.forward_kinematics(np.expand_dims(joint_angle_predictions[i,...],-1))
 		#initialize a grid to store the image
 		joint_angle_image_grid = tt.grid("None","None")
 		#write the effec pos to the grid
