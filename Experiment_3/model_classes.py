@@ -439,7 +439,7 @@ class physics_emulator_3dof(tensorflow_graph):
 		h_deconv4,W_deconv4,b_deconv4 = self.gc.deconv(h_deconv3,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,32,32,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4",reuse_variables = reuse_variables)
 		#calculate activations for fifth deconv layer
 		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv5", non_linearity = False, reuse_variables = reuse_variables)
-		self.op_dict["y_before_sigmoid"] = h_deconv5
+		self.op_dict["y_logits"] = h_deconv5
 		self.op_dict["y"] = tf.nn.sigmoid(h_deconv5)
 		var_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5,W_fc1,b_fc1]
 		for var in var_list:
