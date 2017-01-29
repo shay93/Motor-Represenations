@@ -560,7 +560,8 @@ class onetstep_observed_to_output(tensorflow_graph):
 		targets = self.op_dict["x_2"]/255.
 		#calculate the simoid sum of the logits
 		sigmoid_logit_sum = tf.nn.sigmoid(self.op_dict["delta_logits"]) + tf.nn.sigmoid(self.op_dict["x_1_logits"])
-		#define the loss op using the y before sigmoid and in the cross entropy sense
+		tf.histogram_summary("sigmoid sum",sigmoid_logit_sum)
+#define the loss op using the y before sigmoid and in the cross entropy sense
 		self.op_dict["loss"] = tf.reduce_mean(tf.mul(targets,-tf.log(sigmoid_logit_sum)) + tf.mul(1 - targets, -tf.log(1 - sigmoid_logit_sum)))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
