@@ -51,7 +51,7 @@ for image_index in xrange(20000):
 	#generate a random array list of tuples
 	rand_pos_list = zip(np.random.randint(0,63,20),np.random.randint(0,63,20))
 	for rand_pos in rand_pos_list:
-		delta_image_array[i,rand_pos[0],rand_pos[1],0] = 255.
+		delta_image_array[image_index,rand_pos[0],rand_pos[1],0] = 255.
 #now separate the arrays into the training and eval sets
 joint_state_array_train = joint_state_array[eval_set_size:,...]
 delta_image_array_train = delta_image_array[eval_set_size:,...]
