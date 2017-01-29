@@ -628,7 +628,7 @@ class observed_to_output_seq2seq(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss_per_tstep"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_logits"],self.op_dict["x_2_sequence"]),[1,2])
+		self.op_dict["loss_per_tstep"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_logits"],self.op_dict["x_2_sequence"]/255.),[1,2])
 		self.op_dict["loss"] = tf.reduce_mean(tf.mul(self.op_dict["loss_per_tstep"],self.op_dict["binary_loss_tensor"]))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())

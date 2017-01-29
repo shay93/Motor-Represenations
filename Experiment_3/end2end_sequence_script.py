@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.getcwd()))
 import results_handling as rh
 import training_tools as tt
 import tensorflow as tf
+from scipy import special
 eval_set_size = 40
 Epochs = 1
 batch_size = 50
@@ -87,16 +88,23 @@ SEQ_MAX_LENGTH,total_tsteps_list = find_seq_max_length(NUM_SHAPE_SEQUENCES)
 print "Sequence Max Length is ",SEQ_MAX_LENGTH
 x_1_array,x_2_array = extract_observed_images(NUM_SHAPE_SEQUENCES,total_tsteps_list,SEQ_MAX_LENGTH)
 binary_loss_array = get_binary_loss(total_tsteps_list,SEQ_MAX_LENGTH)
-#get the previous time step by appending 
+x_1_array = 255.* x_1_array
+x_2_array = 255.* x_2_array
+#now get the logit array
+x_1_logit_array = np.zeros(np.shape(x_1_array))
+x_1_logit_array[x_1_array == 0.] = 1e-6
+x_1_logit_array[x_1_array == 255.] = 1. - 1e-6
+x_1_logit_array = special.logit(x_1_logit_array)
 #split this data into a training and validation set
 x_2_image_array_train = x_2_array[eval_set_size:,...]
 x_1_image_array_train = x_1_array[eval_set_size:,...]
 binary_loss_array_train = binary_loss_array[eval_set_size:,...]
+x_1_logit_array_train = x_1_logit_array[eval_set_size:,...]
 #now specify the eval set
 x_2_image_array_eval = x_2_array[:eval_set_size,...]
 x_1_image_array_eval = x_1_array[:eval_set_size,...]
 binary_loss_array_eval = binary_loss_array[:eval_set_size,...]
-
+x_1_logit_array_eval = x_1_logit_array[:eval_set_size,...]
 #instantiate physics emulator graph
 model_graph = observed_to_output_seq2seq(1e-4,SEQ_MAX_LENGTH)
 
@@ -108,7 +116,7 @@ placeholder_train_dict = {}
 placeholder_train_dict[op_dict["x_2_sequence"]] = x_2_image_array_train
 placeholder_train_dict[op_dict["x_1_sequence"]] = x_1_image_array_train
 placeholder_train_dict[op_dict["binary_loss_tensor"]] = binary_loss_array_train
-
+placeholder_train_dict[op_dict["x_1_logit_sequence"]] = x_1_logit_array_train
 
 train_size = 20000 - eval_set_size
 
@@ -125,6 +133,7 @@ placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x_2_sequence"]] = x_2_image_array_eval
 placeholder_eval_dict[op_dict["x_1_sequence"]] = x_1_image_array_eval
 placeholder_eval_dict[op_dict["binary_loss_tensor"]] = binary_loss_array_eval
+placeholder_eval_dict[op_dict["x_1_logit_sequence"]] = x_1_logit_array_eval
 
 
 predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x_2_sequence"])
