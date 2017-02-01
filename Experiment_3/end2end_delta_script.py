@@ -24,7 +24,7 @@ root_dir = "delta_onetstep/"
 learning_rate = 1e-3
 #specify all the relevant directories
 log_dir = root_dir + "tmp/summary_31st/"
-save_dir = root_dir + "model/" + "model.ckpt"
+save_dir = root_dir + "model/"
 output_dir = root_dir + "Output_Images/"
 saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
 shape_dir = os.path.dirname(os.getcwd()) + "/Shapes/"
@@ -84,7 +84,7 @@ model_graph.load_graph_vars(sess,op_dict["physics_saver"],saved_variable_directo
 
 #pass the placeholder dict to the train graph function
 model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
-model_graph.save_graph_vars(sess,op_dict["infer_saver"],save_dir)
+model_graph.save_graph_vars(sess,op_dict["infer_saver"],save_dir + "model.ckpt")
 #form the placeholder eval dict
 placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x"]] = x_eval
