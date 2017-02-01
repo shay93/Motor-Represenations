@@ -291,7 +291,7 @@ class physics_emulator(tensorflow_graph):
 		#now concatenate to obtain encoded vector
 		encoded_vector = tf.concat(1,[encoded_joint_angle,previous_image_encoded])
 		#pass to a decoder in order to get the output
-		y_logits,decoder_variable_list = self.decode_outputs(encoded_vector)
+		y_logits,decoder_variable_list = self.decode_outputs(encoded_vector,reuse_variables)
 		return y_logits,joint_encoder_variable_list,image_encode_variable_list,decoder_variable_list
 
 	def add_model_ops(self,reuse_variables = False):
