@@ -687,15 +687,15 @@ class onetstep_delta_to_output(tensorflow_graph):
 
 	def add_model_ops(self, add_save_op = True, reuse_variables = False):
 		#pass the 2 channel observed images through a sequence of conv layers in order to encode the image and infer the joint angle
-		h_conv1,W_conv1,b_conv1 = self.gc.conv(self.op_dict["x"],[3,3,1,self.observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_input", reuse_variables = reuse_variables)
+		h_conv1,W_conv1,b_conv1 = self.gc.conv(self.op_dict["x"],[3,3,1,self.observed_image_encoder_parameters["conv1_kernels"]],"Conv1_encode_input_image", reuse_variables = reuse_variables)
 		#find the activations of the second conv layer
-		h_conv2,W_conv2,b_conv2 = self.gc.conv(h_conv1,[3,3,self.observed_image_encoder_parameters["conv1_kernels"],self.observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_input", reuse_variables = reuse_variables)
+		h_conv2,W_conv2,b_conv2 = self.gc.conv(h_conv1,[3,3,self.observed_image_encoder_parameters["conv1_kernels"],self.observed_image_encoder_parameters["conv2_kernels"]],"Conv2_encode_input_image", reuse_variables = reuse_variables)
 		#find the activations of the third conv layer
-		h_conv3,W_conv3,b_conv3 = self.gc.conv(h_conv2,[3,3,self.observed_image_encoder_parameters["conv2_kernels"],self.observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_input", reuse_variables = reuse_variables)
+		h_conv3,W_conv3,b_conv3 = self.gc.conv(h_conv2,[3,3,self.observed_image_encoder_parameters["conv2_kernels"],self.observed_image_encoder_parameters["conv3_kernels"]],"Conv3_encode_input_image", reuse_variables = reuse_variables)
 		#find the activations of the fourth conv layer
-		h_conv4,W_conv4,b_conv4 = self.gc.conv(h_conv3,[3,3,self.observed_image_encoder_parameters["conv3_kernels"],self.observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_input", reuse_variables = reuse_variables)
+		h_conv4,W_conv4,b_conv4 = self.gc.conv(h_conv3,[3,3,self.observed_image_encoder_parameters["conv3_kernels"],self.observed_image_encoder_parameters["conv4_kernels"]],"Conv4_encode_input_image", reuse_variables = reuse_variables)
 		#find the activations of the fifth conv layer
-		h_conv5,W_conv5,b_conv5 = self.gc.conv(h_conv4,[3,3,self.observed_image_encoder_parameters["conv4_kernels"],self.observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_input", reuse_variables = reuse_variables)
+		h_conv5,W_conv5,b_conv5 = self.gc.conv(h_conv4,[3,3,self.observed_image_encoder_parameters["conv4_kernels"],self.observed_image_encoder_parameters["conv5_kernels"]],"Conv5_encode_input_image", reuse_variables = reuse_variables)
 		#flatten the activations in the final conv layer in order to obtain an output image
 		h_conv5_reshape = tf.reshape(h_conv5, shape = [-1,4*self.observed_image_encoder_parameters["conv5_kernels"]])
 		#pass flattened activations to a fully connected layer
@@ -710,7 +710,7 @@ class onetstep_delta_to_output(tensorflow_graph):
 		pe_op_dict = pe.add_model_ops(reuse_variables = reuse_variables)
 		#designate the output from the physics emulator to be the output of the onetstep model
 		self.op_dict["y"] = pe_op_dict["y"]
-		self.op_dict["y_before_sigmoid"] = pe_op_dict["y_before_sigmoid"]
+		self.op_dict["y_before_sigmoid"] = pe_op_dict["y_logits"]
 		variable_list = [W_conv1,W_conv2,W_conv3,W_conv4,W_conv5,b_conv1,b_conv2,b_conv3,b_conv4,b_conv5,W_fc1,b_fc1]
 		activation_list = [h_conv1,h_conv2,h_conv3,h_conv4,h_conv5,h_fc1]
 
@@ -722,7 +722,7 @@ class onetstep_delta_to_output(tensorflow_graph):
 
 		if add_save_op:
 			self.op_dict["physics_saver"] = tf.train.Saver(pe.var_dict)
-			self.op_dict["infer_saver"] = tr.train.Saver(self.var_dict)
+			self.op_dict["infer_saver"] = tf.train.Saver(self.var_dict)
 
 		return self.op_dict
 

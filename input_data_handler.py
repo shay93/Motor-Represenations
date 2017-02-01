@@ -8,7 +8,7 @@ class shape_sequence_data_loader:
 	def __init__(self, num_sequences):
 		self.shape_str_array = ['Rectangle','Square','Triangle']
 		self.num_sequences =  num_sequences
-		self.shape_dir = os.getcwd() + "/Shapes/"
+		self.shape_dir = os.path.dirname(os.path.abspath(__file__)) + "/Shapes/"
 		self.total_tsteps_list = []
 	
 	def find_seq_max_length(self):

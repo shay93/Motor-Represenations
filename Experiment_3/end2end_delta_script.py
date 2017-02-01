@@ -12,19 +12,19 @@ import results_handling as rh
 import training_tools as tt
 import input_data_handler as dh
 
-eval_set_size = 400
-Epochs = 2000
-batch_size = 1000
+eval_set_size = 40
+Epochs = 2
+batch_size = 50
 eval_batch_size =  20
 #also specify the number of samples
-num_shape_sequences = 500
+num_shape_sequences = 10
 step_size = 3
 num_samples = 20000
 root_dir = "delta_onetstep/"
 learning_rate = 1e-3
 #specify all the relevant directories
-log_dir = root_dir + "tmp/summary_27th/"
-save_dir = root_dir + "model/"
+log_dir = root_dir + "tmp/summary_31st/"
+save_dir = root_dir + "model/" + "model.ckpt"
 output_dir = root_dir + "Output_Images/"
 saved_variable_directory = "joint2image/" + "model/" + "model.ckpt"
 shape_dir = os.path.dirname(os.getcwd()) + "/Shapes/"
@@ -59,7 +59,8 @@ def load_data(num_shape_sequences,step_size):
 
 delta_seq_array,total_tsteps_list = load_data(num_shape_sequences,step_size)
 #now flatten the delta sequence along the batch dimension
-x = np.concatenate([np.transpose(delta_seq_array[i,:,:,:total_tsteps_list[i]],[3,1,2,0]) for i in xrange(num_shape_sequences)])
+x = np.concatenate([np.transpose(delta_seq_array[i,:,:,:total_tsteps_list[i]],[2,0,1]) for i in xrange(num_shape_sequences)])
+x = np.expand_dims(x,-1)
 print np.max(x)
 print np.shape(x)
 #now separate the arrays into the training and eval sets
