@@ -720,7 +720,8 @@ class onetstep_delta_to_output(tensorflow_graph):
 			self.activation_dict[act.name] = act
 
 		if add_save_op:
-			self.op_dict["saver"] = tf.train.Saver(pe.var_dict)
+			self.op_dict["physics_saver"] = tf.train.Saver(pe.var_dict)
+			self.op_dict["infer_saver"] = tr.train.Saver(self.var_dict)
 
 		return self.op_dict
 

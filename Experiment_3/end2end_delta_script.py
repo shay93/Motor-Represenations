@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.getcwd()))
 import png
 import results_handling as rh
 import training_tools as tt
+import input_data_handler as dh
 
 eval_set_size = 400
 Epochs = 2000
@@ -17,6 +18,7 @@ batch_size = 1000
 eval_batch_size =  20
 #also specify the number of samples
 num_shape_sequences = 500
+step_size = 3
 num_samples = 20000
 root_dir = "delta_onetstep/"
 learning_rate = 1e-3
@@ -38,21 +40,28 @@ if not os.path.exists(save_dir):
 	os.makedirs(save_dir)
 
 
-def load_data(num):
-	with open("joint_angle_array.npy","rb") as f:
-		joint_state_array = pickle.load(f)[:num,...]
+# def load_data(num):
+# 	with open("joint_angle_array.npy","rb") as f:
+# 		joint_state_array = pickle.load(f)[:num,...]
 
-	with open("image_batch_array.npy","rb") as f:
-		delta_image_array = pickle.load(f)[:num,...]
+# 	with open("image_batch_array.npy","rb") as f:
+# 		delta_image_array = pickle.load(f)[:num,...]
 
-	return joint_state_array,delta_image_array
+# 	return joint_state_array,delta_image_array
 
+def load_data(num_shape_sequences,step_size):
+	#initialize a sequence data handler object
+	shape_dh = dh.shape_sequence_data_loader(num_shape_sequences)
+	_ = shape_dh.find_seq_max_length()
+	x_1,x_2 = shape_dh.extract_observed_images(step_size)
+	delta_sequence_array = x_2 - x_1
+	return delta_sequence_array,shape_dh.total_tsteps_list
 
-
-_,x = load_data(20000)
-#expand the dimension of the training images
-x = np.expand_dims(x,-1)
+delta_seq_array,total_tsteps_list = load_data(num_shape_sequences,step_size)
+#now flatten the delta sequence along the batch dimension
+x = np.concatenate([np.transpose(delta_seq_array[i,:,:,:total_tsteps_list[i]],[3,1,2,0]) for i in xrange(num_shape_sequences)])
 print np.max(x)
+print np.shape(x)
 #now separate the arrays into the training and eval sets
 x_train = x[eval_set_size:,...]
 #now specify the eval set
@@ -70,11 +79,11 @@ placeholder_train_dict = {}
 placeholder_train_dict[op_dict["x"]] = x_train
 model_graph.init_graph_vars(sess,op_dict["init_op"])
 #load the saved variables for the model graph
-model_graph.load_graph_vars(sess,op_dict["saver"],saved_variable_directory)
+model_graph.load_graph_vars(sess,op_dict["physics_saver"],saved_variable_directory)
 
 #pass the placeholder dict to the train graph function
 model_graph.train_graph(sess,Epochs,batch_size,placeholder_train_dict,op_dict["train_op"],op_dict["loss"],op_dict["merge_summary_op"],log_dir)
-#model_graph.save_graph_vars(sess,op_dict["saver"],save_dir)
+model_graph.save_graph_vars(sess,op_dict["infer_saver"],save_dir)
 #form the placeholder eval dict
 placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x"]] = x_eval
