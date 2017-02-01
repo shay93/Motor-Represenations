@@ -12,16 +12,16 @@ import results_handling as rh
 import training_tools as tt
 import input_data_handler as dh
 
-eval_set_size = 40
-Epochs = 2
-batch_size = 50
+eval_set_size = 50
+Epochs = 2000
+batch_size = 2000
 eval_batch_size =  20
 #also specify the number of samples
-num_shape_sequences = 10
+num_shape_sequences = 2000
 step_size = 3
 num_samples = 20000
 root_dir = "delta_onetstep/"
-learning_rate = 1e-3
+learning_rate = 1e-5
 #specify all the relevant directories
 log_dir = root_dir + "tmp/summary_31st/"
 save_dir = root_dir + "model/"
