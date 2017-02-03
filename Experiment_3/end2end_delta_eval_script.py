@@ -47,12 +47,23 @@ model_graph.load_graph_vars(sess,op_dict["infer_saver"],infer_save_dir)
 def save_images(predictions,target,joint_angle_predictions,directory):
 	#initialize a three link arm to check whether joint angles have been inferred or not
 	three_link_arm = tt.three_link_arm(30)
+	#get the sequence length for the current sequence being considered
+	seq_length = np.shape(predictions)[0]
+	#intialize an array that will hold the observed images obtained after summing all the delta images preceding the current step
+	observed_images = np.zeros([seq_length,64,64,1])
+	#initialize another array to hold the delta images constructed via the known kinematics of joint angles
+	joint_angle_constructed_delta_images = np.zeros([seq_length,64,64,1])
+	#similarly define an array to hold output images obtained after summing up these deltas
+	joint_angle_constructed_observed_images = np.zeros([seq_length,64,64,1])
 	#initialize an empty array to store the flattenen images so that they may be passed to the tile raster function
-	image_array = np.zeros([3,64*64,np.shape(predictions)[0]])
-	#now loop through all these images and construct an array that may be used to store the images
-	for i in range(np.shape(predictions)[0]):
-		image_array[0,:,i] = target[i,:,:,0].flatten()
-		image_array[1,:,i] = predictions[i,:,:,0].flatten()
+	flattened_image_array = np.zeros([3,64*64,seq_length])
+	#initialize a shape maker object to translate the end effector positions into images that may be saved
+	sp = tt.shape_maker()
+
+	#now loop through the predictions to construct the output images at each timestep
+	for i in xrange(seq_length):
+		observed_images[i ,...] = np.sum(predictions[:i+1,...],axis = 0)
+		#for each joint angle construct the delta image 
 		#use the three link arm to get the position list from this
 		effec_pos = three_link_arm.forward_kinematics(np.expand_dims(joint_angle_predictions[i,...],-1))
 		#initialize a grid to store the image
@@ -60,15 +71,21 @@ def save_images(predictions,target,joint_angle_predictions,directory):
 		#write the effec pos to the grid
 		joint_angle_image_grid.draw_figure(effec_pos)
 		#now get the points from the effec pos to make the figure lines thicker
-		#initialize a shape maker to make this possible
-		sp = tt.shape_maker()
 		more_pts = sp.get_points_to_increase_line_thickness(effec_pos)
-		#write these points to the figure as well
-		joint_angle_image = joint_angle_image_grid.draw_figure(more_pts)
-		image_array[2,:,i] = joint_angle_image.flatten()
+		#write these points to the figure as well and assign to the array storing the constructed delta images
+		joint_angle_constructed_delta_images[i,:,:,0] = joint_angle_image_grid.draw_figure(more_pts)
+		#now sum up all the construced images to obtain the observed images at each timestep
+		joint_angle_constructed_observed_images[i,...] = np.sum(joint_angle_constructed_delta_images[:i+1,...], axis = 0)
+
+
+	#now take the observed images and add to the flattened array
+	for i in xrange(seq_length):
+		flattened_image_array[0,:,i] = target[i,:,:,0].flatten()
+		flattened_image_array[1,:,i] = observed_images[i,:,:,0].flatten()
+		flattened_image_array[2,:,i] = joint_angle_constructed_observed_images[i,:,:,0].flatten()
 	
 	#now that the image array consists of the targets and the prediction split it into a list of images and use the raster function to get the tiled images and png to saver the image appropriately
-	image_array_list = np.split(image_array,np.shape(predictions)[0],2)
+	image_array_list = np.split(flattened_image_array,seq_length,2)
 	for i,image in enumerate(image_array_list):
 		image = np.squeeze(image)
 		#now pass this to the raster function to obtain the tiled image that may be saved using the png module
