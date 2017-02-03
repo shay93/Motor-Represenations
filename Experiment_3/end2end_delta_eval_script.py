@@ -11,7 +11,7 @@ import results_handling as rh
 import training_tools as tt
 import input_data_handler as dh
 
-num_shape_sequences = 10
+num_shape_sequences = 50
 step_size = 3
 root_dir = "delta_onetstep/"
 #specify all the relevant directories
@@ -29,13 +29,13 @@ def load_data(num_shape_sequences,step_size):
 	_ = shape_dh.find_seq_max_length()
 	x_1,x_2 = shape_dh.extract_observed_images(step_size)
 	delta_sequence_array = x_2 - x_1
-	return x_2,delta_sequence_array,shape_dh.total_tsteps_list
+	return delta_sequence_array,shape_dh.total_tsteps_list
 
 delta_seq_array,total_tsteps_list = load_data(num_shape_sequences,step_size)
 #construct a list of arrays of size [seq_length,64,64,1] which may be passed through the graph after it is initialized to get the output for each sequence
-x_list = [np.transpose(delta_seq_array[i,:,:,:total_tsteps_list[i]],[2,0,1]) for i in xrange(num_shape_sequences)]
+x_list = [np.expand_dims(np.transpose(delta_seq_array[i,:,:,:total_tsteps_list[i]],[2,0,1])*255., -1) for i in xrange(num_shape_sequences)]
 #now initialize the graph by loading the model initializing the variables and then loading the correct values
-model_graph = onetstep_delta_to_output(learning_rate)
+model_graph = onetstep_delta_to_output()
 #build the graph
 op_dict,sess = model_graph.build_graph()
 #now initialize and load
@@ -48,9 +48,9 @@ def save_images(predictions,target,joint_angle_predictions,directory):
 	#initialize a three link arm to check whether joint angles have been inferred or not
 	three_link_arm = tt.three_link_arm(30)
 	#initialize an empty array to store the flattenen images so that they may be passed to the tile raster function
-	image_array = np.zeros([3,64*64,eval_set_size])
+	image_array = np.zeros([3,64*64,np.shape(predictions)[0]])
 	#now loop through all these images and construct an array that may be used to store the images
-	for i in range(eval_set_size):
+	for i in range(np.shape(predictions)[0]):
 		image_array[0,:,i] = target[i,:,:,0].flatten()
 		image_array[1,:,i] = predictions[i,:,:,0].flatten()
 		#use the three link arm to get the position list from this
@@ -68,7 +68,7 @@ def save_images(predictions,target,joint_angle_predictions,directory):
 		image_array[2,:,i] = joint_angle_image.flatten()
 	
 	#now that the image array consists of the targets and the prediction split it into a list of images and use the raster function to get the tiled images and png to saver the image appropriately
-	image_array_list = np.split(image_array,eval_set_size,2)
+	image_array_list = np.split(image_array,np.shape(predictions)[0],2)
 	for i,image in enumerate(image_array_list):
 		image = np.squeeze(image)
 		#now pass this to the raster function to obtain the tiled image that may be saved using the png module
