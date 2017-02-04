@@ -40,29 +40,29 @@ if not os.path.exists(save_dir):
 	os.makedirs(save_dir)
 
 
-def load_data(num):
-	with open("joint_angle_array.npy","rb") as f:
-		joint_state_array = pickle.load(f)[:num,...]
+# def load_data(num):
+# 	with open("joint_angle_array.npy","rb") as f:
+# 		joint_state_array = pickle.load(f)[:num,...]
 
-	with open("image_batch_array.npy","rb") as f:
-		delta_image_array = pickle.load(f)[:num,...]
+# 	with open("image_batch_array.npy","rb") as f:
+# 		delta_image_array = pickle.load(f)[:num,...]
 
-	return joint_state_array,delta_image_array
+# 	return joint_state_array,delta_image_array
 
-# def load_data(num_shape_sequences,step_size):
-# 	#initialize a sequence data handler object
-# 	shape_dh = dh.shape_sequence_data_loader(num_shape_sequences)
-# 	_ = shape_dh.find_seq_max_length()
-# 	x_1,x_2 = shape_dh.extract_observed_images(step_size)
-# 	delta_sequence_array = x_2 - x_1
-# 	return delta_sequence_array,shape_dh.total_tsteps_list
+def load_data(num_shape_sequences,step_size):
+	#initialize a sequence data handler object
+	shape_dh = dh.shape_sequence_data_loader(num_shape_sequences)
+	_ = shape_dh.find_seq_max_length()
+	x_1,x_2 = shape_dh.extract_observed_images(step_size)
+	delta_sequence_array = x_2 - x_1
+	return delta_sequence_array,shape_dh.total_tsteps_list
 
-# delta_seq_array,total_tsteps_list = load_data(num_shape_sequences,step_size)
-# #now flatten the delta sequence along the batch dimension
-# x = np.concatenate([np.transpose(delta_seq_array[i,:,:,:total_tsteps_list[i]],[2,0,1]) for i in xrange(num_shape_sequences)])
+delta_seq_array,total_tsteps_list = load_data(num_shape_sequences,step_size)
+#now flatten the delta sequence along the batch dimension
+x = np.concatenate([np.transpose(delta_seq_array[i,:,:,:total_tsteps_list[i]],[2,0,1]) for i in xrange(num_shape_sequences)])
 
-_,x = load_data(num_samples)
-x = np.expand_dims(x,-1)
+#_,x = load_data(num_samples)
+x = np.expand_dims(x,-1)*255.
 print np.max(x)
 print np.shape(x)
 #now separate the arrays into the training and eval sets
