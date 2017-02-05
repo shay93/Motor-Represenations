@@ -9,15 +9,15 @@ import pickle
 
 class grid:
 
-	def __init__(self,file_name,directory_name):
-		self.grid_size = 64
-		self.grid = np.zeros((self.grid_size,self.grid_size))
+	def __init__(self,file_name,directory_name, grid_size = (64,64)):
+		self.grid_size = grid_size
+		self.grid = np.zeros((self.grid_size[0],self.grid_size[1]))
 		self.save_name = directory_name + file_name + ".png"	
 
 	def draw_figure(self,pos_array):
 	    #this function should take the end effector position and draw on a 64 by 64 grid
 	    for pos in pos_array:
-	        self.grid[pos[0] % 64,pos[1] % 64] = 255
+	        self.grid[int(pos[0] % self.grid_size[0]),int(pos[1] % self.grid_size[1])] = 255
 	    return self.grid
 
 	def save_image(self):
@@ -30,9 +30,9 @@ class grid:
 
 class shape_maker:
 
-	def __init__(self, dir_name = None):
-		self.std = 6
-		self.mu = 32
+	def __init__(self, mu = 32, std = 6, dir_name = None):
+		self.std = std
+		self.mu = mu
 		self.directory_name = dir_name
 		self.pixel_width = 3
 
@@ -131,6 +131,13 @@ class shape_maker:
 		if shape == "Rectangle":
 			d = np.floor(self.sample_truncated_normal(9,10,30,2))
 			vertices = [(-d[0],0),(0,d[1]),(d[0],0),(0,-d[1])]
+		if shape == "Quad":
+			del_1 = np.floor(self.sample_truncated_normal(0,10,20,2))
+			del_2 = np.floor(self.sample_truncated_normal(0,10,20,2))
+			del_3 = np.floor(self.sample_truncated_normal(0,10,20,2))
+			del_4 = -(del_1 + del_2 + del_3)
+			vertices = [del_1,del_2,del_3,del_4]
+
 
 		
 		return vertices
@@ -169,6 +176,80 @@ class shape_maker:
 		else:
 			return self.get_points(shape)
 
+	def onSegment(self,p,q,r):
+		"""
+		given three points determines whether points are collinear
+		"""
+		if q[0] <= max(p[0],r[0]) and q[0] >= min(p[0],r[0]) and q[1] <=max(p[1],r[1]) and q[1] >= min(p[1],r[1]):
+			return True
+
+		return False
+
+	def orientation(self,p,q,r):
+		"""
+		determines the orientation of three given points
+		"""
+		val = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0])*(r[1] - q[1])
+		if val == 0:
+			return 0
+		if val > 0:
+			return 1
+		if val < 0:
+			return 2
+
+	def check_intersect(self,p1,q1,p2,q2):
+		"""
+		Determines if two lines intersect given their end points
+		"""
+		o1 = self.orientation(p1,q1,p2)
+		o2 = self.orientation(p1,q1,q2)
+		o3 = self.orientation(p2,q2,p1)
+		o4 = self.orientation(p2,q2,q1)
+
+		if (not(o1 == o2) and not(o3 == o4)):
+			return True
+
+		if (o1 == 0 and self.onSegment(p1,p2,q1)):
+			return True
+
+		if (o2 == 0 and self.onSegment(p1,q2,q1)):
+			return True
+		
+		if (o3 == 0 and self.onSegment(p2,p1,q2)):
+			return True
+
+		if (o4 == 0 and self.onSegment(p2,q1,q2)):
+			return True
+
+		return False
+	
+	def check_intersect_all_segments(self,delta_vector,start_point):
+		"""
+		Given the delta vector and start points determine if any of the lines segments intersect
+		"""
+		segment_list = [[(start_point[0],start_point[1]),(start_point[0] + delta_vector[0][0],start_point[1] + delta_vector[0][1])]]
+		#now loop through the delta vector and append to the segment_list
+		for i in xrange(1,len(delta_vector)):
+			previous_segment_end_point = segment_list[i - 1][1]
+			cur_delta = delta_vector[i]
+			current_segment = [previous_segment_end_point,(previous_segment_end_point[0] + cur_delta[0], previous_segment_end_point[1] + cur_delta[1])]
+			#now append to the segment list
+			segment_list.append(current_segment)
+		
+		#now loop through segments 
+		for i,segment in enumerate(segment_list):
+			segment_start = segment[0]
+			segment_end = segment[1]
+			for j,second_segment in enumerate(segment_list):
+				second_segment_start = second_segment[0]
+				second_segment_end = second_segment[1]
+				if i == j:
+					continue
+				if self.check_intersect(segment_start,segment_end,second_segment_start,second_segment_end):
+					return True
+
+		return False
+
 
 	def check(self,control_vector,start_point):
 		prev_point = start_point
@@ -182,7 +263,7 @@ class shape_maker:
 			if len(vector_list) > 1:
 				angle = np.arccos(np.dot(vector_list[j],vector_list[j+1])/(np.linalg.norm(vector_list[j+1])*np.linalg.norm(vector_list[j])))* 360/(2*np.pi)
 				j += 1
-			if abs(current_point[0]) > 62 or abs(current_point[1]) > 62 or current_point[0] < 1 or current_point[1] < 1 or abs(angle) < 25 or abs(angle) > 155 :
+			if abs(current_point[0]) > 62 or abs(current_point[1]) > 62 or current_point[0] < 1 or current_point[1] < 1 or abs(angle) < 25 or abs(angle) > 155 or not(self.check_intersect_all_segments(control_vector,start_point)):
 				return False
 			start_point = current_point
 		return True
