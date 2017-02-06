@@ -13,12 +13,12 @@ import training_tools as tt
 import input_data_handler as dh
 
 eval_set_size = 200
-Epochs = 2000
+Epochs = 2
 batch_size = 1000
 eval_batch_size =  20
 #also specify the number of samples
-num_shape_sequences = 2000
-step_size = 3
+num_shape_sequences = 20
+step_size = 2
 root_dir = "arm2delta/"
 learning_rate = 1e-3
 #specify all the relevant directories
@@ -51,7 +51,7 @@ def load_data(num_shape_sequences,step_size):
 	rendered_arm_array = seq_loader.extract_seq_images(step_size)
 	return delta_sequence_array,shape_dh.total_tsteps_list,rendered_arm_array,seq_loader.total_tsteps_list
 
-delta_seq_array,total_tsteps_list_shape,rendered_arm_array,seq_loader.total_tsteps_list_arm = load_data(num_shape_sequences,step_size)
+delta_seq_array,total_tsteps_list_shape,rendered_arm_array,total_tsteps_list_arm = load_data(num_shape_sequences,step_size)
 #now flatten the delta sequence along the batch dimension
 delta_images = np.concatenate([np.transpose(delta_seq_array[i,:,:,:total_tsteps_list_shape[i]],[2,0,1]) for i in xrange(num_shape_sequences)])
 #flatten the rendered arm images as well
@@ -73,7 +73,7 @@ model_graph = onetstep_rendered_arm_to_delta_output(learning_rate)
 #build the graph
 op_dict,sess = model_graph.build_graph()
 
-train_size = num_samples - eval_set_size
+#train_size = num_samples - eval_set_size
 
 #use the opt_dict to construct the placeholder dict
 placeholder_train_dict = {}
@@ -91,7 +91,7 @@ placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x"]] = x_eval
 placeholder_eval_dict[op_dict["delta"]] = delta_eval
 print np.shape(x_eval)
-predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["x"])
+predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["delta"])
 #also get the joint angles that are predicted using the sessions object and the placeholder_dict
 joint_angle_predictions = sess.run(op_dict["joint_angle_state"],feed_dict = placeholder_eval_dict)
 
