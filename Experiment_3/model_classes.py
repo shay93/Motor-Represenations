@@ -142,7 +142,7 @@ class tensorflow_graph:
 		sess.run(init_op)
 		print "Variables have been initialized"
 	
-	def evaluate_graph(self,sess,eval_batch_size,placeholder_dict,y_op,loss_op,y_label_op):
+	def evaluate_graph(self,sess,eval_batch_size,placeholder_dict,y_op,y_label_op, output_shape = None, loss_op = None):
 		"""
 		Pass in the eval set data to compute predictions, this function returns the predictions whatever those may be
 		"""
@@ -152,7 +152,10 @@ class tensorflow_graph:
 			raise ValueError("batch size for evals larger than dataset: %d" % eval_batch_size)
 
 		#initialize an empty array for predictions using the provided shape
-		predictions = np.ndarray(shape = np.shape(placeholder_dict[y_label_op]),dtype = np.float32)
+		if (output_shape == None):
+			predictions = np.ndarray(shape = np.shape(placeholder_dict[y_label_op]),dtype = np.float32)
+		else:
+			predictions = np.ndarray(shape = output_shape,dtype = np.float32)			
 		#furthermore initialize a list to record the test set loss
 		test_loss_array = [0]*((num_samples // eval_batch_size) + 1)
 		#initialize a variable to record how many eval iterations have taken place
@@ -166,15 +169,22 @@ class tensorflow_graph:
 			if end <= num_samples:
 				for op in placeholder_dict.keys():
 					feed_dict[op] = placeholder_dict[op][begin:end, ...]
-				predictions[begin:end,...],l = sess.run([y_op,loss_op],feed_dict = feed_dict) 
+				if not(loss_op == None):
+					predictions[begin:end,...],l = sess.run([y_op,loss_op],feed_dict = feed_dict)
+				else:
+					predictions[begin:end,...] = sess.run([y_op],feed_dict = feed_dict)					 
 			else:
 				for op in placeholder_dict.keys():
 					feed_dict[op] = placeholder_dict[op][-eval_batch_size,...]
-				batch_predictions,l = sess.run([y_op,loss_op], feed_dict = feed_dict)
+				if not(loss_op == None):
+					batch_predictions,l = sess.run([y_op,loss_op], feed_dict = feed_dict)
+				else:
+					batch_predictions = sess.run([y_op], feed_dict = feed_dict)									
 				predictions[begin:, ...] = batch_predictions[-(num_samples - begin):,...]
 
-			#append the loss
-			test_loss_array[step] = l
+			if not(loss_op == None):
+				#append the loss
+				test_loss_array[step] = l
 			#increment the step variable
 			step += 1
 		return predictions,test_loss_array
