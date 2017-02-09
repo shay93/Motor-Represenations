@@ -9,7 +9,7 @@ import pickle
 
 class grid:
 
-	def __init__(self,file_name,directory_name, grid_size = (64,64)):
+	def __init__(self,file_name = 'None',directory_name = 'None', grid_size = (64,64)):
 		self.grid_size = grid_size
 		self.grid = np.zeros((self.grid_size[0],self.grid_size[1]))
 		self.save_name = directory_name + file_name + ".png"	
