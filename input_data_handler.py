@@ -5,10 +5,10 @@ import os
 
 class shape_sequence_data_loader:
 	
-	def __init__(self, num_sequences):
-		self.shape_str_array = ['Rectangle','Square','Triangle']
+	def __init__(self, num_sequences, shape_str_array = ['Rectangle','Square','Triangle'], shape_dir = os.path.dirname(os.path.abspath(__file__)) + "/Shapes/" ):
+		self.shape_str_array = shape_str_array
 		self.num_sequences =  num_sequences
-		self.shape_dir = os.path.dirname(os.path.abspath(__file__)) + "/Shapes/"
+		self.shape_dir = shape_dir
 		self.total_tsteps_list = []
 	
 	def find_seq_max_length(self):
@@ -58,10 +58,10 @@ class shape_sequence_data_loader:
 
 class generic_image_sequence_loader:
 
-	def __init__(self,num_sequences):
-		self.shape_str_array = ['Rectangle','Square','Triangle']
+	def __init__(self,num_sequences, shape_str_array = ['Rectangle','Square','Triangle'], load_dir = os.path.dirname(os.path.abspath(__file__)) + "/Planar_Arm_Rendering/"):
+		self.shape_str_array = shape_str_array
 		self.num_sequences = num_sequences
-		self.load_dir = os.path.dirname(os.path.abspath(__file__)) + "/Planar_Arm_Rendering/"
+		self.load_dir = load_dir
 		self.total_tsteps_list = []
 
 	def find_seq_max_length(self):
