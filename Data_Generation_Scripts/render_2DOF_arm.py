@@ -59,7 +59,7 @@ for shape_str in shape_str_array:
 			start_point = (start_x,start_y)
 			link1_end_point = (int(x_link_1[i]),int(y_link_1[i]))
 			link2_end_point = (int(x_link_2[i]),int(y_link_2[i]))
-			pos_list = sp.draw_line(start_point,link1_end_point,0.001,0.001) + sp.draw_line(link1_end_point,link2_end_point,0.001,0.001)
+			pos_list = sp.draw_line(start_point,link1_end_point,0.1,0.1) + sp.draw_line(link1_end_point,link2_end_point,0.1,0.1)
 			#now get the extended point list in order to thicken the lines
 			additional_points = sp.get_points_to_increase_line_thickness(pos_list)
 			#now initialize a grid in order to save the correct images
