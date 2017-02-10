@@ -9,7 +9,7 @@ import pickle
 
 class grid:
 
-	def __init__(self,file_name,directory_name, grid_size = (64,64)):
+	def __init__(self,file_name = 'None',directory_name = 'None', grid_size = (64,64)):
 		self.grid_size = grid_size
 		self.grid = np.zeros((self.grid_size[0],self.grid_size[1]))
 		self.save_name = directory_name + file_name + ".png"	
@@ -131,13 +131,16 @@ class shape_maker:
 		if shape == "Rectangle":
 			d = np.floor(self.sample_truncated_normal(9,10,30,2))
 			vertices = [(-d[0],0),(0,d[1]),(d[0],0),(0,-d[1])]
-		if shape == "Quad":
-			del_1 = np.floor(self.sample_truncated_normal(0,10,20,2))
-			del_2 = np.floor(self.sample_truncated_normal(0,10,20,2))
-			del_3 = np.floor(self.sample_truncated_normal(0,10,20,2))
-			del_4 = -(del_1 + del_2 + del_3)
-			vertices = [del_1,del_2,del_3,del_4]
-
+		if shape == "Rhombus":
+			l = 5. + 20.*np.random.rand()
+			l_x = np.round(np.sin(45/180 * np.pi)*l)
+			l_y = np.round(np.cos(45/180 * np.pi)*l)
+			vertices = [(-l_x,l_y),(l_x,l_y),(l_x,-l_y),(-l_x,-l_y)]
+		if shape == "Hexagon":
+			l = 5. + 20.*np.random.rand()
+			l_x = np.round(np.sin(60/180 * np.pi)*l)
+			l_y = np.round(np.cos(60/180 * np.pi)*l)
+			vertices = [(-l_x,l_y),(0,l),(l_x,l_y),(l_x,-l_y),(0,-l),(-l_x,-l_y)]
 
 		
 		return vertices

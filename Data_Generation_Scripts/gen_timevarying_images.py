@@ -2,8 +2,13 @@ from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-import training_tools as tt
+import sys
 import os
+sys.path.append(os.path.dirname(os.getcwd()))
+import training_tools as tt
+import shutil
+
+link_length_2dof = 50
 
 #save a set of time varying images to folders so that they may be loaded when appropriate
 #this requires a good naming convention so in addition to specifying the shape number you must also specify the image number
@@ -23,13 +28,17 @@ def remove_points_out_of_range(pos_list):
 
 
 #Define some globals 
-shape_str_array = ["Triangle","Square","Rectangle"]
-link_length_2dof = 50
-shape_jointseq_root_directory = "Shape_JointSeqs/"
-shape_root_directory = "Shapes/"
-samples_per_shape = 10000
+#shape_str_array = ["Triangle","Square","Rectangle"]
+shape_str_array = ["Rhombus","Hexagon"]
+parent_dir = os.path.dirname(os.getcwd())
+shape_jointseq_root_directory = parent_dir + "/" + "Eval_Shape_JointSeqs/"
+shape_root_directory = parent_dir + "/New_Shapes/"
+samples_per_shape = 100
 #create this directory if it doesnt exist
-if not(os.path.exists(shape_root_directory)):
+if os.path.exists(shape_root_directory):
+	shutil.rmtree(shape_root_directory)
+	os.makedirs(shape_root_directory)
+else:
 	os.makedirs(shape_root_directory)
 
 #do the same for the shape joint sequence director
@@ -37,7 +46,7 @@ if not(os.path.exists(shape_jointseq_root_directory)):
 	os.makedirs(shape_jointseq_root_directory)
 
 #now use training tools to generate the images you want 
-sp = tt.shape_maker()
+sp = tt.shape_maker(10,32)
 arm_2dof = tt.two_link_arm(link_length_2dof)
 
 for shape_name in shape_str_array:
