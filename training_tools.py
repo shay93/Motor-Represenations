@@ -131,13 +131,16 @@ class shape_maker:
 		if shape == "Rectangle":
 			d = np.floor(self.sample_truncated_normal(9,10,30,2))
 			vertices = [(-d[0],0),(0,d[1]),(d[0],0),(0,-d[1])]
-		if shape == "Quad":
-			del_1 = np.floor(self.sample_truncated_normal(0,10,20,2))
-			del_2 = np.floor(self.sample_truncated_normal(0,10,20,2))
-			del_3 = np.floor(self.sample_truncated_normal(0,10,20,2))
-			del_4 = -(del_1 + del_2 + del_3)
-			vertices = [del_1,del_2,del_3,del_4]
-
+		if shape == "Rhombus":
+			l = 5. + 20.*np.random.rand()
+			l_x = np.round(np.sin(45/180 * np.pi)*l)
+			l_y = np.round(np.cos(45/180 * np.pi)*l)
+			vertices = [(-l_x,l_y),(l_x,l_y),(l_x,-l_y),(-l_x,-l_y)]
+		if shape == "Hexagon":
+			l = 5. + 20.*np.random.rand()
+			l_x = np.round(np.sin(60/180 * np.pi)*l)
+			l_y = np.round(np.cos(60/180 * np.pi)*l)
+			vertices = [(-l_x,l_y),(0,l),(l_x,l_y),(l_x,-l_y),(0,-l),(-l_x,-l_y)]
 
 		
 		return vertices

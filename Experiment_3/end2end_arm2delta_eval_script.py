@@ -10,27 +10,29 @@ import png
 import results_handling as rh
 import training_tools as tt
 import input_data_handler as dh
-
+parent_dir = os.path.dirname(os.getcwd())
 num_shape_sequences = 50
 step_size = 3
 root_dir = "arm2delta/"
 #specify all the relevant directories
-output_dir = root_dir + "Eval_Output_Images/"
+output_dir = root_dir + "Eval_New_Output_Images/"
 physics_saved_directory = "joint2image/" + "model/" + "model.ckpt"
 infer_save_dir = root_dir + "model/" + "model.ckpt"
-
+shape_img_dir = parent_dir + '/' + "New_Shapes"
+shape_str_array = ["Rhombus","Hexagon"]
+arm_img_dir = parent_dir + "/" + "Eval_Planar_Arm_Rendering"
 #create the output directory
 if not os.path.exists(output_dir):
 	os.makedirs(output_dir)
 
 def load_data(num_shape_sequences,step_size):
 	#initialize a shape sequence data handler object
-	shape_dh = dh.shape_sequence_data_loader(num_shape_sequences)
+	shape_dh = dh.shape_sequence_data_loader(num_shape_sequences, shape_str_array = shape_str_array, shape_dir = shape_img_dir)
 	_ = shape_dh.find_seq_max_length()
 	x_1,x_2 = shape_dh.extract_observed_images(step_size)
 	delta_sequence_array = x_2 - x_1
 	#perform the same for the rendered arm images
-	seq_loader = dh.generic_image_sequence_loader(num_shape_sequences)
+	seq_loader = dh.generic_image_sequence_loader(num_shape_sequences, shape_str_array = shape_str_array, load_dir = arm_img_dir )
 	_ = seq_loader.find_seq_max_length()
 	rendered_arm_array = seq_loader.extract_seq_images(step_size)
 	return delta_sequence_array,shape_dh.total_tsteps_list,rendered_arm_array,seq_loader.total_tsteps_list
@@ -114,7 +116,7 @@ phys_last_image_array = np.ndarray([len(x_list),64,64])
 target_last_image_array = np.ndarray([len(x_list),64,64])
 
 for i,x in enumerate(x_list):
-	predictions,test_loss_array = model_graph.evaluate_graph(sess,np.shape(x)[0],{op_dict["x"]: x, op_dict["delta"] : delta_image_list[i]},op_dict["y"],op_dict["delta"], op_dict["loss"])
+	predictions,test_loss_array = model_graph.evaluate_graph(sess,np.shape(x)[0],{op_dict["x"]: x, op_dict["delta"] : delta_image_list[i]},op_dict["y"],op_dict["delta"], loss = op_dict["loss"])
 	#also get the joint angles that are predicted using the sessions object and the placeholder_dict
 	joint_angle_predictions = sess.run(op_dict["joint_angle_state"],feed_dict = {op_dict["x"] : x})
 	#for a given set of predictions and targets calculated the IoU's, using both the joint angle predictions and the outputs from the physics network calculate the IoU between the last target and observed imag
@@ -155,8 +157,8 @@ def calculate_IOU(predictions,target,file_name,directory):
 
 
 #finally calculate the IoU for each set of images
-calculate_IOU(phys_last_image_array,target_last_image_array,"phys_IoU.npy",root_dir)
-calculate_IOU(joint_last_image_array,target_last_image_array,"joint_IoU.npy",root_dir)
+calculate_IOU(phys_last_image_array,target_last_image_array,"phys_IoU_new.npy",root_dir)
+calculate_IOU(joint_last_image_array,target_last_image_array,"joint_IoU_new.npy",root_dir)
 
 
 
