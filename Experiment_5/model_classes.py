@@ -202,7 +202,7 @@ class tensorflow_graph:
 class physics_emulator_fixed_joint_seq(tensorflow_graph):
 
 	def __init__(self,learning_rate = 1e-3):
-		self.output_image_decoder_parameters = {"deconv_output_channels_1" : 16, "deconv_output_channels_2" : 8, "deconv_output_channels_3" : 4, "deconv_output_channels_4" : 1}
+		self.output_image_decoder_parameters = {"deconv_output_channels_1" : 16, "deconv_output_channels_2" : 8, "deconv_output_channels_3" : 5}
 		self.lr = learning_rate
 		self.gc = graph_construction_helper()
 		
@@ -215,7 +215,7 @@ class physics_emulator_fixed_joint_seq(tensorflow_graph):
 		#initialize placeholder for joint angle inputs
 		self.op_dict["x"] = tf.placeholder(tf.float32,shape = [None,3*5])
 		#initialize placeholder for labels
-		self.op_dict["y_"] = tf.placeholder(tf.float32, shape = [None,64,64,1])
+		self.op_dict["y_"] = tf.placeholder(tf.float32, shape = [None,64,64,5])
 		return self.op_dict
 
 	def add_model_ops(self,reuse_variables = False):
@@ -229,14 +229,10 @@ class physics_emulator_fixed_joint_seq(tensorflow_graph):
 		#calculate activations for second deconv layer
 		h_deconv2,W_deconv2,b_deconv2 = self.gc.deconv(h_deconv1,[3,3,self.output_image_decoder_parameters['deconv_output_channels_2'],self.output_image_decoder_parameters['deconv_output_channels_1']],[batch_size,8,8,self.output_image_decoder_parameters['deconv_output_channels_2']],"Deconv2",reuse_variables = reuse_variables)
 		#calculate activations for third deconv layer
-		h_deconv3,W_deconv3,b_deconv3 = self.gc.deconv(h_deconv2,[3,3,self.output_image_decoder_parameters['deconv_output_channels_3'],self.output_image_decoder_parameters['deconv_output_channels_2']],[batch_size,16,16,self.output_image_decoder_parameters['deconv_output_channels_3']],"Deconv3",reuse_variables = reuse_variables)
-		#calculate activations for fourth deconv layer
-		h_deconv4,W_deconv4,b_deconv4 = self.gc.deconv(h_deconv3,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,32,32,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4",reuse_variables = reuse_variables)
-		#calculate activations for fifth deconv layer
-		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv5", non_linearity = False, reuse_variables = reuse_variables)
-		self.op_dict["y_logits"] = h_deconv5
-		self.op_dict["y"] = tf.nn.sigmoid(h_deconv5)
-		var_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5,W_fc1,b_fc1]
+		h_deconv3,W_deconv3,b_deconv3 = self.gc.deconv(h_deconv2,[3,3,self.output_image_decoder_parameters['deconv_output_channels_3'],self.output_image_decoder_parameters['deconv_output_channels_2']],[batch_size,16,16,self.output_image_decoder_parameters['deconv_output_channels_3']],"Deconv3",strides = [1,4,4,1],reuse_variables = reuse_variables)
+		self.op_dict["y_logits"] = h_deconv3
+		self.op_dict["y"] = tf.nn.sigmoid(h_deconv3)
+		var_list = [W_deconv1,W_deconv2,W_deconv3,b_deconv1,b_deconv2,b_deconv3,W_fc1,b_fc1]
 		for var in var_list:
 			self.var_dict[var.name] = var
 
@@ -251,7 +247,7 @@ class physics_emulator_fixed_joint_seq(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_logits"],self.op_dict["y_"]/255.))
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_logits"],self.op_dict["y_"]/20.))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
@@ -268,3 +264,4 @@ class physics_emulator_fixed_joint_seq(tensorflow_graph):
 		#add a saving operation
 		self.op_dict["saver"] = tf.train.Saver(self.var_dict)
 		return self.op_dict
+

@@ -1,5 +1,5 @@
 from __future__ import division 
-from models_classes import physics_emulator_fixed_joint_seq
+from model_classes import physics_emulator_fixed_joint_seq
 import numpy as np
 import matplotlib.pyplot as plt 
 import os
@@ -12,14 +12,16 @@ import results_handling as rh
 
 root_dir = "physics_emulator/"
 num_sequences = 20000
+seq_length = 5
 eval_set_size = 100
+eval_batch_size = 50
 load_dir = parent_dir + "/" + "Random_3DOF_Trajectories"
 log_dir = root_dir + "tmp/"
 save_dir = root_dir + "model/"
 output_dir = root_dir + "Output_Images/"
 ###model parameters
-learning_rate = 1e-3
-Epochs = 2
+learning_rate = 1e-2
+Epochs =1000
 batch_size = 500
 
 
@@ -45,6 +47,7 @@ def load_image_data(num_sequences,seq_length):
 	for i in xrange(num_sequences):
 		dir_name = load_dir + "/" + "Trajectory" + str(i)
 		#now load the final image from this driectory
+
 		for j in xrange(seq_length):
 			image_array[i,:,:,j] = plt.imread(dir_name + "/" + "timestep" + str(j) + ".png")
 
@@ -55,17 +58,17 @@ def load_image_data(num_sequences,seq_length):
 #similarly load the joint sequence data
 def load_joint_sequence(num_sequences):
 
-	with open("random_trajectory.npy","rb") as f:
+	with open(load_dir + "/" + "random_trajectory.npy","rb") as f:
 		joint_seq = pickle.load(f)
 
 	#now only index out the num of sequences corresponding to the image data
-	joint_seq = joint_seq[:num_sequences,...]
+	joint_seq = joint_seq[:num_sequences,:,:seq_length]
 	#furthermore reshape into a 2d array
-	joint_seq = np.reshape(joint_seq,shape = [num_sequences,-1])
+	joint_seq = np.reshape(joint_seq, [num_sequences,-1])
 	return joint_seq
 
 
-y = load_image_data(num_sequences)
+y = load_image_data(num_sequences,seq_length)*20
 x = load_joint_sequence(num_sequences)
 #separate out the training test set data
 x_train = x[eval_set_size:,...]
@@ -78,7 +81,7 @@ y_eval = y[:eval_set_size,...]
 model_graph = physics_emulator_fixed_joint_seq(learning_rate)
 
 #build the graph
-op_dict,sess = model_graph,build_graph()
+op_dict,sess = model_graph.build_graph()
 
 placeholder_train_dict = {}
 placeholder_train_dict[op_dict["x"]] = x_train
@@ -90,9 +93,9 @@ model_graph.save_graph_vars(sess,op_dict["saver"],save_dir + "model.ckpt")
 #form the placeholder eval dict
 placeholder_eval_dict = {}
 placeholder_eval_dict[op_dict["x"]] = x_eval
-placeholder_eval_dict[op_dict["y"]] = y_eval
+placeholder_eval_dict[op_dict["y_"]] = y_eval
 print np.shape(x_eval)
-predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["loss"],op_dict["delta"])
+predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["y_"],loss_op = op_dict["loss"])
 
 def save_images(predictions,target,directory):
 	#initialize an empty array to store the flattenen images so that they may be passed to the tile raster function

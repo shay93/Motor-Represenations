@@ -4,7 +4,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import sys
-
+import pickle
 sys.path.append(os.path.dirname(os.getcwd()))
 import png
 import results_handling as rh
@@ -69,6 +69,8 @@ def save_images(predictions,target,joint_angle_predictions,directory):
 	joint_angle_constructed_observed_images = np.zeros([seq_length,64,64,1])
 	#initialize an empty array to store the flattenen images so that they may be passed to the tile raster function
 	flattened_image_array = np.zeros([3,64*64,seq_length])
+	#initialize an array for the target observed images
+	target_observed_images = np.zeros([seq_length,64,64,1])
 	#initialize a shape maker object to translate the end effector positions into images that may be saved
 	sp = tt.shape_maker()
 
@@ -89,7 +91,7 @@ def save_images(predictions,target,joint_angle_predictions,directory):
 		#now sum up all the construced images to obtain the observed images at each timestep
 		joint_angle_constructed_observed_images[i,...] = np.sum(joint_angle_constructed_delta_images[:i+1,...], axis = 0)
 		#do the same for the target delta image
-		target_observed_images = np.sum(target[:i+1,...], axis = 0)
+		target_observed_images[i,...] = np.sum(target[:i+1,...], axis = 0)
 
 
 
@@ -116,7 +118,7 @@ phys_last_image_array = np.ndarray([len(x_list),64,64])
 target_last_image_array = np.ndarray([len(x_list),64,64])
 
 for i,x in enumerate(x_list):
-	predictions,test_loss_array = model_graph.evaluate_graph(sess,np.shape(x)[0],{op_dict["x"]: x, op_dict["delta"] : delta_image_list[i]},op_dict["y"],op_dict["delta"], loss = op_dict["loss"])
+	predictions,test_loss_array = model_graph.evaluate_graph(sess,np.shape(x)[0],{op_dict["x"]: x, op_dict["delta"] : delta_image_list[i]},op_dict["y"],op_dict["delta"], loss_op = op_dict["loss"])
 	#also get the joint angles that are predicted using the sessions object and the placeholder_dict
 	joint_angle_predictions = sess.run(op_dict["joint_angle_state"],feed_dict = {op_dict["x"] : x})
 	#for a given set of predictions and targets calculated the IoU's, using both the joint angle predictions and the outputs from the physics network calculate the IoU between the last target and observed imag
@@ -131,6 +133,7 @@ def calculate_IOU(predictions,target,file_name,directory):
 	"""
 	Returns a 2d array of dimension [2,0.99/0.025], first dimension corresponds to the thresholds and second dimension corresponds to 
 	"""
+	eval_set_size = np.shape(predictions)[0]
 	threshold_list = np.arange(0,0.99,step = 0.025)
 	IoU_list = []
 	for i,threshold in enumerate(threshold_list):
