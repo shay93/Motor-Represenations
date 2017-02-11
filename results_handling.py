@@ -140,3 +140,32 @@ def load_images_into_raster_form(directory,number):
 
 
     return image_array
+
+
+def calculate_IOU(predictions,target,file_name,directory):
+    """
+    Returns a 2d array of dimension [2,0.99/0.025], first dimension corresponds to the thresholds and second dimension corresponds to 
+    """
+    threshold_list = np.arange(0,0.99,step = 0.025)
+    IoU_list = []
+    for i,threshold in enumerate(threshold_list):
+        good_mapping_count = 0
+        bad_mapping_count = 0
+        for i in range(eval_set_size):
+            arr_pred = np.nonzero(np.round(predictions[i,...]))
+            pos_list_pred = zip(arr_pred[0],arr_pred[1])
+            arr_input = np.nonzero(target[i,...])
+            pos_list_input = zip(arr_input[0],arr_input[1])
+            intersection = set(pos_list_pred) & set(pos_list_input)
+            union = set(pos_list_input + pos_list_pred)
+            if (len(intersection) / len(union)) > threshold:
+                good_mapping_count += 1
+            else:
+                bad_mapping_count += 1
+
+        IoU_list.append(good_mapping_count / eval_set_size)
+
+    IoU_array = np.concatenate([np.expand_dims(threshold_list,0),np.expand_dims(IoU_list,0)])
+
+    with open(directory + file_name,"wb") as f:
+        pickle.dump(IoU_array,f)
