@@ -35,17 +35,18 @@ if not os.path.exists(save_dir):
 
 
 #first thing is to load the data
-def load_image_data(num_sequences):
+def load_image_data(num_sequences,seq_length):
 	"""
 	Load data in format [Batch,3*seq_length]
 	"""
 	#initialize an empty array to hold the sequences
-	image_array = np.ndarray(shape = [num_sequences,64,64,1])
+	image_array = np.ndarray(shape = [num_sequences,64,64,seq_length])
 	#load data by looping over relevant directory and by picking out the final image in each case
 	for i in xrange(num_sequences):
 		dir_name = load_dir + "/" + "Trajectory" + str(i)
 		#now load the final image from this driectory
-		image_array[i,:,:,0] = plt.imread(dir_name + "/" + "timestep4.png")
+		for j in xrange(seq_length):
+			image_array[i,:,:,j] = plt.imread(dir_name + "/" + "timestep" + str(j) + ".png")
 
 	#return this image array
 	return image_array
