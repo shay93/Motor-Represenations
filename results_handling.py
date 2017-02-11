@@ -1,6 +1,6 @@
 import numpy as np
 import png
-
+import pickle
 
 def scale_to_unit_interval(ndar, eps=1e-8):
     """ Scales all values in the ndarray ndar to be between 0 and 1 """
@@ -147,6 +147,7 @@ def calculate_IOU(predictions,target,file_name,directory):
     Returns a 2d array of dimension [2,0.99/0.025], first dimension corresponds to the thresholds and second dimension corresponds to 
     """
     threshold_list = np.arange(0,0.99,step = 0.025)
+    eval_set_size = np.shape(predictions)[0]
     IoU_list = []
     for i,threshold in enumerate(threshold_list):
         good_mapping_count = 0

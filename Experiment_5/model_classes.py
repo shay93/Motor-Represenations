@@ -213,13 +213,13 @@ class physics_emulator_fixed_joint_seq(tensorflow_graph):
 
 	def add_placeholder_ops(self):
 		#initialize placeholder for joint angle inputs
-		self.op_dict["x"] = tf.placeholder(tf.float32,shape = [None,3*5])
+		self.op_dict["x"] = tf.placeholder(tf.float32,shape = [None,3])
 		#initialize placeholder for labels
 		self.op_dict["y_"] = tf.placeholder(tf.float32, shape = [None,64,64,1])
 		return self.op_dict
 
 	def add_model_ops(self,reuse_variables = False):
-		h1_fc,W_fc1,b_fc1 = self.gc.fc_layer(self.op_dict["x"],[3*5,32*4*4],"fc_layer_1", reuse_variables = reuse_variables)
+		h1_fc,W_fc1,b_fc1 = self.gc.fc_layer(self.op_dict["x"],[3,32*4*4],"fc_layer_1", reuse_variables = reuse_variables)
 		#now reshape this to get a 4d image
 		h1_fc_reshaped = tf.reshape(h1_fc,shape = [-1,4,4,32])
 		#find the batch size of the input data in order to use later
@@ -251,7 +251,7 @@ class physics_emulator_fixed_joint_seq(tensorflow_graph):
 	def add_auxillary_ops(self):
 		opt = tf.train.AdamOptimizer(self.lr)
 		#define the loss op using the y before sigmoid and in the cross entropy sense
-		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_logits"],self.op_dict["y_"]/255.))
+		self.op_dict["loss"] = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.op_dict["y_logits"],self.op_dict["y_"]/20.))
 		#get all the variables and compute gradients
 		grads_and_vars = opt.compute_gradients(self.op_dict["loss"],self.var_dict.values())
 		#add summary nodes for the gradients
