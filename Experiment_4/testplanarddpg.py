@@ -5,11 +5,11 @@ from policies.nn_policy import FeedForwardPolicy
 from qfunctions.nn_qfunction import FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
-from planar2d import Planar2D
+from planar2d import  env_2DOF_arm
 
 
 def run_task(*_):
-    env = Planar2D()
+    env = env_2DOF_arm()
     es = OUStrategy(env_spec=env.spec)
     qf = FeedForwardCritic(
         name_or_scope="critic",

@@ -1,7 +1,7 @@
 import numpy as np
 from random import randint
 from rllab.envs.base import Env
-from rllab.misc import special2 as special
+#from rllab.misc import special2 as special
 from rllab.spaces.discrete import Discrete
 from rllab.spaces.box import Box
 
@@ -27,8 +27,8 @@ class env_2DOF_arm(Env):
         self.cur_image = self.render_image()
         self.epsilon = 4
         self.num_steps = num_steps
-        self._action_space = 
-        self._observation_space =
+        self._action_space = Box(np.array([-np.pi/2,-np.pi/2]),np.array([np.pi/2,np.pi/2]))
+        self._observation_space = Discrete(128*128)
 
 
     def step(self, action):
@@ -46,7 +46,7 @@ class env_2DOF_arm(Env):
         done : a boolean, indicating whether the episode has ended
         info : a dictionary containing other diagnostic information from the previous action
         """
-                """
+        """
         action is a delta theta numpy array of shape [2]
         """
         self.cur_theta = self.prev_theta + action
@@ -56,12 +56,12 @@ class env_2DOF_arm(Env):
         #compare the end effector position to the target position and determine whether it is within epsilon of the target
         if abs(self.end_effector[0] - self.target[0]) < self.epsilon and abs(self.end_effector[1] - self.target[1]) < self.epsilon:
             reward = 1.
-        else
+        else:
             reward = 0.
 
         if abs(self.end_effector[0] - self.target[0]) < 3 and abs(self.end_effector[1] - self.target[1]) < 3:
             done = True
-        else
+        else:
             done = False
         
         #let info record the joint angle state at the current timestep
@@ -93,7 +93,7 @@ class env_2DOF_arm(Env):
         temp_grid.draw_figure(pos_list)
         #thicken the lines
         cur_image = temp_grid.draw_figure(additional_points)
-        return cur_image
+        return np.ceil(cur_image/255.0).flatten() #Making it binary
 
     @property
     def action_space(self):
