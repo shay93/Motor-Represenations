@@ -13,7 +13,7 @@ import training_tools as tt
 
 class rl_env_2DOF:
 	
-	def __init__(self,theta_i,link_length = 50,target_loc = [(np.random.randint(0,63),np.random.randint(67,125))]):
+	def __init__(self,theta_i = np.array([0.,np.pi/2]),link_length = 50,target_loc = [(np.random.randint(0,63),np.random.randint(67,125))]):
 		"""
 		theta_i of shape [2] np array
 		"""
