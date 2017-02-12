@@ -4,6 +4,14 @@ from rllab.envs.base import Env
 #from rllab.misc import special2 as special
 from rllab.spaces.discrete import Discrete
 from rllab.spaces.box import Box
+import os
+import sys
+
+parent_dir = os.path.dirname(os.getcwd())
+experiment_3_dir  = parent_dir + "/" + "Experiment_3"
+sys.path.append(parent_dir)
+
+import training_tools as tt
 
 
 class env_2DOF_arm(Env):
