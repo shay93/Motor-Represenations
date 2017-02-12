@@ -13,7 +13,7 @@ import training_tools as tt
 
 class rl_env_2DOF:
 	
-	def __init__(self,theta_i = np.array([0.,np.pi/2]),link_length = 50,target_loc = [(np.random.randint(0,63),np.random.randint(67,125))]):
+	def __init__(self,theta_i = np.array([0.,np.pi/2]),link_length = 50,target_loc = [(np.random.randint(67,125),np.random.randint(67,125))]):
 		"""
 		theta_i of shape [2] np array
 		"""
@@ -21,18 +21,23 @@ class rl_env_2DOF:
 		self.link_length = link_length
 		self.target = target_loc
 		self.sp = tt.shape_maker()
-		self.cur_theta = np.array([0.,0.])
+		self.cur_theta = theta_i
+		self.cur_image = self.render_image()
 
 	def step(self,delta_theta):
 		"""
 		delta_theta of shape [2] np.array
 		"""
 		self.cur_theta = self.prev_theta + delta_theta
-		#index out angles for the two links
+		self.cur_image = self.render_image()
+		self.prev_theta = self.cur_theta
+		return self.cur_image
+
+	def render_image(self):
 		theta_1 = self.cur_theta[0]
 		theta_2 = self.cur_theta[1]
 		#specify the anchor point
-		start_x = 1
+		start_x = 63
 		start_y = 63
 		start_point = (start_x,start_y)
 		#get the link end positions
@@ -46,13 +51,12 @@ class rl_env_2DOF:
 		#now get the extended point list in order to thicken the lines
 		additional_points = self.sp.get_points_to_increase_line_thickness(pos_list)
 		#now initialize a grid in order to save the correct images
-		temp_grid = tt.grid(grid_size = (64,128))
+		temp_grid = tt.grid(grid_size = (128,128))
 		#draw the the points
 		temp_grid.draw_figure(pos_list)
 		#thicken the lines
-		self.cur_image = temp_grid.draw_figure(additional_points)
-		self.prev_theta = self.cur_theta
-		return self.cur_image
+		cur_image = temp_grid.draw_figure(additional_points)
+		return cur_image
 
 
 	def get_world_state(self):
