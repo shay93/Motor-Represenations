@@ -21,6 +21,7 @@ class rl_env_2DOF:
 		self.link_length = link_length
 		self.target = target_loc
 		self.sp = tt.shape_maker()
+		self.cur_theta = np.array([0.,0.])
 
 	def step(self,delta_theta):
 		"""
