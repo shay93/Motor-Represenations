@@ -202,7 +202,7 @@ class tensorflow_graph:
 class physics_emulator_fixed_joint_seq(tensorflow_graph):
 
 	def __init__(self,learning_rate = 1e-3):
-		self.output_image_decoder_parameters = {"deconv_output_channels_1" : 16, "deconv_output_channels_2" : 8, "deconv_output_channels_3" : 5}
+		self.output_image_decoder_parameters = {"deconv_output_channels_1" : 30, "deconv_output_channels_2" : 24, "deconv_output_channels_3" : 18,"deconv_output_channels_4": 12, "deconv_output_channels_5":5}
 		self.lr = learning_rate
 		self.gc = graph_construction_helper()
 		
@@ -225,14 +225,16 @@ class physics_emulator_fixed_joint_seq(tensorflow_graph):
 		#find the batch size of the input data in order to use later
 		batch_size = tf.shape(h1_fc_reshaped)[0]
 		#pass this to a succession of deconv layers in order to get the desired image
-		h_deconv1,W_deconv1,b_deconv1 = self.gc.deconv(h1_fc_reshaped,[2,2,self.output_image_decoder_parameters['deconv_output_channels_1'],32],[batch_size,4,4,self.output_image_decoder_parameters['deconv_output_channels_1']],"Deconv1",strides = [1,1,1,1], reuse_variables = reuse_variables)
+		h_deconv1,W_deconv1,b_deconv1 = self.gc.deconv(h1_fc_reshaped,[2,2,self.output_image_decoder_parameters['deconv_output_channels_1'],32],[batch_size,8,8,self.output_image_decoder_parameters['deconv_output_channels_1']],"Deconv1",strides = [1,2,2,1], reuse_variables = reuse_variables)
 		#calculate activations for second deconv layer
-		h_deconv2,W_deconv2,b_deconv2 = self.gc.deconv(h_deconv1,[3,3,self.output_image_decoder_parameters['deconv_output_channels_2'],self.output_image_decoder_parameters['deconv_output_channels_1']],[batch_size,8,8,self.output_image_decoder_parameters['deconv_output_channels_2']],"Deconv2",reuse_variables = reuse_variables)
+		h_deconv2,W_deconv2,b_deconv2 = self.gc.deconv(h_deconv1,[3,3,self.output_image_decoder_parameters['deconv_output_channels_2'],self.output_image_decoder_parameters['deconv_output_channels_1']],[batch_size,16,16,self.output_image_decoder_parameters['deconv_output_channels_2']],"Deconv2",reuse_variables = reuse_variables)
 		#calculate activations for third deconv layer
-		h_deconv3,W_deconv3,b_deconv3 = self.gc.deconv(h_deconv2,[3,3,self.output_image_decoder_parameters['deconv_output_channels_3'],self.output_image_decoder_parameters['deconv_output_channels_2']],[batch_size,16,16,self.output_image_decoder_parameters['deconv_output_channels_3']],"Deconv3",strides = [1,4,4,1],reuse_variables = reuse_variables)
-		self.op_dict["y_logits"] = h_deconv3
-		self.op_dict["y"] = tf.nn.sigmoid(h_deconv3)
-		var_list = [W_deconv1,W_deconv2,W_deconv3,b_deconv1,b_deconv2,b_deconv3,W_fc1,b_fc1]
+		h_deconv3,W_deconv3,b_deconv3 = self.gc.deconv(h_deconv2,[3,3,self.output_image_decoder_parameters['deconv_output_channels_3'],self.output_image_decoder_parameters['deconv_output_channels_2']],[batch_size,32,32,self.output_image_decoder_parameters['deconv_output_channels_3']],"Deconv3",reuse_variables = reuse_variables)
+		h_deconv4,W_deconv4,b_deconv4 = self.gc.deconv(h_deconv3,[3,3,self.output_image_decoder_parameters['deconv_output_channels_4'],self.output_image_decoder_parameters['deconv_output_channels_3']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_4']],"Deconv4")
+		h_deconv5,W_deconv5,b_deconv5 = self.gc.deconv(h_deconv4,[3,3,self.output_image_decoder_parameters['deconv_output_channels_5'],self.output_image_decoder_parameters['deconv_output_channels_4']],[batch_size,64,64,self.output_image_decoder_parameters['deconv_output_channels_5']],"Deconv5",strides = [1,1,1,1],non_linearity = False)
+		self.op_dict["y_logits"] = h_deconv5
+		self.op_dict["y"] = tf.nn.sigmoid(h_deconv5)
+		var_list = [W_deconv1,W_deconv2,W_deconv3,W_deconv4,W_deconv5,b_deconv1,b_deconv2,b_deconv3,b_deconv4,b_deconv5,W_fc1,b_fc1]
 		for var in var_list:
 			self.var_dict[var.name] = var
 
