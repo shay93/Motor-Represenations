@@ -265,3 +265,5 @@ class physics_emulator_fixed_joint_seq(tensorflow_graph):
 		self.op_dict["saver"] = tf.train.Saver(self.var_dict)
 		return self.op_dict
 
+class action_inference_network_lstm(tensorflow_graph):
+	
