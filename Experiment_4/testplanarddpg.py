@@ -6,6 +6,8 @@ from qfunctions.nn_qfunction import FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
 from planar2d import  env_2DOF_arm
+from planarspace import PlanarSpace
+from sandbox.rocky.tf.envs.base import TfEnv
 
 
 def run_task(*_):

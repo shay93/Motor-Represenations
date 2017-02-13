@@ -2,10 +2,12 @@ import numpy as np
 from random import randint
 from rllab.envs.base import Env
 #from rllab.misc import special2 as special
-from rllab.spaces.discrete import Discrete
+#from rllab.spaces.discrete import Discrete
+from planarspace import PlanarSpace
 from rllab.spaces.box import Box
 import os
 import sys
+from scipy.misc import imresize
 
 parent_dir = os.path.dirname(os.getcwd())
 experiment_3_dir  = parent_dir + "/" + "Experiment_3"
@@ -22,7 +24,7 @@ class env_2DOF_arm(Env):
     """
 
 
-    def __init__(self,num_steps = 100,epsilon = 10,theta_i = np.array([0.,np.pi/2]),link_length = 50,target_loc = (np.random.randint(67,125),np.random.randint(67,125))):
+    def __init__(self,num_steps = 100,epsilon = 10,theta_i = np.array([0.,np.pi/2]),link_length = 50,target_loc = [(np.random.randint(67,125),np.random.randint(67,125))]):
         """
         theta_i of shape [2] np array
         """
@@ -36,7 +38,7 @@ class env_2DOF_arm(Env):
         self.epsilon = 4
         self.num_steps = num_steps
         self._action_space = Box(np.array([-np.pi/2,-np.pi/2]),np.array([np.pi/2,np.pi/2]))
-        self._observation_space = Discrete(128*128)
+        self._observation_space = PlanarSpace()
 
 
     def step(self, action):
@@ -57,17 +59,17 @@ class env_2DOF_arm(Env):
         """
         action is a delta theta numpy array of shape [2]
         """
-        self.cur_theta = self.prev_theta + action
+        self.cur_theta = self.prev_theta + action[0]
         self.cur_image = self.render_image()
         self.prev_theta = self.cur_theta
         #in addition compute the reward from the previous action
         #compare the end effector position to the target position and determine whether it is within epsilon of the target
-        if abs(self.end_effector[0] - self.target[0]) < self.epsilon and abs(self.end_effector[1] - self.target[1]) < self.epsilon:
+        if abs(self.end_effector[0] - self.target[0][0]) < self.epsilon and abs(self.end_effector[1] - self.target[0][1]) < self.epsilon:
             reward = 1.
         else:
             reward = 0.
 
-        if abs(self.end_effector[0] - self.target[0]) < 3 and abs(self.end_effector[1] - self.target[1]) < 3:
+        if abs(self.end_effector[0] - self.target[0][0]) < 3 and abs(self.end_effector[1] - self.target[0][1]) < 3:
             done = True
         else:
             done = False
@@ -92,7 +94,9 @@ class env_2DOF_arm(Env):
         link1_end_point = (int(x_link_1),int(y_link_1))
         link2_end_point = (int(x_link_2),int(y_link_2))
         self.end_effector = link2_end_point
-        pos_list = self.sp.draw_line(start_point,link1_end_point,0.1,0.1) + self.sp.draw_line(link1_end_point,link2_end_point,0.1,0.1) + [self.target]
+        #print(np.shape(self.sp.draw_line(start_point,link1_end_point,0.1,0.1)))
+        #print(np.shape(self.target))
+        pos_list = self.sp.draw_line(start_point,link1_end_point,0.1,0.1) + self.sp.draw_line(link1_end_point,link2_end_point,0.1,0.1) + self.target
         #now get the extended point list in order to thicken the lines
         additional_points = self.sp.get_points_to_increase_line_thickness(pos_list)
         #now initialize a grid in order to save the correct images
@@ -101,7 +105,8 @@ class env_2DOF_arm(Env):
         temp_grid.draw_figure(pos_list)
         #thicken the lines
         cur_image = temp_grid.draw_figure(additional_points)
-        return np.ceil(cur_image/255.0).flatten() #Making it binary
+        resize_im = imresize(cur_image,[64,64])
+        return np.ceil(resize_im/255.0).flatten() #Making it binary
 
     @property
     def action_space(self):
