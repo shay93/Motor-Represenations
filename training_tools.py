@@ -62,7 +62,7 @@ class shape_maker:
 			else:
 			    output_array_y = range(start_point_y, end_point_y-1, -1)
 			    output_array_x = [start_point_x] * len(output_array_y)
-			return zip(output_array_x,output_array_y)
+			return list(zip(output_array_x,output_array_y))
 
 		#if on the other hand this special case does not come into consideration determine the gradient of the line
 		m = (end_point_y - start_point_y)/(end_point_x - start_point_x)
