@@ -81,44 +81,44 @@ class FeedForwardPolicy(NNPolicy):
 
 
 class Conv_FeedForwardPolicy(NNPolicy):
-    
-    def __init__(self,name_or_scope):
-        self.W_conv1 = tf.get_variable("W_conv1",[3,3,1,64],tf.float32,tf.random_normal_initializer(0.0,0.1))
-        self.b_conv1 = tf.get_variable("b_conv1",[64],tf.float32,tf.constant_initializer(0.1))
-        self.W_conv3 = tf.get_variable("W_conv2",[3,3,64,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
-        self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
-        self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
-        self.b_conv3 = tf.get_variable("b_conv3",[16],tf.float32,tf.constant_initializer(0.1))
-        self.W_conv4 = tf.get_variable("W_conv4",[3,3,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
-        self.b_conv4 = tf.get_variable("b_conv4",[8],tf.float32,tf.constant_initializer(0.1))
-        self.W_conv5 = tf.get_variable("W_conv5",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
-        self.b_conv5 = tf.get_variable("b_conv5",[4],tf.float32,tf.constant_initializer(0.1))
-        #now initialize the variables for the fc layers
-        self.W_fc = tf.get_variable("W_fc",[16,2],tf.random_normal_initializer(0,0.1))
-        self.b_fc = tf.get_variable("b_fc",[2],tf.constant_initializer(0.0))
-        super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,
+
+	def __init__(self,name_or_scope,**kwargs):
+		with tf.variable_scope("actor") as scope:
+			self.W_conv1 = tf.get_variable("W_conv1",[3,3,1,64],tf.float32,tf.random_normal_initializer(0.0,0.1))
+			self.b_conv1 = tf.get_variable("b_conv1",[64],tf.float32,tf.constant_initializer(0.1)
+			self.W_conv3 = tf.get_variable("W_conv2",[3,3,64,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+			self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
+			self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
+			self.b_conv3 = tf.get_variable("b_conv3",[16],tf.float32,tf.constant_initializer(0.1))
+			self.W_conv4 = tf.get_variable("W_conv4",[3,3,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
+			self.b_conv4 = tf.get_variable("b_conv4",[8],tf.float32,tf.constant_initializer(0.1))
+			self.W_conv5 = tf.get_variable("W_conv5",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
+			self.b_conv5 = tf.get_variable("b_conv5",[4],tf.float32,tf.constant_initializer(0.1))
+			#now initialize the variables for the fc layers
+			self.W_fc = tf.get_variable("W_fc",[16,2],tf.float32,tf.random_normal_initializer(0,0.1))
+			self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.constant_initializer(0.0))
+		super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,
                                                 **kwargs)
 
-
-    def _create_network(self,observation_input):
-        """
-        observation input is a tensor of shape [None,4096]
-        you should output a tensor of shape [None,2]
-        """
+	def _create_network(self,observation_input):
+		"""
+		observation input is a tensor of shape [None,4096]
+		you should output a tensor of shape [None,2]
+        	"""
         #first get all the variables
-        self.W_conv1 = tf.get_variable("W_conv1")
-        self.b_conv1 = tf.get_variable("b_conv1")
-        self.W_conv3 = tf.get_variable("W_conv2")
-        self.b_conv2 = tf.get_variable("b_conv2")
-        self.W_conv3 = tf.get_variable("W_conv3")
-        self.b_conv3 = tf.get_variable("b_conv3")
-        self.W_conv4 = tf.get_variable("W_conv4")
-        self.b_conv4 = tf.get_variable("b_conv4")
-        self.W_conv5 = tf.get_variable("W_conv5")
-        self.b_conv5 = tf.get_variable("b_conv5")
+        #self.W_conv1 = tf.get_variable("W_conv1")
+        #self.b_conv1 = tf.get_variable("b_conv1")
+        #self.W_conv3 = tf.get_variable("W_conv2")
+        #self.b_conv2 = tf.get_variable("b_conv2")
+        #self.W_conv3 = tf.get_variable("W_conv3")
+        #self.b_conv3 = tf.get_variable("b_conv3")
+        #self.W_conv4 = tf.get_variable("W_conv4")
+        #self.b_conv4 = tf.get_variable("b_conv4")
+        #self.W_conv5 = tf.get_variable("W_conv5")
+        #self.b_conv5 = tf.get_variable("b_conv5")
         #now initialize the variables for the fc layers
-        self.W_fc = tf.get_variable("W_fc")
-        self.b_fc = tf.get_variable("b_fc")
+        #self.W_fc = tf.get_variable("W_fc")
+        #self.b_fc = tf.get_variable("b_fc")
         #now reshape the input tensor so that it is a 4 channel image of shape [Batch,64,64,1] in order to perform convolutions
         x = tf.expand_dims(tf.reshape(observation_input,shape = [-1,64,64]),-1)
         conv1 = tf.nn.conv2d(x,self.W_conv1,strides = [1,2,2,1],padding = "SAME")
