@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from algos.ddpg import DDPG
 from base_nn_policy import Conv_FeedForwardPolicy
-from qfunctions.nn_qfunction import FeedForwardCritic
+from mod_nn_qfunction import Conv_FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
 from planar2d import  env_2DOF_arm
@@ -13,7 +13,7 @@ import IPython
 def run_task(*_):
     env = env_2DOF_arm()
     es = OUStrategy(env_spec=env.spec)
-    qf = FeedForwardCritic(
+    qf = Conv_FeedForwardCritic(
         name_or_scope="critic",
         env_spec=env.spec,
     )
@@ -26,10 +26,6 @@ def run_task(*_):
         es,
         policy,
         qf,
-        batch_size = 500,
-        n_epochs = 1000,
-        min_pool_size = 1000,
-        replay_pool_size = 200000,
     )
     IPython.embed()
     algorithm.train()
