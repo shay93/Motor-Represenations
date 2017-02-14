@@ -83,20 +83,38 @@ class FeedForwardPolicy(NNPolicy):
 class Conv_FeedForwardPolicy(NNPolicy):
 
     def __init__(self,name_or_scope,**kwargs):
-        with tf.variable_scope("actor") as scope:
-            self.W_conv1 = tf.get_variable("W_conv1",[3,3,1,64],tf.float32,tf.random_normal_initializer(0.0,0.1))
-            self.b_conv1 = tf.get_variable("b_conv1",[64],tf.float32,tf.constant_initializer(0.1))
-            self.W_conv3 = tf.get_variable("W_conv2",[3,3,64,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
-            self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
-            self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
-            self.b_conv3 = tf.get_variable("b_conv3",[16],tf.float32,tf.constant_initializer(0.1))
-            self.W_conv4 = tf.get_variable("W_conv4",[3,3,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
-            self.b_conv4 = tf.get_variable("b_conv4",[8],tf.float32,tf.constant_initializer(0.1))
-            self.W_conv5 = tf.get_variable("W_conv5",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
-            self.b_conv5 = tf.get_variable("b_conv5",[4],tf.float32,tf.constant_initializer(0.1))
-            #now initialize the variables for the fc layers
-            self.W_fc = tf.get_variable("W_fc",[16,2],tf.float32,tf.random_normal_initializer(0,0.1))
-            self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.constant_initializer(0.0))
+        self.name_or_scope = name_or_scope
+        self.setup_serialization(locals())
+        with tf.variable_scope(name_or_scope) as scope:
+            try:
+              self.W_conv1 = tf.get_variable("W_conv1",[3,3,1,64],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv1 = tf.get_variable("b_conv1",[64],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv2 = tf.get_variable("W_conv2",[3,3,64,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv3 = tf.get_variable("b_conv3",[16],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv4 = tf.get_variable("W_conv4",[3,3,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv4 = tf.get_variable("b_conv4",[8],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv5 = tf.get_variable("W_conv5",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv5 = tf.get_variable("b_conv5",[4],tf.float32,tf.constant_initializer(0.1))
+              #now initialize the variables for the fc layers
+              self.W_fc = tf.get_variable("W_fc",[16,2],tf.float32,tf.random_normal_initializer(0,0.1))
+              self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.constant_initializer(0.0))
+            except:
+              scope.reuse_variables()
+              self.W_conv1 = tf.get_variable("W_conv1",[3,3,1,64],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv1 = tf.get_variable("b_conv1",[64],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv2 = tf.get_variable("W_conv2",[3,3,64,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv3 = tf.get_variable("b_conv3",[16],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv4 = tf.get_variable("W_conv4",[3,3,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv4 = tf.get_variable("b_conv4",[8],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv5 = tf.get_variable("W_conv5",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv5 = tf.get_variable("b_conv5",[4],tf.float32,tf.constant_initializer(0.1))
+              #now initialize the variables for the fc layers
+              self.W_fc = tf.get_variable("W_fc",[16,2],tf.float32,tf.random_normal_initializer(0,0.1))
+              self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.constant_initializer(0.0))
         super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,
                                                     **kwargs)
 
@@ -135,8 +153,14 @@ class Conv_FeedForwardPolicy(NNPolicy):
 
         conv5 = tf.nn.conv2d(h_4,self.W_conv5,strides = [1,2,2,1],padding = "SAME")
         h_5 = tf.nn.relu(tf.nn.bias_add(conv5,self.b_conv5))
-
+        h_5_flattened = tf.reshape(h_5,shape = [-1,16])
         #finally pass through fc layer with tanh non linearity
-        action = tf.nn.tanh(tf.matmul(h_5,self.W_fc) + self.b_fc)
-        return action 
+        action = tf.nn.tanh(tf.matmul(h_5_flattened,self.W_fc) + self.b_fc)
+        return action
+
+    def get_params_internal(self):
+         if "target" in self.name_or_scope:
+             return [v for v in tf.global_variables() if self.name_or_scope[:-1] in v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
+         else:
+             return [v for v in tf.global_variables() if self.name_or_scope == v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
 
