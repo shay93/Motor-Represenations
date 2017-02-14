@@ -1,4 +1,4 @@
-import tensorflow as tf
+
 
 from algos.ddpg import DDPG
 from base_nn_policy import Conv_FeedForwardPolicy
@@ -14,7 +14,7 @@ def run_task(*_):
     env = env_2DOF_arm()
     es = OUStrategy(env_spec=env.spec)
     qf = Conv_FeedForwardCritic(
-        name_or_scope="critic",
+        name_or_scope = "critic",
         env_spec=env.spec,
     )
     policy = Conv_FeedForwardPolicy(
@@ -26,8 +26,10 @@ def run_task(*_):
         es,
         policy,
         qf,
+        epoch_length = 100,
+        min_pool_size = 100,
     )
-    IPython.embed()
+    #IPython.embed()
     algorithm.train()
 
 

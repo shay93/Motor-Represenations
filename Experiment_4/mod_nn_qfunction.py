@@ -3,7 +3,7 @@ import tensorflow as tf
 from core.tf_util import he_uniform_initializer, mlp, linear
 from predictors.state_action_network import StateActionNetwork
 from rllab.core.serializable import Serializable
-
+import IPython
 class NNQFunction(StateActionNetwork):
     def __init__(
             self,
@@ -67,37 +67,31 @@ class FeedForwardCritic(NNQFunction):
                           )
 
 
-def Conv_FeedForwardCritic(NNQFunction):
+class Conv_FeedForwardCritic(NNQFunction):
     """
     Pass observation through conv layers to obtain observation output of shape
     [Batch,x] the action output is of shape [None,2], so concatenate
     the tensors along dimension 1 to obtain the embedded vector
     which may be passed to a few fuly connected layers in order to output a Q value of dimension None,1
     """
-    def __init__(self,name_or_scope,**kwargs):
-        
-        self.name_or_scope = name_or_scope
+    def __init__(self,name_or_scope, 
+                 **kwargs):
+        self.name = str(name_or_scope)
         self.setup_serialization(locals())
         
         with tf.variable_scope(name_or_scope) as scope:
             try:
-                self.W_conv1 = tf.get_variable("W_conv1",[3,3,1,64],tf.float32,tf.random_normal_initializer(0.0,0.1))
-                self.b_conv1 = tf.get_variable("b_conv1",[64],tf.float32,tf.constant_initializer(0.1))
+                self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
+                self.b_conv1 = tf.get_variable("b_conv1",[16],tf.float32,tf.constant_initializer(0.1))
                 
-                self.W_conv2 = tf.get_variable("W_conv2",[3,3,64,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
-                self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
+                self.W_conv2 = tf.get_variable("W_conv2",[5,5,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
+                self.b_conv2 = tf.get_variable("b_conv2",[8],tf.float32,tf.constant_initializer(0.1))
                 
-                self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
-                self.b_conv3 = tf.get_variable("b_conv3",[16],tf.float32,tf.constant_initializer(0.1))
+                self.W_conv3 = tf.get_variable("W_conv3",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
+                self.b_conv3 = tf.get_variable("b_conv3",[4],tf.float32,tf.constant_initializer(0.1))
                 
-                self.W_conv4 = tf.get_variable("W_conv4",[3,3,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
-                self.b_conv4 = tf.get_variable("b_conv4",[8],tf.float32,tf.constant_initializer(0.1))
-                
-                self.W_conv5 = tf.get_variable("W_conv5",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
-                self.b_conv5 = tf.get_variable("b_conv5",[4],tf.float32,tf.constant_initializer(0.1))
-                #now initialize the variables for the fc layers
                 self.W_fc_obs = tf.get_variable("W_fc_obs",[16,10],tf.float32,tf.random_normal_initializer(0,0.1))
-                self.b_fc_obs = tf.get_variable("b_fc_obs",[2],tf.float32,tf.constant_initializer(0.0))
+                self.b_fc_obs = tf.get_variable("b_fc_obs",[10],tf.float32,tf.constant_initializer(0.0))
             
                 self.W_fc_embed_1 = tf.get_variable("W_fc_embed_1",[12,200],tf.float32,tf.random_normal_initializer(0,0.1))
                 self.b_fc_embed_1 = tf.get_variable("b_fc_embed_1",[200],tf.float32,tf.constant_initializer(0.0))
@@ -105,8 +99,8 @@ def Conv_FeedForwardCritic(NNQFunction):
                 self.W_fc_embed_2 = tf.get_variable("W_fc_embed_2",[200,1],tf.float32,tf.random_normal_initializer(0,0.1))
                 self.b_fc_embed_2 = tf.get_variable("b_fc_embed_2",[1],tf.float32,tf.constant_initializer(0.0))
 
-            else:
-                
+            except:
+                scope.reuse_variables()                
                 self.W_conv1 = tf.get_variable("W_conv1")
                 self.b_conv1 = tf.get_variable("b_conv1")
                 
@@ -116,11 +110,6 @@ def Conv_FeedForwardCritic(NNQFunction):
                 self.W_conv3 = tf.get_variable("W_conv3")
                 self.b_conv3 = tf.get_variable("b_conv3")
                 
-                self.W_conv4 = tf.get_variable("W_conv4")
-                self.b_conv4 = tf.get_variable("b_conv4")
-                
-                self.W_conv5 = tf.get_variable("W_conv5")
-                self.b_conv5 = tf.get_variable("b_conv5")
                 #now initialize the variables for the fc layers
                 self.W_fc_obs = tf.get_variable("W_fc_obs")
                 self.b_fc_obs = tf.get_variable("b_fc_obs")
@@ -131,29 +120,24 @@ def Conv_FeedForwardCritic(NNQFunction):
                 self.W_fc_embed_2 = tf.get_variable("W_fc_embed_2")
                 self.b_fc_embed_2 = tf.get_variable("b_fc_embed_2")
 
-
-        super().__init__(name_or_scope=name_or_scope, **kwargs)
+        super(Conv_FeedForwardCritic,self).__init__(name_or_scope=name_or_scope, **kwargs)
 
     def _create_network(self,observation_input,action_input):
+        #IPython.embed()
         #the observation input is provided as a flattened tensor so reshape it
         x = tf.expand_dims(tf.reshape(observation_input,shape = [-1,64,64]),-1)
-        conv1 = tf.nn.conv2d(x,self.W_conv1,strides = [1,2,2,1],padding = "SAME")
+        conv1 = tf.nn.conv2d(x,self.W_conv1,strides = [1,3,3,1],padding = "SAME")
         h_1 = tf.nn.relu(tf.nn.bias_add(conv1,self.b_conv1))
 
-        conv2 = tf.nn.conv2d(h_1,self.W_conv2,strides = [1,2,2,1],padding = "SAME")
+        conv2 = tf.nn.conv2d(h_1,self.W_conv2,strides = [1,3,3,1],padding = "SAME")
         h_2 = tf.nn.relu(tf.nn.bias_add(conv2,self.b_conv2))
 
-        conv3 = tf.nn.conv2d(h_2,self.W_conv3,strides = [1,2,2,1],padding = "SAME")
+        conv3 = tf.nn.conv2d(h_2,self.W_conv3,strides = [1,3,3,1],padding = "SAME")
         h_3 = tf.nn.relu(tf.nn.bias_add(conv3,self.b_conv3))
 
-        conv4 = tf.nn.conv2d(h_3,self.W_conv4,strides = [1,2,2,1],padding = "SAME")
-        h_4 = tf.nn.relu(tf.nn.bias_add(conv4,self.b_conv4))
-
-        conv5 = tf.nn.conv2d(h_4,self.W_conv5,strides = [1,2,2,1],padding = "SAME")
-        h_5 = tf.nn.relu(tf.nn.bias_add(conv5,self.b_conv5))
-        h_5_flattened = tf.reshape(h_5,shape = [-1,16])
+        h_3_flattened = tf.reshape(h_3,shape = [-1,16])
         #finally pass through fc layer with tanh non linearity
-        observation_output = tf.nn.tanh(tf.matmul(h_5_flattened,self.W_fc_obs) + self.b_fc_obs)
+        observation_output = tf.nn.tanh(tf.matmul(h_3_flattened,self.W_fc_obs) + self.b_fc_obs)
         #now concatenate this with the action input along the 1st dimension
         embed = tf.concat(1,[observation_output,action_input])
         #pass embed along the two defined fc layers
@@ -161,11 +145,12 @@ def Conv_FeedForwardCritic(NNQFunction):
         q_value = tf.matmul(h_embed_1,self.W_fc_embed_2) + self.b_fc_embed_2
         return q_value
 
-    def get_params_internal(self):
-        if "target" in self.name_or_scope:
-             return [v for v in tf.global_variables() if self.name_or_scope[:-1] in v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
-         else:
-             return [v for v in tf.global_variables() if self.name_or_scope == v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
+    def get_params_internal(self, **tags):
+        #IPython.embed()
+        if "target" in self.name:
+             return [v for v in tf.all_variables() if self.name[:-1] in v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
+        else:
+             return [v for v in tf.all_variables() if self.name == v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
     
 
 
