@@ -8,7 +8,7 @@ from rllab.misc.instrument import run_experiment_lite, stub
 from planar2d import  env_2DOF_arm
 from planarspace import PlanarSpace
 from sandbox.rocky.tf.envs.base import TfEnv
-
+import IPython
 
 def run_task(*_):
     env = env_2DOF_arm()
@@ -27,6 +27,7 @@ def run_task(*_):
         policy,
         qf,
     )
+    IPython.embed()
     algorithm.train()
 
 
