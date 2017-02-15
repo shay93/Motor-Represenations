@@ -1,14 +1,15 @@
 
 
 from algos.ddpg import DDPG
-from base_nn_policy import Conv_FeedForwardPolicy
-from mod_nn_qfunction import Conv_FeedForwardCritic
+#from base_nn_policy import Conv_FeedForwardPolicy
+#from mod_nn_qfunction import Conv_FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
 from planar2d import  env_2DOF_arm
 from planarspace import PlanarSpace
 from sandbox.rocky.tf.envs.base import TfEnv
 import IPython
+from model_classes import Conv_FeedForwardCritic,Conv_FeedForwardPolicy
 
 def run_task(*_):
     env = env_2DOF_arm()
