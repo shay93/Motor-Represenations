@@ -26,8 +26,11 @@ def run_task(*_):
         es,
         policy,
         qf,
-        epoch_length = 100,
-        min_pool_size = 100,
+        eval_samples = 500,
+        min_pool_size = 1000,
+        epoch_length = 1000,
+        n_updates_per_time_step = 10,
+        max_path_length = 100,
     )
     #IPython.embed()
     algorithm.train()

@@ -81,16 +81,16 @@ class Conv_FeedForwardCritic(NNQFunction):
         
         with tf.variable_scope(name_or_scope) as scope:
             try:
-                self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
-                self.b_conv1 = tf.get_variable("b_conv1",[16],tf.float32,tf.constant_initializer(0.1))
+                self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+                self.b_conv1 = tf.get_variable("b_conv1",[32],tf.float32,tf.constant_initializer(0.1))
                 
-                self.W_conv2 = tf.get_variable("W_conv2",[5,5,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
-                self.b_conv2 = tf.get_variable("b_conv2",[8],tf.float32,tf.constant_initializer(0.1))
+                self.W_conv2 = tf.get_variable("W_conv2",[5,5,32,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+                self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
                 
-                self.W_conv3 = tf.get_variable("W_conv3",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
-                self.b_conv3 = tf.get_variable("b_conv3",[4],tf.float32,tf.constant_initializer(0.1))
+                self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+                self.b_conv3 = tf.get_variable("b_conv3",[32],tf.float32,tf.constant_initializer(0.1))
                 
-                self.W_fc_obs = tf.get_variable("W_fc_obs",[16,10],tf.float32,tf.random_normal_initializer(0,0.1))
+                self.W_fc_obs = tf.get_variable("W_fc_obs",[9*32,10],tf.float32,tf.random_normal_initializer(0,0.1))
                 self.b_fc_obs = tf.get_variable("b_fc_obs",[10],tf.float32,tf.constant_initializer(0.0))
             
                 self.W_fc_embed_1 = tf.get_variable("W_fc_embed_1",[12,200],tf.float32,tf.random_normal_initializer(0,0.1))
@@ -135,7 +135,7 @@ class Conv_FeedForwardCritic(NNQFunction):
         conv3 = tf.nn.conv2d(h_2,self.W_conv3,strides = [1,3,3,1],padding = "SAME")
         h_3 = tf.nn.relu(tf.nn.bias_add(conv3,self.b_conv3))
 
-        h_3_flattened = tf.reshape(h_3,shape = [-1,16])
+        h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
         #finally pass through fc layer with tanh non linearity
         observation_output = tf.nn.tanh(tf.matmul(h_3_flattened,self.W_fc_obs) + self.b_fc_obs)
         #now concatenate this with the action input along the 1st dimension

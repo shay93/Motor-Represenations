@@ -7,7 +7,7 @@ from misc.rllab_util import get_action_dim
 from predictors.state_network import StateNetwork
 from rllab.core.serializable import Serializable
 from rllab.policies.base import Policy
-
+import IPython
 
 class NNPolicy(StateNetwork, Policy):
     def __init__(
@@ -88,17 +88,17 @@ class Conv_FeedForwardPolicy(NNPolicy):
         with tf.variable_scope(name_or_scope) as scope:
             try:
 
-              self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,16],tf.float32,tf.random_normal_initializer(0.0,0.1))
-              self.b_conv1 = tf.get_variable("b_conv1",[16],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv1 = tf.get_variable("b_conv1",[32],tf.float32,tf.constant_initializer(0.1))
               
-              self.W_conv2 = tf.get_variable("W_conv2",[5,5,16,8],tf.float32,tf.random_normal_initializer(0.0,0.1))
-              self.b_conv2 = tf.get_variable("b_conv2",[8],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv2 = tf.get_variable("W_conv2",[5,5,32,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
               
-              self.W_conv3 = tf.get_variable("W_conv3",[3,3,8,4],tf.float32,tf.random_normal_initializer(0.0,0.1))
-              self.b_conv3 = tf.get_variable("b_conv3",[4],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
+              self.b_conv3 = tf.get_variable("b_conv3",[32],tf.float32,tf.constant_initializer(0.1))
             
               #now initialize the variables for the fc layers
-              self.W_fc = tf.get_variable("W_fc",[16,2],tf.float32,tf.random_normal_initializer(0,0.1))
+              self.W_fc = tf.get_variable("W_fc",[9*32,2],tf.float32,tf.random_normal_initializer(0,0.1))
               self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.constant_initializer(0.0))
             except:
               scope.reuse_variables()
@@ -132,8 +132,8 @@ class Conv_FeedForwardPolicy(NNPolicy):
 
         conv3 = tf.nn.conv2d(h_2,self.W_conv3,strides = [1,3,3,1],padding = "SAME")
         h_3 = tf.nn.relu(tf.nn.bias_add(conv3,self.b_conv3))
-
-        h_3_flattened = tf.reshape(h_3,shape = [-1,16])
+  
+        h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
         #finally pass through fc layer with tanh non linearity
         action = tf.nn.tanh(tf.matmul(h_3_flattened,self.W_fc) + self.b_fc)
         return action
