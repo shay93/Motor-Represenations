@@ -33,6 +33,15 @@ class NNPolicy(StateNetwork, Policy):
     def _create_network(self, observation_input):
         return
 
+class NNQFunction(StateActionNetwork):
+    def __init__(
+            self,
+            name_or_scope,
+            **kwargs
+    ):
+        self.setup_serialization(locals())
+        super().__init__(name_or_scope=name_or_scope, output_dim=1, **kwargs)
+
 
 class Conv_FeedForwardPolicy(NNPolicy):
 
