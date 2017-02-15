@@ -39,36 +39,36 @@ class Conv_FeedForwardPolicy(NNPolicy):
 	def __init__(self,name_or_scope,**kwargs):
 		self.name_or_scope = name_or_scope
 		self.setup_serialization(locals())
-			with tf.variable_scope(name_or_scope) as scope:
-				try:
+		with tf.variable_scope(name_or_scope) as scope:
+			try:
 
-					self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,self.conv_kernels["kernels_1"]],tf.float32,tf.random_normal_initializer(0.0,0.1))
-					self.b_conv1 = tf.get_variable("b_conv1",[self.conv_kernels["kernels_1"]],tf.float32,tf.constant_initializer(0.1))
+				self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,self.conv_kernels["kernels_1"]],tf.float32,tf.random_normal_initializer(0.0,0.1))
+				self.b_conv1 = tf.get_variable("b_conv1",[self.conv_kernels["kernels_1"]],tf.float32,tf.constant_initializer(0.1))
 
-					self.W_conv2 = tf.get_variable("W_conv2",[5,5,self.conv_kernels["kernels_1"],self.conv_kernels["kernels_2"]],tf.float32,tf.random_normal_initializer(0.0,0.1))
-					self.b_conv2 = tf.get_variable("b_conv2",[self.conv_kernels["kernels_2"]],tf.float32,tf.constant_initializer(0.1))
+				self.W_conv2 = tf.get_variable("W_conv2",[5,5,self.conv_kernels["kernels_1"],self.conv_kernels["kernels_2"]],tf.float32,tf.random_normal_initializer(0.0,0.1))
+				self.b_conv2 = tf.get_variable("b_conv2",[self.conv_kernels["kernels_2"]],tf.float32,tf.constant_initializer(0.1))
 
-					self.W_conv3 = tf.get_variable("W_conv3",[3,3,self.conv_kernels["kernels_2"],self.conv_kernels["kernels_3"]],tf.float32,tf.random_normal_initializer(0.0,0.1))
-					self.b_conv3 = tf.get_variable("b_conv3",[self.conv_kernels["kernels_3"]],tf.float32,tf.constant_initializer(0.1))
+				self.W_conv3 = tf.get_variable("W_conv3",[3,3,self.conv_kernels["kernels_2"],self.conv_kernels["kernels_3"]],tf.float32,tf.random_normal_initializer(0.0,0.1))
+				self.b_conv3 = tf.get_variable("b_conv3",[self.conv_kernels["kernels_3"]],tf.float32,tf.constant_initializer(0.1))
 
-					  #now initialize the variables for the fc layers
-					self.W_fc = tf.get_variable("W_fc",[9*32,2],tf.float32,tf.random_normal_initializer(0,0.1))
-					self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.constant_initializer(0.0))
-				except:
-					scope.reuse_variables()
+				  #now initialize the variables for the fc layers
+				self.W_fc = tf.get_variable("W_fc",[9*32,2],tf.float32,tf.random_normal_initializer(0,0.1))
+				self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.constant_initializer(0.0))
+			except:
+				scope.reuse_variables()
 
-					self.W_conv1 = tf.get_variable("W_conv1")
-					self.b_conv1 = tf.get_variable("b_conv1")
+				self.W_conv1 = tf.get_variable("W_conv1")
+				self.b_conv1 = tf.get_variable("b_conv1")
 
-					self.W_conv2 = tf.get_variable("W_conv2")
-					self.b_conv2 = tf.get_variable("b_conv2")
+				self.W_conv2 = tf.get_variable("W_conv2")
+				self.b_conv2 = tf.get_variable("b_conv2")
 
-					self.W_conv3 = tf.get_variable("W_conv3")
-					self.b_conv3 = tf.get_variable("b_conv3")
-					#now initialize the variables for the fc layers
-					self.W_fc = tf.get_variable("W_fc")
-					self.b_fc = tf.get_variable("b_fc")
-			super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,**kwargs)
+				self.W_conv3 = tf.get_variable("W_conv3")
+				self.b_conv3 = tf.get_variable("b_conv3")
+				#now initialize the variables for the fc layers
+				self.W_fc = tf.get_variable("W_fc")
+				self.b_fc = tf.get_variable("b_fc")
+		super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,**kwargs)
 
     def _create_network(self,observation_input):
         """
