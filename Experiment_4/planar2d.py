@@ -123,6 +123,7 @@ class env_2DOF_arm(Env):
         -------
         observation : the initial observation of the space. (Initial reward is assumed to be 0.)
         """
+        print("env reset")
         #Reset the theta to the initial theta
         self.cur_theta = self.init_theta
         self.prev_theta = self.init_theta

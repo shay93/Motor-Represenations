@@ -1,18 +1,18 @@
 
 
 from algos.ddpg import DDPG
-#from base_nn_policy import Conv_FeedForwardPolicy
-#from mod_nn_qfunction import Conv_FeedForwardCritic
+from base_nn_policy import Conv_FeedForwardPolicy
+from mod_nn_qfunction import Conv_FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
 from planar2d import  env_2DOF_arm
 from planarspace import PlanarSpace
 from sandbox.rocky.tf.envs.base import TfEnv
 import IPython
-from model_classes import Conv_FeedForwardCritic,Conv_FeedForwardPolicy
+#from model_classes import Conv_FeedForwardCritic,Conv_FeedForwardPolicy
 
 def run_task(*_):
-    env = env_2DOF_arm()
+    env = env_2DOF_arm(epsilon = 20,link_length = 40)
     es = OUStrategy(env_spec=env.spec)
     qf = Conv_FeedForwardCritic(
         name_or_scope = "critic",
@@ -27,11 +27,14 @@ def run_task(*_):
         es,
         policy,
         qf,
-        eval_samples = 500,
-        min_pool_size = 1000,
-        epoch_length = 1000,
+        eval_samples = 1000,
+        min_pool_size = 100,
+        epoch_length = 500,
+	n_epochs = 100,
         n_updates_per_time_step = 10,
         max_path_length = 100,
+	batch_size = 32,
+        replay_pool_size = 100000,
     )
     #IPython.embed()
     algorithm.train()

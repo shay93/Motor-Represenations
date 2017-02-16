@@ -93,8 +93,8 @@ class Conv_FeedForwardCritic(NNQFunction):
                 self.W_fc_obs = tf.get_variable("W_fc_obs",[9*32,100],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
                 self.b_fc_obs = tf.get_variable("b_fc_obs",[100],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
             
-                self.W_fc_encode_action = tf.get_variable("W_fc_action",[2,200],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-                self.b_fc_encode_action = tf.get_variable("b_fc_action",[200], tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+                self.W_fc_encode_action = tf.get_variable("W_fc_action",[2,100],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+                self.b_fc_encode_action = tf.get_variable("b_fc_action",[100], tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
 
                 self.W_fc_embed_1 = tf.get_variable("W_fc_embed_1",[200,200],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
                 self.b_fc_embed_1 = tf.get_variable("b_fc_embed_1",[200],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
