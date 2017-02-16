@@ -65,7 +65,7 @@ class env_2DOF_arm(Env):
         #in addition compute the reward from the previous action
         #compare the end effector position to the target position and determine whether it is within epsilon of the target
         if abs(self.end_effector[0] - self.target[0][0]) < self.epsilon and abs(self.end_effector[1] - self.target[0][1]) < self.epsilon:
-            reward = 1.
+            reward = ((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5
         else:
             reward = 0.
 
