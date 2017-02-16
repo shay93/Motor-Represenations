@@ -14,7 +14,7 @@ experiment_3_dir  = parent_dir + "/" + "Experiment_3"
 sys.path.append(parent_dir)
 
 import training_tools as tt
-
+import IPython
 
 class env_2DOF_arm(Env):
     """
@@ -30,12 +30,12 @@ class env_2DOF_arm(Env):
         """
         self.prev_theta = theta_i
         self.link_length = link_length
-        self.target = target_loc
+        self.target = [(96,96)]
         self.sp = tt.shape_maker()
         self.init_theta = theta_i
         self.cur_theta = theta_i
         self.cur_image = self.render_image()
-        self.epsilon = 4
+        self.epsilon = epsilon
         self.num_steps = num_steps
         self._action_space = Box(np.array([-np.pi/2,-np.pi/2]),np.array([np.pi/2,np.pi/2]))
         self._observation_space = PlanarSpace()
@@ -125,6 +125,7 @@ class env_2DOF_arm(Env):
         """
         #Reset the theta to the initial theta
         self.cur_theta = self.init_theta
+        self.prev_theta = self.init_theta
         #render the grid using this theta and
         return self.render_image()
 
