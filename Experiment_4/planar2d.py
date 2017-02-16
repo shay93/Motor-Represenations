@@ -30,7 +30,7 @@ class env_2DOF_arm(Env):
         """
         self.prev_theta = theta_i
         self.link_length = link_length
-        self.target = target_loc
+        self.target = [(96,96)]
         self.sp = tt.shape_maker()
         self.init_theta = theta_i
         self.cur_theta = theta_i
