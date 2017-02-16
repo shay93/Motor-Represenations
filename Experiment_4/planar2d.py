@@ -24,13 +24,13 @@ class env_2DOF_arm(Env):
     """
 
 
-    def __init__(self,num_steps = 100,epsilon = 10,theta_i = np.array([0.,np.pi/2]),link_length = 50,target_loc = [(np.random.randint(67,125),np.random.randint(67,125))]):
+    def __init__(self,num_steps = 100,epsilon = 10,theta_i = np.array([0.,np.pi/2]),link_length = 50):
         """
         theta_i of shape [2] np array
         """
         self.prev_theta = theta_i
         self.link_length = link_length
-        self.target = [(96,96)]
+        self.target = [tuple(np.random.normal([95,95],[5,5]))]
         self.sp = tt.shape_maker()
         self.init_theta = theta_i
         self.cur_theta = theta_i
@@ -128,6 +128,8 @@ class env_2DOF_arm(Env):
         self.cur_theta = self.init_theta
         self.prev_theta = self.init_theta
         #render the grid using this theta and
+        #also reset the theta
+        self.target = [tuple(np.random.normal([95,95],[5,5]))]
         return self.render_image()
 
 
