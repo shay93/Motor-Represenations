@@ -14,10 +14,16 @@ class grid:
 		self.grid = np.zeros((self.grid_size[0],self.grid_size[1]))
 		self.save_name = directory_name + file_name + ".png"	
 
-	def draw_figure(self,pos_array):
+	def draw_figure(self,pos_array, wrap = False):
 	    #this function should take the end effector position and draw on a 64 by 64 grid
-	    for pos in pos_array:
-	        self.grid[int(pos[0] % self.grid_size[0]),int(pos[1] % self.grid_size[1])] = 255
+	    if wrap:
+	    	for pos in pos_array:
+	        	self.grid[int(pos[0] % self.grid_size[0]),int(pos[1] % self.grid_size[1])] = 255
+	    else:
+	    	for pos in pos_array:
+	    		if pos[0] > 0 and pos[0] < (self.grid_size[0] - 1) and pos[1] > 0 and pos[1] < (self.grid_size[1] - 1):
+	    			self.grid[int(pos[0]),int(pos[1])] = 255
+
 	    return self.grid
 
 	def save_image(self):
