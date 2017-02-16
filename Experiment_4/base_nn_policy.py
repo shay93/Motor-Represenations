@@ -88,18 +88,18 @@ class Conv_FeedForwardPolicy(NNPolicy):
         with tf.variable_scope(name_or_scope) as scope:
             try:
 
-              self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
-              self.b_conv1 = tf.get_variable("b_conv1",[32],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+              self.b_conv1 = tf.get_variable("b_conv1",[32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
               
-              self.W_conv2 = tf.get_variable("W_conv2",[5,5,32,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
-              self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv2 = tf.get_variable("W_conv2",[5,5,32,32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+              self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
               
-              self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,32],tf.float32,tf.random_normal_initializer(0.0,0.1))
-              self.b_conv3 = tf.get_variable("b_conv3",[32],tf.float32,tf.constant_initializer(0.1))
+              self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+              self.b_conv3 = tf.get_variable("b_conv3",[32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
             
               #now initialize the variables for the fc layers
-              self.W_fc = tf.get_variable("W_fc",[9*32,2],tf.float32,tf.random_normal_initializer(0,0.1))
-              self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.constant_initializer(0.0))
+              self.W_fc = tf.get_variable("W_fc",[9*32,2],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+              self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
             except:
               scope.reuse_variables()
 
