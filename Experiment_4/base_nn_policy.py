@@ -125,13 +125,13 @@ class Conv_FeedForwardPolicy(NNPolicy):
 
         x = tf.expand_dims(tf.reshape(observation_input,shape = [-1,64,64]),-1)
         conv1 = tf.nn.conv2d(x,self.W_conv1,strides = [1,3,3,1],padding = "SAME")
-        h_1 = tf.nn.relu(tf.nn.bias_add(conv1,self.b_conv1))
+        h_1 = tf.nn.tanh(tf.nn.bias_add(conv1,self.b_conv1))
 
         conv2 = tf.nn.conv2d(h_1,self.W_conv2,strides = [1,3,3,1],padding = "SAME")
-        h_2 = tf.nn.relu(tf.nn.bias_add(conv2,self.b_conv2))
+        h_2 = tf.nn.tanh(tf.nn.bias_add(conv2,self.b_conv2))
 
         conv3 = tf.nn.conv2d(h_2,self.W_conv3,strides = [1,3,3,1],padding = "SAME")
-        h_3 = tf.nn.relu(tf.nn.bias_add(conv3,self.b_conv3))
+        h_3 = tf.nn.tanh(tf.nn.bias_add(conv3,self.b_conv3))
   
         h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
         #finally pass through fc layer with tanh non linearity

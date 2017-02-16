@@ -90,10 +90,13 @@ class Conv_FeedForwardCritic(NNQFunction):
                 self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
                 self.b_conv3 = tf.get_variable("b_conv3",[32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
                 
-                self.W_fc_obs = tf.get_variable("W_fc_obs",[9*32,10],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-                self.b_fc_obs = tf.get_variable("b_fc_obs",[10],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+                self.W_fc_obs = tf.get_variable("W_fc_obs",[9*32,100],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+                self.b_fc_obs = tf.get_variable("b_fc_obs",[100],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
             
-                self.W_fc_embed_1 = tf.get_variable("W_fc_embed_1",[12,200],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+                self.W_fc_encode_action = tf.get_variable("W_fc_action",[2,200],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+                self.b_fc_encode_action = tf.get_variable("b_fc_action",[200], tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+
+                self.W_fc_embed_1 = tf.get_variable("W_fc_embed_1",[200,200],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
                 self.b_fc_embed_1 = tf.get_variable("b_fc_embed_1",[200],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
                 
                 self.W_fc_embed_2 = tf.get_variable("W_fc_embed_2",[200,1],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
@@ -113,6 +116,9 @@ class Conv_FeedForwardCritic(NNQFunction):
                 #now initialize the variables for the fc layers
                 self.W_fc_obs = tf.get_variable("W_fc_obs")
                 self.b_fc_obs = tf.get_variable("b_fc_obs")
+
+                self.W_fc_encode_action = tf.get_variable("W_fc_action")
+                self.b_fc_encode_action = tf.get_variable("b_fc_action")
         
                 self.W_fc_embed_1 = tf.get_variable("W_fc_embed_1")
                 self.b_fc_embed_1 = tf.get_variable("b_fc_embed_1")
@@ -127,22 +133,27 @@ class Conv_FeedForwardCritic(NNQFunction):
         #the observation input is provided as a flattened tensor so reshape it
         x = tf.expand_dims(tf.reshape(observation_input,shape = [-1,64,64]),-1)
         conv1 = tf.nn.conv2d(x,self.W_conv1,strides = [1,3,3,1],padding = "SAME")
-        h_1 = tf.nn.relu(tf.nn.bias_add(conv1,self.b_conv1))
+        h_1 = tf.nn.tanh(tf.nn.bias_add(conv1,self.b_conv1))
 
         conv2 = tf.nn.conv2d(h_1,self.W_conv2,strides = [1,3,3,1],padding = "SAME")
-        h_2 = tf.nn.relu(tf.nn.bias_add(conv2,self.b_conv2))
+        h_2 = tf.nn.tanh(tf.nn.bias_add(conv2,self.b_conv2))
 
         conv3 = tf.nn.conv2d(h_2,self.W_conv3,strides = [1,3,3,1],padding = "SAME")
-        h_3 = tf.nn.relu(tf.nn.bias_add(conv3,self.b_conv3))
+        h_3 = tf.nn.tanh(tf.nn.bias_add(conv3,self.b_conv3))
 
         h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
         #finally pass through fc layer with tanh non linearity
         observation_output = tf.nn.tanh(tf.matmul(h_3_flattened,self.W_fc_obs) + self.b_fc_obs)
-        #now concatenate this with the action input along the 1st dimension
-        embed = tf.concat(1,[observation_output,action_input])
+
+        #encode the action to a 200 length vector
+        action_encoded = tf.nn.tanh(tf.matmul(action_input,self.W_fc_encode_action) + self.b_fc_encode_action)
+
+        #once action has been encoded concatenate it with the observation 
+        embed = tf.concat(1,[observation_output,action_encoded])
+
         #pass embed along the two defined fc layers
-        h_embed_1 = tf.nn.relu(tf.matmul(embed,self.W_fc_embed_1) + self.b_fc_embed_1)
-        q_value = tf.matmul(h_embed_1,self.W_fc_embed_2) + self.b_fc_embed_2
+        h_embed_1 = tf.nn.tanh(tf.matmul(embed,self.W_fc_embed_1) + self.b_fc_embed_1)
+        q_value = tf.nn.tanh(tf.matmul(h_embed_1,self.W_fc_embed_2) + self.b_fc_embed_2)
         return q_value
 
     def get_params_internal(self, **tags):
