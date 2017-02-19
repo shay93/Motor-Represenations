@@ -21,15 +21,16 @@ if __name__ == "__main__":
     parser.add_argument('--speedup', type=float, default=1,
                         help='Speedup')
     
-    parser.add_argument('--num_sequences',type=int,default=1000,
+    parser.add_argument('--num_sequences',type=int,default=100,
                         help='Number of sequences to evaluate')
 
     args = parser.parse_args()
 
     policy = None
     env = None
-
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config = config) as sess:
         #with sess.as_default():
         #    policy.get_action(obs)
         data = joblib.load(args.file)
@@ -68,7 +69,7 @@ if __name__ == "__main__":
         seq_length = np.shape(rollout_lst_dict[j]['observations'])[0]
         for i in range(seq_length):
             plt.imsave(seq_directory + "timestep" + str(i),
-                rollout_lst_dict[j][i,:].reshape((64,64)),
+                rollout_lst_dict[j]['observations'][i,:].reshape((64,64)),
                 cmap = "Greys_r")
 
 
