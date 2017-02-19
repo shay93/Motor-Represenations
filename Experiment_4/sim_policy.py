@@ -8,6 +8,7 @@ from planar2d import  env_2DOF_arm
 import json
 import matplotlib.pyplot as plt
 import os
+import pickle
 
 filename = str(uuid.uuid4())
 root_dir = "Eval_Sequences/"
@@ -30,6 +31,8 @@ if __name__ == "__main__":
     env = None
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    #initialize a terminal list
+    terminal_list = []
     with tf.Session(config = config) as sess:
         #with sess.as_default():
         #    policy.get_action(obs)
@@ -53,6 +56,7 @@ if __name__ == "__main__":
                 rollout_lst_dict.append(rollout_dict)
             # Hack for now. Not sure why rollout assumes that close is an
             # keyword argument
+            terminal_list.append(rollout_dict["terminal"])
             except TypeError as e:
                 if (str(e) != "render() got an unexpected keyword "
                               "argument 'close'"):
@@ -71,5 +75,9 @@ if __name__ == "__main__":
             plt.imsave(seq_directory + "timestep" + str(i),
                 rollout_lst_dict[j]['observations'][i,:].reshape((64,64)),
                 cmap = "Greys_r")
+
+    print(np.sum(terminal_list)/len(terminal_list))
+    with open("terminal_list.npy",wb) as f:
+        pickle.dump(terminal_list)
 
 
