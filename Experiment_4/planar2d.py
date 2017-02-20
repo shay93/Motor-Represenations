@@ -8,7 +8,7 @@ from rllab.spaces.box import Box
 import os
 import sys
 from scipy.misc import imresize
-
+import matplotlib.pyplot as plt
 parent_dir = os.path.dirname(os.getcwd())
 experiment_3_dir  = parent_dir + "/" + "Experiment_3"
 sys.path.append(parent_dir)
@@ -24,13 +24,13 @@ class env_2DOF_arm(Env):
     """
 
 
-    def __init__(self,num_steps = 100,epsilon = 10,theta_i = np.array([0.,np.pi/2]),link_length = 50):
+    def __init__(self,num_steps = 100,epsilon = 15,theta_i = np.array([0.,np.pi/2]),link_length = 40):
         """
         theta_i of shape [2] np array
         """
         self.prev_theta = theta_i
         self.link_length = link_length
-        self.target = [tuple(np.random.normal([95,95],[5,5]))]
+        self.target = [tuple(np.round(np.random.normal([95,95],[10,10])))]
         self.sp = tt.shape_maker()
         self.init_theta = theta_i
         self.cur_theta = theta_i
@@ -39,7 +39,7 @@ class env_2DOF_arm(Env):
         self.num_steps = num_steps
         self._action_space = Box(np.array([-np.pi/2,-np.pi/2]),np.array([np.pi/2,np.pi/2]))
         self._observation_space = PlanarSpace()
-
+        self.itr=0
 
     def step(self, action):
         """
@@ -65,12 +65,15 @@ class env_2DOF_arm(Env):
         #in addition compute the reward from the previous action
         #compare the end effector position to the target position and determine whether it is within epsilon of the target
         if abs(self.end_effector[0] - self.target[0][0]) < self.epsilon and abs(self.end_effector[1] - self.target[0][1]) < self.epsilon:
-            reward = ((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5
+            reward = self.epsilon/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
         else:
             reward = 0.
 
-        if abs(self.end_effector[0] - self.target[0][0]) < 3 and abs(self.end_effector[1] - self.target[0][1]) < 3:
+        if abs(self.end_effector[0] - self.target[0][0]) < 5 and abs(self.end_effector[1] - self.target[0][1]) < 5:
             done = True
+            plt.imsave("/home/shay93/Motor-Represenations/Experiment_4/Terminal_Images/terminal"
+                        + str(self.itr) + ".png",self.cur_image.reshape((64,64)),cmap = "Greys_r")
+            self.itr+=1
         else:
             done = False
         
@@ -125,11 +128,11 @@ class env_2DOF_arm(Env):
         """
         print("env reset")
         #Reset the theta to the initial theta
-        self.cur_theta = self.init_theta
-        self.prev_theta = self.init_theta
+        self.cur_theta = np.array([0,np.pi/2])
+        self.prev_theta = np.array([0,np.pi/2])
         #render the grid using this theta and
         #also reset the theta
-        self.target = [tuple(np.random.normal([95,95],[5,5]))]
+        self.target = [tuple(np.round(np.random.normal([95,95],[10,10])))]
         return self.render_image()
 
 

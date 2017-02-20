@@ -12,7 +12,7 @@ import IPython
 #from model_classes import Conv_FeedForwardCritic,Conv_FeedForwardPolicy
 
 def run_task(*_):
-    env = env_2DOF_arm(epsilon = 20,link_length = 40)
+    env = env_2DOF_arm(epsilon = 15,link_length = 40)
     es = OUStrategy(env_spec=env.spec)
     qf = Conv_FeedForwardCritic(
         name_or_scope = "critic",
@@ -28,13 +28,15 @@ def run_task(*_):
         policy,
         qf,
         eval_samples = 1000,
-        min_pool_size = 100,
-        epoch_length = 500,
-	n_epochs = 100,
-        n_updates_per_time_step = 10,
+        min_pool_size = 1000,
+        epoch_length = 1000,
+	n_epochs = 200,
+        n_updates_per_time_step = 1,
         max_path_length = 100,
 	batch_size = 32,
         replay_pool_size = 100000,
+        discount = 0.99,
+        
     )
     #IPython.embed()
     algorithm.train()
@@ -46,6 +48,6 @@ if __name__ == "__main__":
         run_task,
         n_parallel=1,
         snapshot_mode="last",
-        exp_prefix="ddpg-planar2D",
+        exp_prefix="ddpg-planararm",
         seed=2,
   ) 
