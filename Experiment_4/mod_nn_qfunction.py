@@ -153,7 +153,7 @@ class Conv_FeedForwardCritic(NNQFunction):
 
         #pass embed along the two defined fc layers
         h_embed_1 = tf.nn.tanh(tf.matmul(embed,self.W_fc_embed_1) + self.b_fc_embed_1)
-        q_value = tf.nn.tanh(tf.matmul(h_embed_1,self.W_fc_embed_2) + self.b_fc_embed_2)
+        q_value = (tf.matmul(h_embed_1,self.W_fc_embed_2) + self.b_fc_embed_2)
         return q_value
 
     def get_params_internal(self, **tags):

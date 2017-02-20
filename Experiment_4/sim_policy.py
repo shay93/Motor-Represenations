@@ -9,7 +9,7 @@ import json
 import matplotlib.pyplot as plt
 import os
 import pickle
-
+import IPython
 filename = str(uuid.uuid4())
 root_dir = "Eval_Sequences/"
 if __name__ == "__main__":
@@ -54,9 +54,10 @@ if __name__ == "__main__":
                 rollout_dict = rollout(env, policy, max_path_length=args.max_path_length,
                                animated=False, speedup=args.speedup)
                 rollout_lst_dict.append(rollout_dict)
-            # Hack for now. Not sure why rollout assumes that close is an
-            # keyword argument
-            terminal_list.append(rollout_dict["terminal"])
+                # Hack for now. Not sure why rollout assumes that close is an
+                # keyword argument
+                #IPython.embed()
+                terminal_list.append(rollout_dict['terminal'])
             except TypeError as e:
                 if (str(e) != "render() got an unexpected keyword "
                               "argument 'close'"):
@@ -77,7 +78,7 @@ if __name__ == "__main__":
                 cmap = "Greys_r")
 
     print(np.sum(terminal_list)/len(terminal_list))
-    with open("terminal_list.npy",wb) as f:
-        pickle.dump(terminal_list)
+    with open("terminal_list.npy",'wb') as f:
+        pickle.dump(terminal_list,f)
 
 

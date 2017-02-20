@@ -7,6 +7,7 @@ from misc.rllab_util import get_action_dim
 from predictors.state_network import StateNetwork
 from rllab.core.serializable import Serializable
 from rllab.policies.base import Policy
+import numpy as np
 import IPython
 
 class NNPolicy(StateNetwork, Policy):
@@ -135,7 +136,7 @@ class Conv_FeedForwardPolicy(NNPolicy):
   
         h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
         #finally pass through fc layer with tanh non linearity
-        action = tf.nn.tanh(tf.matmul(h_3_flattened,self.W_fc) + self.b_fc)
+        action = tf.nn.tanh(tf.matmul(h_3_flattened,self.W_fc) + self.b_fc)*np.pi
         return action
 
     def get_params_internal(self):
