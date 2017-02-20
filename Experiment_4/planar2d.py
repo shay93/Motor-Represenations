@@ -56,16 +56,13 @@ class env_2DOF_arm(Env):
         done : a boolean, indicating whether the episode has ended
         info : a dictionary containing other diagnostic information from the previous action
         """
-        """
-        action is a delta theta numpy array of shape [2]
-        """
         self.cur_theta = self.prev_theta + action[0]
         self.cur_image = self.render_image()
         self.prev_theta = self.cur_theta
         #in addition compute the reward from the previous action
         #compare the end effector position to the target position and determine whether it is within epsilon of the target
         if abs(self.end_effector[0] - self.target[0][0]) < self.epsilon and abs(self.end_effector[1] - self.target[0][1]) < self.epsilon:
-            reward = ((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5
+            reward = 1/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5)
         else:
             reward = 0.
 
@@ -139,30 +136,3 @@ class env_2DOF_arm(Env):
     @property
     def observation_space(self):
         return self._observation_space
-
-    # def get_batch(self, batch_size):
-    #     targets = np.random.randint(
-    #         low=1,
-    #         high=self.n,
-    #         size=batch_size,
-    #     )
-    #     onehot_targets = special.to_onehot_n(targets, self.feature_dim)
-    #     X = np.zeros((batch_size, self.sequence_length, self.feature_dim))
-    #     X[:, :, 0] = 1  # make the target 0
-    #     X[:, 0, :] = onehot_targets
-    #     Y = np.zeros((batch_size, self.sequence_length, self.target_dim))
-    #     Y[:, :, 0] = 1  # make the target 0
-    #     Y[:, -1, :] = onehot_targets
-    #     return X, Y
-
-    # @property
-    # def feature_dim(self):
-    #     return self.n + 1
-
-    # @property
-    # def target_dim(self):
-    #     return self.n + 1
-
-    # @property
-    # def sequence_length(self):
-    #     return self.horizon
