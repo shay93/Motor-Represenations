@@ -30,7 +30,7 @@ class env_2DOF_arm(Env):
         """
         self.prev_theta = theta_i
         self.link_length = link_length
-        self.target = [tuple(np.round(np.random.normal([95,95],[10,10])))]
+        self.target = [tuple(np.round(np.random.uniform(10,120,size = 2)))]
         self.sp = tt.shape_maker()
         self.init_theta = theta_i
         self.cur_theta = theta_i
@@ -65,7 +65,8 @@ class env_2DOF_arm(Env):
         #in addition compute the reward from the previous action
         #compare the end effector position to the target position and determine whether it is within epsilon of the target
         if abs(self.end_effector[0] - self.target[0][0]) < self.epsilon and abs(self.end_effector[1] - self.target[0][1]) < self.epsilon:
-            reward = self.epsilon/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
+            #reward = self.epsilon/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
+            reward = 1.
         else:
             reward = 0.
 
@@ -132,7 +133,7 @@ class env_2DOF_arm(Env):
         self.prev_theta = np.array([0,np.pi/2])
         #render the grid using this theta and
         #also reset the theta
-        self.target = [tuple(np.round(np.random.normal([95,95],[10,10])))]
+        self.target = [tuple(np.round(np.random.uniform(10,120,size = 2)))]
         return self.render_image()
 
 
