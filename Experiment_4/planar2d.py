@@ -97,7 +97,9 @@ class env_2DOF_arm(Env):
         self.end_effector = link2_end_point
         #print(np.shape(self.sp.draw_line(start_point,link1_end_point,0.1,0.1)))
         #print(np.shape(self.target))
-        pos_list = self.sp.draw_line(start_point,link1_end_point,0.1,0.1) + self.sp.draw_line(link1_end_point,link2_end_point,0.1,0.1) + self.target
+        pos_list = self.sp.draw_line(start_point,link1_end_point,0.1,0.1) + self.sp.draw_line(link1_end_point,link2_end_point,0.1,0.1)
+                    + (self.target[0][0] + 1,self.target[0][0] + 1) + (self.target[0][0] + 1,self.target[0][0] - 1)
+                    + (self.target[0][0] - 1,self.target[0][0] - 1) + (self.target[0][0] - 1,self.target[0][0] + 1)
         #now get the extended point list in order to thicken the lines
         additional_points = self.sp.get_points_to_increase_line_thickness(pos_list)
         #now initialize a grid in order to save the correct images
