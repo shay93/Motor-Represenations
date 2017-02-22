@@ -12,6 +12,7 @@ import pickle
 import IPython
 filename = str(uuid.uuid4())
 root_dir = "Eval_Sequences/"
+movie_dir = "Eval_Movies/"
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -72,10 +73,17 @@ if __name__ == "__main__":
         if not(os.path.exists(seq_directory)):
             os.makedirs(seq_directory)
         seq_length = np.shape(rollout_lst_dict[j]['observations'])[0]
+        
         for i in range(seq_length):
             plt.imsave(seq_directory + "timestep" + str(i),
                 rollout_lst_dict[j]['observations'][i,:].reshape((64,64)),
                 cmap = "Greys_r")
+
+        with imageio.get_writer(movie_dir + "/" + "sequence_" + str(j) + ".gif", mode='I') as writer:
+            num_files = seq_length
+            for i in range(num_files):
+                image = imageio.imread(root_dir + '/' + seq_directory + "/" + "timestep" + str(i))
+                writer.append_data(image, meta={'fps' : 2})
 
     print(np.sum(terminal_list)/len(terminal_list))
     with open("terminal_list.npy",'wb') as f:
