@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
 
     #now run through all the sequences and plot them
-    for j in range(100):
+    for j in range(6):
         seq_directory = root_dir + "sequence_" + str(j) + "/"
         #first create a directory
         if not(os.path.exists(seq_directory)):
