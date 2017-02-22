@@ -16,15 +16,12 @@ class grid:
 
 	def draw_figure(self,pos_array, wrap = False):
 	    #this function should take the end effector position and draw on a 64 by 64 grid
-	    if wrap:
-	    	for pos in pos_array:
-	        	self.grid[int(pos[0] % self.grid_size[0]),int(pos[1] % self.grid_size[1])] = 255
-	    else:
-	    	for pos in pos_array:
-	    		if pos[0] > 0 and pos[0] < (self.grid_size[0] - 1) and pos[1] > 0 and pos[1] < (self.grid_size[1] - 1):
-	    			self.grid[int(pos[0]),int(pos[1])] = 255
 
-	    return self.grid
+		for pos in pos_array:
+			if pos[0] < self.grid_size[0] and pos[0] > 0 and pos[1] < self.grid_size[1] and pos[1] > 0:
+				self.grid[int(pos[0]),int(pos[1])] = 255
+
+		return self.grid
 
 	def save_image(self):
 	    png.from_array(self.grid.tolist(),'L').save(self.save_name)
@@ -42,79 +39,69 @@ class shape_maker:
 		self.directory_name = dir_name
 		self.pixel_width = 3
 
-	def draw_line(self,start_point,end_point,step_size,tol):
+	def draw_line(self,pos_1,pos_2):
 		"""
-		Args: A tuple for start_point and end_point,tuple of the form (row,column)
-		Returns: Array of tuples each entry corresponding to the position of the line
+		Implement Bresenham's algorithm 
 		"""
-		#first unpack the tuples 
-		end_point_x,end_point_y = end_point
-		start_point_x,start_point_y = start_point
-		#convert the numpy floats to integers
-		end_point_x = int(end_point_x)
-		end_point_y = int(end_point_y)
-		start_point_x = int(start_point_x)
-		start_point_y = int(start_point_y)
-		#initialize an output array
-		output_array = [start_point]
-		#initialize current point
-		current_point_x,current_point_y = start_point
-		#first deal with situation where startpoint and endpoint lie in the same row i.e. line is horizontal
-		if end_point_x == start_point_x:
-			#if end point is to the right of the start point
-			if end_point_y > start_point_y:
-			    output_array_y = range(start_point_y,end_point_y + 1)
-			    output_array_x = [start_point_x] * len(output_array_y)
-			else:
-			    output_array_y = range(start_point_y, end_point_y-1, -1)
-			    output_array_x = [start_point_x] * len(output_array_y)
-			return list(zip(output_array_x,output_array_y))
+		x0 = pos_1[0]
+		y0 = pos_1[1]
+		#now unpack second position
+		x1 = pos_2[0]
+		y1 = pos_2[1]
+		dx = abs(x1 - x0)
+		dy = abs(y1 - y0)
+		x,y = x0,y0
+		sx = -1 if x0 > x1 else 1
+		sy = -1 if y0 > y1 else 1
+		if dx > dy:
+		    itr = 0
+		    pos_list = [0] * (dx + 1)
+		    err = dx/2.0
+		    while not(x == x1):
+		        pos_list[itr] = (x,y)
+		        err -= dy
+		        if err < 0:
+		            y += sy
+		            err += dx
+		        x += sx
+		        itr += 1
+		else:
+		    itr = 0
+		    pos_list = [0] * (dy + 1)
+		    err = dy/2.0
+		    while not(y == y1):
+		        pos_list[itr] = (x,y)
+		        err -= dx
+		        if err < 0:
+		            x += sx
+		            err += dy
+		        y += sy
+		        itr += 1
+		pos_list[-1] = (x,y)
+		return pos_list
 
-		#if on the other hand this special case does not come into consideration determine the gradient of the line
-		m = (end_point_y - start_point_y)/(end_point_x - start_point_x)
-		#find the y intercept of the line
-		c = start_point_y - m*start_point_x
-		while abs(current_point_x - end_point_x) > tol:
-			#increment the row position of the point and calculate the relevant column position up until the end point is reached
-			current_point_y = np.round((m*current_point_x + c))
-			if start_point_x < end_point_x:
-			    current_point_x += step_size
-			else:
-			    current_point_x -= step_size
-			#since we only want whole numbers we round the current point to get the position of the marker but only
-			#include the tuple in our output array if the new point is different than the previous one. 
-			if np.round(current_point_x) != output_array[-1][0] or np.round(current_point_y) != output_array[-1][1]:
-			    output_array.append((np.round(current_point_x), np.round(current_point_y)))
-		return output_array
-
-
-	def thicken_line(self,line_segment_list):
+	def increase_point_thickness(self,pt,grid_size):
 		"""
-		Takes the line segments and their gradients and uses this information to generate more lines to thicken
-		the shapes
+		Returns a list of tuple with each element in a list corresponding to the (x,y) position of a point in the grid
 		"""
-		thicken_pos_array = []
-		for width_offset in range(1,self.pixel_width + 1):
-			for i in range(len(line_segment_list)):
-				current_segment = np.round(line_segment_list[i])
-				previous_segment = np.round(line_segment_list[i-2])
-				start_point = current_segment[width_offset]
-				end_point = previous_segment[-(width_offset + 1)]
-				right_segment = self.draw_line(start_point,end_point,0.01,0.01)
-				thicken_pos_array.extend(right_segment) 
-		return thicken_pos_array
 
-	def get_points_to_increase_line_thickness(self,pos_list):
+		if grid_size % 2 == 0:
+			return ValueError("Grid Size must be odd")
+
+		grid_width = int((grid_size -1) / 2)
+		pt_list = [0]*(2*grid_width)
+		for j in range(-grid_width,grid_width + 1):
+			left_list = [(pt[0] - j,pt[1] - i) for i in range(1,grid_width + 1)]
+			right_list = [(pt[0] - j,pt[1] + i) for i in range(1,grid_width + 1)]
+			middle_list = left_list + [(pt[0] - j,pt[1])] + right_list
+			pt_list[j] = middle_list
+
+		return pt_list
+
+
+	def get_points_to_increase_line_thickness(self,pos_list,width = 3):
 		#initialize a list to store the information needed
-		more_pts = [0] * (len(pos_list))
-		for i,pos in enumerate(pos_list):
-			x,y = pos
-			#use these values of x and y to build a temp array with points needed to thicken the original line
-			temp_list = [(x+1,y),(x-1,y),(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1),(x,y+1),(x,y-1)]
-			more_pts[i] = temp_list
-
-		more_pts_flattened = [pos for sublist in more_pts for pos in sublist]
-		return more_pts_flattened
+		return [pt for sublist in [self.increase_point_thickness(pos,width) for pos in pos_list] for subsublist in sublist for pt in subsublist]
 
 
 	def get_vertices(self,shape):
@@ -177,7 +164,7 @@ class shape_maker:
 		if self.check(vertices,start_point):
 			for point in vertices:
 				end_point = (int(start_point[0] + point[0]),int(start_point[1] + point[1]))
-				line_segment = self.draw_line((start_point[0],start_point[1]),end_point,0.001,0.001)
+				line_segment = self.draw_line((start_point[0],start_point[1]),end_point)
 				line_segment_list.append(line_segment)
 				pos_array.extend(line_segment)
 				start_point = end_point
