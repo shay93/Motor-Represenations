@@ -24,7 +24,7 @@ class env_2DOF_arm(Env):
     """
 
 
-    def __init__(self,num_steps = 100,epsilon = 15,theta_i = np.array([0.,np.pi/2]),link_length = 40):
+    def __init__(self,num_steps = 100,epsilon = 18,theta_i = np.array([0.,np.pi/2]),link_length = 40):
         """
         theta_i of shape [2] np array
         """
@@ -37,7 +37,7 @@ class env_2DOF_arm(Env):
         self.cur_image = self.render_image()
         self.epsilon = epsilon
         self.num_steps = num_steps
-        self._action_space = Box(np.array([-np.pi/2,-np.pi/2]),np.array([np.pi/2,np.pi/2]))
+        self._action_space = Box(np.array([-np.pi,-np.pi]),np.array([np.pi,np.pi]))
         self._observation_space = PlanarSpace()
         self.itr=0
 
@@ -67,7 +67,7 @@ class env_2DOF_arm(Env):
         else:
             reward = 0.
 
-        if abs(self.end_effector[0] - self.target[0][0]) < 5 and abs(self.end_effector[1] - self.target[0][1]) < 5:
+        if abs(self.end_effector[0] - self.target[0][0]) < 9 and abs(self.end_effector[1] - self.target[0][1]) < 9:
             done = True
             plt.imsave("/home/shay93/Motor-Represenations/Experiment_4/Terminal_Images/terminal"
                         + str(self.itr) + ".png",self.cur_image.reshape((64,64)),cmap = "Greys_r")
@@ -97,17 +97,15 @@ class env_2DOF_arm(Env):
         self.end_effector = link2_end_point
         #print(np.shape(self.sp.draw_line(start_point,link1_end_point,0.1,0.1)))
         #print(np.shape(self.target))
-        pos_list = self.sp.draw_line(start_point,link1_end_point,0.1,0.1) + self.sp.draw_line(link1_end_point,link2_end_point,0.1,0.1)
-                    + (self.target[0][0] + 1,self.target[0][0] + 1) + (self.target[0][0] + 1,self.target[0][0] - 1)
-                    + (self.target[0][0] - 1,self.target[0][0] - 1) + (self.target[0][0] - 1,self.target[0][0] + 1)
+        pos_list = self.sp.draw_line(start_point,link1_end_point) + self.sp.draw_line(link1_end_point,link2_end_point)
         #now get the extended point list in order to thicken the lines
-        additional_points = self.sp.get_points_to_increase_line_thickness(pos_list)
+        arm_points = self.sp.get_points_to_increase_line_thickness(pos_list,width = 7)
         #now initialize a grid in order to save the correct images
         temp_grid = tt.grid(grid_size = (128,128))
         #draw the the points
-        temp_grid.draw_figure(pos_list)
+        temp_grid.draw_figure(arm_points)
         #thicken the lines
-        cur_image = temp_grid.draw_figure(additional_points)
+        cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = 9),pixel_value = 125.)
         resize_im = imresize(cur_image,[64,64])
         return np.ceil(resize_im/255.0).flatten() #Making it binary
 
