@@ -68,7 +68,7 @@ class env_2DOF_arm(Env):
         # else:
         #     reward = 0.
 
-        reward = self.epsilon/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
+        reward = 10/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
 
         if abs(self.end_effector[0] - self.target[0][0]) < 9 and abs(self.end_effector[1] - self.target[0][1]) < 9:
             done = True
