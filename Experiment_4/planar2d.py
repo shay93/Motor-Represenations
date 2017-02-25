@@ -60,18 +60,18 @@ class env_2DOF_arm(Env):
         self.cur_image = self.render_image()
         self.prev_theta = self.cur_theta
         #in addition compute the reward from the previous action
+        #change reward to be continuous
         #compare the end effector position to the target position and determine whether it is within epsilon of the target
-        if abs(self.end_effector[0] - self.target[0][0]) < self.epsilon and abs(self.end_effector[1] - self.target[0][1]) < self.epsilon:
-            #reward = self.epsilon/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
-            reward = 1.
-        else:
-            reward = 0.
+        # if abs(self.end_effector[0] - self.target[0][0]) < self.epsilon and abs(self.end_effector[1] - self.target[0][1]) < self.epsilon:
+        #     #reward = self.epsilon/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
+        #     reward = 1.
+        # else:
+        #     reward = 0.
+
+        reward = self.epsilon/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
 
         if abs(self.end_effector[0] - self.target[0][0]) < 9 and abs(self.end_effector[1] - self.target[0][1]) < 9:
             done = True
-            plt.imsave("/home/shay93/Motor-Represenations/Experiment_4/Terminal_Images/terminal"
-                        + str(self.itr) + ".png",self.cur_image.reshape((64,64)),cmap = "Greys_r")
-            self.itr+=1
         else:
             done = False
         
@@ -107,7 +107,7 @@ class env_2DOF_arm(Env):
         #thicken the lines
         cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = 9),pixel_value = 125.)
         resize_im = imresize(cur_image,[64,64])
-        return np.ceil(resize_im/255.0).flatten() #Making it binary
+        return (resize_im/255.0).flatten() #Making it binary
 
     @property
     def action_space(self):
@@ -130,7 +130,7 @@ class env_2DOF_arm(Env):
         self.prev_theta = np.array([0,np.pi/2])
         #render the grid using this theta and
         #also reset the theta
-        self.target = [tuple(np.round(np.random.uniform(10,120,size = 2)))]
+        #self.target = [tuple(np.round(np.random.uniform(10,120,size = 2)))]
         return self.render_image()
 
 
