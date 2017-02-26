@@ -7,8 +7,8 @@ from scipy.misc import imresize
 import matplotlib.pyplot as plt
 from planarspace import PlanarSpace
 
-parent_dir = os.path.dirname(os.getcwd())
-
+parent_dir = os.path.dirname(os.path.dirname(os.getcwd()))
+sys.path.append(parent_dir)
 import training_tools as tt
 import IPython
 
@@ -51,20 +51,20 @@ class Billiards_2D(Env):
         actor_loc = [tuple(np.round(np.random.uniform(10,54,size = 2)))]
         #check if the initial actor location overlaps with the target location if so get
         #get the actor location again
-        if self.check_overlap: #there is overlap
+        if self.check_overlap(actor = actor_loc): #there is overlap
             return self.get_actor_loc()
         else:
             return actor_loc
 
-    def check_overlap(self):
+    def check_overlap(self, actor):
         """
         Check if the actor and target boxes overlap
         Return a boolean indicating overlap or not
         """
-        if abs(self.target[0][0] - self.actor[0][0]) < self.box_width or abs(self.target[0][1] - self.actor[0][1]) < self.box_width:
+        if abs(self.target[0][0] - actor[0][0]) < self.box_width or abs(self.target[0][1] - actor[0][1]) < self.box_width:
             return True
-
-        return False
+        else:
+            return False
 
     def step(self, action):
         """
@@ -84,6 +84,7 @@ class Billiards_2D(Env):
         amax = np.argmax(action)
         #update the target location center based on the output
         if amax == 0: #go left, decrement column by step
+            print(action)
             self.actor = [(self.actor[0][0],self.actor[0][1] - self.step_size)]
         elif amax == 1: # go right, increment column by step
             self.actor = [(self.actor[0][0],self.actor[0][1] + self.step_size)]
@@ -102,19 +103,20 @@ class Billiards_2D(Env):
             reward = 0.
 
         #terminate the episode if the target is reached
-        done = self.check_overlap()
+        done = self.check_overlap(self.actor)
         
-        return self.cur_obs_image,reward,done,None
+        return self.cur_obs_image,reward,done,{"Actor" : self.actor}
+
 
     def render_image(self):
         #initialize a grid to draw the environment
         temp_grid = tt.grid(grid_size = (64,64))
         #draw the actor box in white
-        temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.actor,width = self.box_width))
+        temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.actor,width = self.box_width),pixel_value = 1)
         #draw the target box in grey
-        cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = self.box_width), pixel_value = 125.)
+        cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = self.box_width),pixel_value = 0.5)
         #renormalize observation image
-        cur_image = cur_image / 255.
+        #cur_image = cur_image / 255.
         return cur_image.flatten() 
 
     @property
