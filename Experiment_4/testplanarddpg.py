@@ -30,10 +30,10 @@ def run_task(*_):
         eval_samples = 1000,
         min_pool_size = 1000,
         epoch_length = 1000,
-	n_epochs = 200,
+	    n_epochs = 200,
         n_updates_per_time_step = 1,
         max_path_length = 100,
-	batch_size = 32,
+	    batch_size = 32,
         replay_pool_size = 100000,
         discount = 0.99,
         
