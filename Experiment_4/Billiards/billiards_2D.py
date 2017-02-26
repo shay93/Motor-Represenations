@@ -39,7 +39,7 @@ class Billiards_2D(Env):
         #indicate the number of pixels to jump over when a single action is taken
         self.step_size = step_size
         #specify the action and observation space
-        self._action_space = Box(-3.,3.,(1,2))
+        self._action_space = Box(-3.,3.,(2))
         self._observation_space = PlanarSpace()
 
     def get_actor_loc(self):
@@ -61,7 +61,7 @@ class Billiards_2D(Env):
         Check if the actor and target boxes overlap
         Return a boolean indicating overlap or not
         """
-        if abs(self.target[0][0] - actor[0][0]) < self.box_width or abs(self.target[0][1] - actor[0][1]) < self.box_width:
+        if abs(self.target[0][0] - actor[0][0]) < 3 and  abs(self.target[0][1] - actor[0][1]) < 3:
             return True
         else:
             return False
@@ -90,7 +90,7 @@ class Billiards_2D(Env):
 
         #define a reward inversely proportional to the distance between the actor and target locations
         distance = ((self.target[0][0] - self.actor[0][0]) ** 2 + (self.target[0][1] - self.actor[0][1]) ** 2) ** 0.5
-        reward = 1./distance
+        reward = 1./(distance + 1)
 
         #terminate the episode if the target is reached
         done = self.check_overlap(self.actor)
