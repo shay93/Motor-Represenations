@@ -66,6 +66,19 @@ class Billiards_2D(Env):
         else:
             return False
 
+    def check_on_screen(self,actor):
+        half_width = int((self.box_width - 1)/2.)
+        if (actor[0][0] - half_width) < 0:
+            return False
+        elif (actor[0][0] + half_width) > 63:
+            return False
+        elif (actor[0][1] - half_width) < 0:
+            return False
+        elif (actor[0][1] + half_width) > 63:
+            return False
+        else:
+            return True
+
     def step(self, action):
         """
         Run one timestep of the environment's dynamics. When end of episode
@@ -83,8 +96,10 @@ class Billiards_2D(Env):
         #round the continuous actions
         rounded_action = np.round(action)
         #adjust the location of actor based on the produced action 
-        self.actor = [(self.actor[0][0] + rounded_action[0][0],self.actor[0][1] + rounded_action[0][1])]
-        
+        new_actor = [(self.actor[0][0] + rounded_action[0][0],self.actor[0][1] + rounded_action[0][1])]
+        #only update actor if it is still on screen else do nothing
+        if self.check_on_screen(new_actor):
+            self.actor = new_actor
         #get the current observation image after the step has been taken
         self.cur_obs_image = self.render_image()
 

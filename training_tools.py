@@ -20,6 +20,8 @@ class grid:
 		for pos in pos_array:
 			if pos[0] < self.grid_size[0] and pos[0] > 0 and pos[1] < self.grid_size[1] and pos[1] > 0:
 				self.grid[int(pos[0]),int(pos[1])] = pixel_value
+			else:
+				continue
 
 		return self.grid
 
