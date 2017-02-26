@@ -39,7 +39,7 @@ class Billiards_2D(Env):
         #indicate the number of pixels to jump over when a single action is taken
         self.step_size = step_size
         #specify the action and observation space
-        self._action_space = Box(0,1,(4))
+        self._action_space = Box(-3.,3.,(1,2))
         self._observation_space = PlanarSpace()
 
     def get_actor_loc(self):
@@ -79,28 +79,18 @@ class Billiards_2D(Env):
         done : a boolean, indicating whether the episode has ended
         info : a dictionary containing other diagnostic information from the previous action
         """
-        #take the max of the action to determine should move left,right,up,down
         
-        amax = np.argmax(action)
-        #update the target location center based on the output
-        if amax == 0: #go left, decrement column by step
-            print(action)
-            self.actor = [(self.actor[0][0],self.actor[0][1] - self.step_size)]
-        elif amax == 1: # go right, increment column by step
-            self.actor = [(self.actor[0][0],self.actor[0][1] + self.step_size)]
-        elif amax == 2: # go up, decrement row by step
-            self.actor = [(self.actor[0][0] - self.step_size,self.actor[0][1])]
-        elif amax == 3: # go down, increment row by step
-            self.actor = [(self.actor[0][0] + self.step_size,self.actor[0][1])]
+        #round the continuous actions
+        rounded_action = np.round(action)
+        #adjust the location of actor based on the produced action 
+        self.actor = [(self.actor[0][0] + rounded_action[0][0],self.actor[0][1] + rounded_action[0][1])]
         
         #get the current observation image after the step has been taken
         self.cur_obs_image = self.render_image()
 
-        #give a reward if the actor is within
-        if abs(self.actor[0][0] - self.target[0][0]) < self.epsilon and abs(self.actor[0][1] - self.target[0][1]) < self.epsilon:
-            reward = 1.
-        else:
-            reward = 0.
+        #define a reward inversely proportional to the distance between the actor and target locations
+        distance = ((self.target[0][0] - self.actor[0][0]) ** 2 + (self.target[0][1] - self.actor[0][1]) ** 2) ** 0.5
+        reward = 1./distance
 
         #terminate the episode if the target is reached
         done = self.check_overlap(self.actor)
@@ -116,7 +106,6 @@ class Billiards_2D(Env):
         #draw the target box in grey
         cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = self.box_width),pixel_value = 0.5)
         #renormalize observation image
-        #cur_image = cur_image / 255.
         return cur_image.flatten() 
 
     @property

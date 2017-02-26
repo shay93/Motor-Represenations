@@ -10,9 +10,12 @@ from planarspace import PlanarSpace
 from sandbox.rocky.tf.envs.base import TfEnv
 import IPython
 #from model_classes import Conv_FeedForwardCritic,Conv_FeedForwardPolicy
+import sys
+import argparse
+import os
 
 def run_task(*_):
-    env = env_2DOF_arm(epsilon = 15,link_length = 40)
+    env = env_2DOF_arm()
     es = OUStrategy(env_spec=env.spec)
     qf = Conv_FeedForwardCritic(
         name_or_scope = "critic",
@@ -27,16 +30,18 @@ def run_task(*_):
         es,
         policy,
         qf,
-        eval_samples = 1000,
-        min_pool_size = 1000,
+        eval_samples = 100,
+        min_pool_size = 10000,
         epoch_length = 1000,
-	    n_epochs = 200,
+	n_epochs = 5000,
         n_updates_per_time_step = 1,
         max_path_length = 100,
-	    batch_size = 32,
-        replay_pool_size = 100000,
+	batch_size = 16,
+        replay_pool_size = 1000000,
         discount = 0.99,
-        
+        summary_dir = args.summary_dir,
+        qf_learning_rate = args.qf_learning_rate,
+        scale_reward = args.scale_reward, 
     )
     #IPython.embed()
     algorithm.train()
@@ -44,6 +49,13 @@ def run_task(*_):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--summary_dir',type=str,default='/home/shay93/Motor-Represenations/Experiment_4/tensorflow_summaries')
+    parser.add_argument('--qf_learning_rate',type=float,default=1e-3)
+    parser.add_argument('--scale_reward',type=float,default=1.)
+    args = parser.parse_args()
+    if not(os.path.exists(args.summary_dir)):
+       os.makedirs(args.summary_dir)
     run_experiment_lite(
         run_task,
         n_parallel=1,

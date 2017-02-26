@@ -99,8 +99,8 @@ class Conv_FeedForwardPolicy(NNPolicy):
               self.b_conv3 = tf.get_variable("b_conv3",[32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
             
               #now initialize the variables for the fc layers
-              self.W_fc = tf.get_variable("W_fc",[9*32,4],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-              self.b_fc = tf.get_variable("b_fc",[4],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+              self.W_fc = tf.get_variable("W_fc",[9*32,2],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
+              self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
             except:
               scope.reuse_variables()
 
@@ -136,7 +136,7 @@ class Conv_FeedForwardPolicy(NNPolicy):
   
         h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
         #finally pass through fc layer with tanh non linearity
-        action = tf.nn.softmax(tf.matmul(h_3_flattened,self.W_fc) + self.b_fc)
+        action = tf.nn.tanh(tf.matmul(h_3_flattened,self.W_fc) + self.b_fc) * 3
         return action
 
     def get_params_internal(self):
