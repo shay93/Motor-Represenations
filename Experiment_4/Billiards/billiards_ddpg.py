@@ -1,12 +1,11 @@
 
 
 from algos.ddpg import DDPG
-from billiards_nn_policy import FeedForwardPolicy
-from billiards_qfunction import FeedForwardCritic
+from billiards_nn_policy import Conv_FeedForwardPolicy
+from billiards_qfunction import Conv_FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
-from billiards_2D import  Billiards_2D
-from planarspace import PlanarSpace
+from billiards_2D_image_observation import  Billiards_2D
 from sandbox.rocky.tf.envs.base import TfEnv
 import IPython
 import os
