@@ -68,13 +68,13 @@ class Billiards_2D(Env):
 
     def check_on_screen(self,actor):
         half_width = int((self.box_width - 1)/2.)
-        if (actor[0][0] - half_width) < 0:
+        if (actor[0][0] - half_width) < 1:
             return False
-        elif (actor[0][0] + half_width) > 63:
+        elif (actor[0][0] + half_width) > 62:
             return False
-        elif (actor[0][1] - half_width) < 0:
+        elif (actor[0][1] - half_width) < 1:
             return False
-        elif (actor[0][1] + half_width) > 63:
+        elif (actor[0][1] + half_width) > 62:
             return False
         else:
             return True
