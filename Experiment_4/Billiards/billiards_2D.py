@@ -104,13 +104,13 @@ class Billiards_2D(Env):
         self.cur_obs_image = self.render_image()
 
         #define a reward inversely proportional to the distance between the actor and target locations
-        distance = ((self.target[0][0] - self.actor[0][0]) ** 2 + (self.target[0][1] - self.actor[0][1]) ** 2) ** 0.5
-        reward = 1./(distance + 1)
+        distance = np.linalg.norm(np.subtract(self.actor,self.target))
+        reward = 1./(distance + 1.)
 
         #terminate the episode if the target is reached
         done = self.check_overlap(self.actor)
         
-        return self.cur_obs_image,reward,done,{"Actor" : self.actor}
+        return self.actor + self.target,reward,done,{"Observed Image" : self.cur_obs_image}
 
 
     def render_image(self):

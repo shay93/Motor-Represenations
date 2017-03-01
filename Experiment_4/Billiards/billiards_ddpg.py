@@ -1,8 +1,8 @@
 
 
 from algos.ddpg import DDPG
-from billiards_nn_policy import Conv_FeedForwardPolicy
-from billiards_qfunction import Conv_FeedForwardCritic
+from billiards_nn_policy import FeedForwardPolicy
+from billiards_qfunction import FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
 from billiards_2D import  Billiards_2D
@@ -16,11 +16,11 @@ import argparse
 def run_task(*_):
     env = Billiards_2D()
     es = OUStrategy(env_spec=env.spec)
-    qf = Conv_FeedForwardCritic(
+    qf = FeedForwardCritic(
         name_or_scope = "critic",
         env_spec=env.spec,
     )
-    policy = Conv_FeedForwardPolicy(
+    policy = FeedForwardPolicy(
         name_or_scope="actor",
         env_spec=env.spec,
     )
