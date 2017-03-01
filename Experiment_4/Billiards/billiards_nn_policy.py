@@ -2,7 +2,7 @@ import abc
 
 import tensorflow as tf
 
-from core.tf_util import he_uniform_initializer, mlp, linear,conv
+from mod_tf_util import he_uniform_initializer, mlp, linear,conv
 from misc.rllab_util import get_action_dim
 from predictors.state_network import StateNetwork
 from rllab.core.serializable import Serializable

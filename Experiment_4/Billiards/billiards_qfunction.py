@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from core.tf_util import he_uniform_initializer, mlp, linear
+from mod_tf_util import he_uniform_initializer, mlp, linear
 from predictors.state_action_network import StateActionNetwork
 from rllab.core.serializable import Serializable
 import IPython
