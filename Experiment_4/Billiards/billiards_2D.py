@@ -18,29 +18,29 @@ class Billiards_2D(Env):
     """
 
 
-    def __init__(self,num_steps = 100,epsilon = 15, box_width = 5,step_size = 3):
+    def __init__(self,num_steps = 100, box_width = 5):
         """
         theta_i of shape [2] np array
         """
         #specify the box width for the actor and the target
         self.box_width = box_width
         #initialize the centre of the target box on the 128 by 128 grid by sampling from a uniform distribution
-        self.target = [tuple(np.round(np.random.uniform(10,54,size = 2)))]
+        #self.target = [tuple(np.round(np.random.uniform(10,54,size = 2)))]
+        #fix the location of the target
+        self.target = [tuple(np.round(np.random.uniform(10,54,size=2)))]
         #initialize a helper function to draw the boxes on the grid
         self.sp = tt.shape_maker()
         #initialize the actors location as well by sampling 
         self.actor = self.get_actor_loc()
+        #once the actor and target location are known compute the maximum possible distance
+        #self.max_distance = self.get_max_distance()
         #using the actor location and the target location render an observation image
         self.cur_obs_image = self.render_image()
-        #if centre of the actor box is within epsilon of the target give a reward
-        self.epsilon = epsilon
         #indicate the horizon
         self.num_steps = num_steps
-        #indicate the number of pixels to jump over when a single action is taken
-        self.step_size = step_size
         #specify the action and observation space
-        self._action_space = Box(-3.,3.,(2))
-        self._observation_space = PlanarSpace()
+        self._action_space = Box(-1.,1.,(2,))
+        self._observation_space = Box(-1,1,(4,))
 
     def get_actor_loc(self):
         """
@@ -100,18 +100,46 @@ class Billiards_2D(Env):
         #only update actor if it is still on screen else do nothing
         if self.check_on_screen(new_actor):
             self.actor = new_actor
+        
+        if self.check_on_screen(self.actor):
+            distance = np.linalg.norm(np.subtract(self.actor,self.target))
+            #compute the normalized distance
+            distance_normalized = distance / 64.
+            reward = (1./(distance_normalized + 1.) - 0.5)*2. #scale reward between 0 and 1
+        else:
+            reward = -1.
+
         #get the current observation image after the step has been taken
         self.cur_obs_image = self.render_image()
-
+         
         #define a reward inversely proportional to the distance between the actor and target locations
-        distance = np.linalg.norm(np.subtract(self.actor,self.target))
-        reward = 1./(distance + 1.)
+        #distance = np.linalg.norm(np.subtract(self.actor,self.target))
+        #reward = 1./(distance + 1.)
 
         #terminate the episode if the target is reached
-        done = self.check_overlap(self.actor)
-        
-        return self.actor + self.target,reward,done,{"Observed Image" : self.cur_obs_image}
+        overlap = self.check_overlap(self.actor)
+        #only reward when done
+        scaled_obs = (np.array(self.actor + self.target).flatten() - 32.)/32.
+        done = False
+        #IPython.embed()
+        return np.copy(scaled_obs),reward,done,{"Observed Image" : self.cur_obs_image,"Overlap": overlap}
+    
+    def get_distance(self,pt):
+         """
+         helper function to calculate distance between centre of actor and target
+         """
+         return np.linalg.norm(np.subtract(pt,self.target))
 
+    def get_max_distance(self):
+         """
+         Get the max distance between the current actor location and the target
+         do this by assuming that the max distance is when the box is located on either
+         corners (3,3) (3,60) (60,3), (60,60)
+         """
+         #initialize a list specifying the corner locations
+         corner_locations = [[(3,3)],[(3,60)],[(60,3)],[(60,60)]]
+         #find the distances beteen the actor and these corner points and return the max
+         return np.max([self.get_distance(corner) for corner in corner_locations])
 
     def render_image(self):
         #initialize a grid to draw the environment
@@ -121,7 +149,7 @@ class Billiards_2D(Env):
         #draw the target box in grey
         cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = self.box_width),pixel_value = 0.5)
         #renormalize observation image
-        return cur_image.flatten() 
+        return np.copy(cur_image.flatten()) 
 
     @property
     def action_space(self):
@@ -143,7 +171,13 @@ class Billiards_2D(Env):
         self.target = [tuple(np.round(np.random.uniform(10,54,size = 2)))]
         #Reset the actor location
         self.actor = self.get_actor_loc()
-        return self.render_image()
+        #recalculate the max distance
+        #self.max_distance = self.get_max_distance()
+        #rerender the image
+        self.cur_obs_image = self.render_image()
+        #scale the observations between -1 and 1
+        scaled_obs = (np.array(self.actor + self.target).flatten() - 32.)/32.
+        return np.copy(scaled_obs)
 
     @property
     def observation_space(self):

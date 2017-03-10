@@ -40,7 +40,7 @@ class FeedForwardPolicy(NNPolicy):
     def __init__(
             self,
             name_or_scope,
-            observation_hidden_sizes=(100, 100),
+            observation_hidden_sizes=(400, 300),
             hidden_W_init=None,
             hidden_b_init=None,
             output_W_init=None,
@@ -108,13 +108,13 @@ class Conv_FeedForwardPolicy(NNPolicy):
           
           with tf.variable_scope("Conv_2") as _:
             h_2 = conv(
-              x,
+              h_1,
               [5,5,32,32],
               tf.nn.tanh)
 
           with tf.variable_scope("Conv_3") as _:
             h_3 = conv(
-              x,
+              h_2,
               [3,3,32,32],
               tf.nn.tanh)
 

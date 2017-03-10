@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from mod_tf_util import he_uniform_initializer, mlp, linear
+from mod_tf_util import he_uniform_initializer, mlp, linear,conv
 from predictors.state_action_network import StateActionNetwork
 from rllab.core.serializable import Serializable
 import IPython
@@ -22,8 +22,8 @@ class FeedForwardCritic(NNQFunction):
             hidden_b_init=None,
             output_W_init=None,
             output_b_init=None,
-            embedded_hidden_sizes=(100,),
-            observation_hidden_sizes=(100,),
+            action_hidden_sizes=(150,),
+            observation_hidden_sizes=(400,150),
             hidden_nonlinearity=tf.nn.relu,
             **kwargs
     ):
@@ -31,10 +31,11 @@ class FeedForwardCritic(NNQFunction):
         self.hidden_W_init = hidden_W_init or he_uniform_initializer()
         self.hidden_b_init = hidden_b_init or tf.constant_initializer(0.)
         self.output_W_init = output_W_init or tf.random_uniform_initializer(
-            -3e-3, 3e-3)
+            -3e-4, 3e-4)
         self.output_b_init = output_b_init or tf.random_uniform_initializer(
-            -3e-3, 3e-3)
-        self.embedded_hidden_sizes = embedded_hidden_sizes
+            -3e-4, 3e-4)
+        self.action_hidden_sizes = action_hidden_sizes
+        #self.embedded_hidden_sizes = embedded_hidden_sizes
         self.observation_hidden_sizes = observation_hidden_sizes
         self.hidden_nonlinearity = hidden_nonlinearity
         super().__init__(name_or_scope=name_or_scope, **kwargs)
@@ -48,20 +49,29 @@ class FeedForwardCritic(NNQFunction):
                                      W_initializer=self.hidden_W_init,
                                      b_initializer=self.hidden_b_init,
                                      )
-        embedded = tf.concat(1, [observation_output, action_input])
-        embedded_dim = self.action_dim + self.observation_hidden_sizes[-1]
-        with tf.variable_scope("fusion_mlp") as _:
-            fused_output = mlp(embedded,
-                               embedded_dim,
-                               self.embedded_hidden_sizes,
-                               self.hidden_nonlinearity,
-                               W_initializer=self.hidden_W_init,
-                               b_initializer=self.hidden_b_init,
-                               )
+        with tf.variable_scope("action_mlp") as _:
+            action_output = mlp(action_input,
+                                self.action_dim,
+                                self.action_hidden_sizes,
+                                self.hidden_nonlinearity,
+                                W_initializer=he_uniform_initializer(),
+                                b_initializer=tf.constant_initializer(0.),
+                                )
+        embedded = tf.concat(1, [observation_output, action_output])
+        print(embedded)
+        embedded_dim = 2*self.observation_hidden_sizes[-1]
+        #with tf.variable_scope("fusion_mlp") as _:
+            #fused_output = mlp(embedded,
+                               #embedded_dim,
+                               #self.embedded_hidden_sizes,
+                               #self.hidden_nonlinearity,
+                               #W_initializer=he_uniform_initializer(),
+                               #b_initializer=tf.constant_initializer(0.),
+                               #)
 
         with tf.variable_scope("output_linear") as _:
-            return linear(fused_output,
-                          self.embedded_hidden_sizes[-1],
+            return linear(embedded,
+                          embedded_dim,
                           1,
                           W_initializer=self.output_W_init,
                           b_initializer=self.output_b_init,
@@ -96,13 +106,13 @@ class Conv_FeedForwardCritic(NNQFunction):
           
           with tf.variable_scope("Conv_2") as _:
             h_2 = conv(
-              x,
+              h_1,
               [5,5,32,32],
               tf.nn.tanh)
 
           with tf.variable_scope("Conv_3") as _:
             h_3 = conv(
-              x,
+              h_2,
               [3,3,32,32],
               tf.nn.tanh)
 
@@ -126,7 +136,7 @@ class Conv_FeedForwardCritic(NNQFunction):
         with tf.variable_scope("fusion_mlp") as _:
             fused_output = mlp(embedded,
                 200,
-                200,
+                [200],
                 tf.nn.tanh)
 
         with tf.variable_scope("fusion_linear") as _:
