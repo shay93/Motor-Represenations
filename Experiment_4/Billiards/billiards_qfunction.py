@@ -24,6 +24,7 @@ class FeedForwardCritic(NNQFunction):
             output_b_init=None,
             action_hidden_sizes=(150,),
             observation_hidden_sizes=(400,150),
+            embedded_hidden_sizes = (100,100),
             hidden_nonlinearity=tf.nn.relu,
             **kwargs
     ):
@@ -31,9 +32,9 @@ class FeedForwardCritic(NNQFunction):
         self.hidden_W_init = hidden_W_init or he_uniform_initializer()
         self.hidden_b_init = hidden_b_init or tf.constant_initializer(0.)
         self.output_W_init = output_W_init or tf.random_uniform_initializer(
-            -3e-4, 3e-4)
+            -3e-3, 3e-3)
         self.output_b_init = output_b_init or tf.random_uniform_initializer(
-            -3e-4, 3e-4)
+            -3e-3, 3e-3)
         self.action_hidden_sizes = action_hidden_sizes
         #self.embedded_hidden_sizes = embedded_hidden_sizes
         self.observation_hidden_sizes = observation_hidden_sizes
@@ -54,24 +55,25 @@ class FeedForwardCritic(NNQFunction):
                                 self.action_dim,
                                 self.action_hidden_sizes,
                                 self.hidden_nonlinearity,
-                                W_initializer=he_uniform_initializer(),
-                                b_initializer=tf.constant_initializer(0.),
+                                W_initializer=self.hidden_W_init,
+                                b_initializer=self.hidden_b_init,
                                 )
+        
         embedded = tf.concat(1, [observation_output, action_output])
-        print(embedded)
         embedded_dim = 2*self.observation_hidden_sizes[-1]
-        #with tf.variable_scope("fusion_mlp") as _:
-            #fused_output = mlp(embedded,
-                               #embedded_dim,
-                               #self.embedded_hidden_sizes,
-                               #self.hidden_nonlinearity,
-                               #W_initializer=he_uniform_initializer(),
-                               #b_initializer=tf.constant_initializer(0.),
-                               #)
+        
+        with tf.variable_scope("fusion_mlp") as _:
+            fused_output = mlp(embedded,
+                               embedded_dim,
+                               self.embedded_hidden_sizes,
+                               self.hidden_nonlinearity,
+                               W_initializer=self.hidden_W_init,
+                               b_initializer=self.hidden_b_init,
+                               )
 
         with tf.variable_scope("output_linear") as _:
             return linear(embedded,
-                          embedded_dim,
+                          embedded_hidden_sizes[-1],
                           1,
                           W_initializer=self.output_W_init,
                           b_initializer=self.output_b_init,
