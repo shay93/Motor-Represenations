@@ -86,6 +86,12 @@ class Conv_FeedForwardPolicy(NNPolicy):
     def __init__(self,
                 name_or_scope,
                 **kwargs):
+        self.hidden_W_init = he_uniform_initializer()
+        self.hidden_b_init = tf.constant_initializer(0.)
+        self.output_W_init = tf.random_uniform_initializer(
+                -3e-3,3e-3)
+        self.output_b_init = tf.random_uniform_initializer(
+                -3e-3,3e-3)
         self.name_or_scope = name_or_scope
         self.setup_serialization(locals())       
         super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,
@@ -97,26 +103,36 @@ class Conv_FeedForwardPolicy(NNPolicy):
         you should output a tensor of shape [None,2]
         """
         x = tf.expand_dims(tf.reshape(observation_input,shape = [-1,64,64]),-1)
-
+        #cast the input observation as a float before passing into layers
+        x = tf.to_float(x)
         with tf.variable_scope("ConvNet") as _:
           
           with tf.variable_scope("Conv_1") as _:
             h_1 = conv(
               x,
               [5,5,1,32],
-              tf.nn.tanh)
+              tf.nn.relu,
+              W_initializer=self.hidden_W_init,
+              b_initializer=self.hidden_b_init
+              )
           
           with tf.variable_scope("Conv_2") as _:
             h_2 = conv(
               h_1,
               [5,5,32,32],
-              tf.nn.tanh)
+              tf.nn.relu,
+              W_initializer=self.hidden_W_init,
+              b_initializer=self.hidden_b_init
+              )
 
           with tf.variable_scope("Conv_3") as _:
             h_3 = conv(
               h_2,
               [3,3,32,32],
-              tf.nn.tanh)
+              tf.nn.relu,
+              W_initializer=self.hidden_W_init,
+              b_initializer=self.hidden_b_init
+              )
 
           h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
 
@@ -124,13 +140,10 @@ class Conv_FeedForwardPolicy(NNPolicy):
           action = mlp(h_3_flattened,
             9*32,
             [2],
-            tf.nn.tanh) * 3
+            tf.nn.tanh,
+            W_initializer=self.output_W_init,
+            b_initializer=self.output_b_init
+            )
   
         return action
-
-    # def get_params_internal(self):
-    #      if "target" in self.name_or_scope:
-    #          return [v for v in tf.all_variables() if self.name_or_scope[:-1] in v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
-    #      else:
-    #          return [v for v in tf.all_variables() if self.name_or_scope == v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
 

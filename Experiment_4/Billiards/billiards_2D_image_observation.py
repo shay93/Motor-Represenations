@@ -18,7 +18,7 @@ class Billiards_2D(Env):
     """
 
 
-    def __init__(self,num_steps = 100,epsilon = 15, box_width = 5,step_size = 3):
+    def __init__(self,num_steps = 100,box_width = 5):
         """
         theta_i of shape [2] np array
         """
@@ -32,15 +32,11 @@ class Billiards_2D(Env):
         self.actor = self.get_actor_loc()
         #using the actor location and the target location render an observation image
         self.cur_obs_image = self.render_image()
-        #if centre of the actor box is within epsilon of the target give a reward
-        self.epsilon = epsilon
         #indicate the horizon
         self.num_steps = num_steps
-        #indicate the number of pixels to jump over when a single action is taken
-        self.step_size = step_size
         #specify the action and observation space
-        self._action_space = Box(-3.,3.,(2))
-        self._observation_space = Box(0,1,(64,64))
+        self._action_space = Box(-1.,1.,(2))
+        self._observation_space = Box(0,255,(64,64))
 
     def get_actor_loc(self):
         """
@@ -103,23 +99,29 @@ class Billiards_2D(Env):
         #get the current observation image after the step has been taken
         self.cur_obs_image = self.render_image()
 
-        #define a reward inversely proportional to the distance between the actor and target locations
-        distance = np.linalg.norm(np.subtract(self.actor,self.target))
-        reward = 1./(distance + 1.)
+        if self.check_on_screen(self.actor):
+            distance = np.linalg.norm(np.subtract(self.actor,self.target))
+            #compute the normalized distance
+            distance_normalized = distance / 64.
+            reward = (1./(distance_normalized + 1.) - 0.5)*2. #scale reward between 0 and 1
+        else:
+            reward = -1.
 
-        #terminate the episode if the target is reached
-        done = self.check_overlap(self.actor)
+        #determine if the actor overlaps with the target or not
+        overlap = self.check_overlap(self.actor)
+        #Do not terminate episode in order to ensure that actor sticks to target
+        done = False
         
-        return self.cur_obs_image,reward,done,{"Observed Image" : self.cur_obs_image}
+        return self.cur_obs_image,reward,done,{"Observed Image" : self.cur_obs_image,"Overlap" : overlap}
 
 
     def render_image(self):
         #initialize a grid to draw the environment
         temp_grid = tt.grid(grid_size = (64,64))
         #draw the actor box in white
-        temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.actor,width = self.box_width),pixel_value = 1)
+        temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.actor,width = self.box_width),pixel_value = 255)
         #draw the target box in grey
-        cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = self.box_width),pixel_value = 0.5)
+        cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = self.box_width),pixel_value = 123)
         #renormalize observation image
         return cur_image.flatten() 
 
