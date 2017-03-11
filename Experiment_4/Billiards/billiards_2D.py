@@ -118,6 +118,9 @@ class Billiards_2D(Env):
 
         #terminate the episode if the target is reached
         overlap = self.check_overlap(self.actor)
+        #give a bonus reward if the actor overlaps with the target, in order to encourage such behavior
+        if overlap:
+            reward = reward + 2 
         #only reward when done
         scaled_obs = (np.array(self.actor + self.target).flatten() - 32.)/32.
         done = False
