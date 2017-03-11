@@ -36,7 +36,7 @@ class FeedForwardCritic(NNQFunction):
         self.output_b_init = output_b_init or tf.random_uniform_initializer(
             -3e-3, 3e-3)
         self.action_hidden_sizes = action_hidden_sizes
-        #self.embedded_hidden_sizes = embedded_hidden_sizes
+        self.embedded_hidden_sizes = embedded_hidden_sizes
         self.observation_hidden_sizes = observation_hidden_sizes
         self.hidden_nonlinearity = hidden_nonlinearity
         super().__init__(name_or_scope=name_or_scope, **kwargs)
