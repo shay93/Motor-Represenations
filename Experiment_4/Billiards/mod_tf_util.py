@@ -71,7 +71,7 @@ def conv(
     :param new_size: Size of the output tensor
     """
     W = weight_variable(weight_shape,
-                    initializer=W_initializer
+                    initializer=W_initializer,
                     name=W_name)
 
     b = bias_variable(weight_shape[-1],
@@ -114,6 +114,8 @@ def linear(
     b = bias_variable((new_size, ),
                       initializer=b_initializer,
                       name=bias_name)
+    h = tf.matmul(last_layer,W) + tf.expand_dims(b,0)
+    tf.histogram_summary(h.name,h)
     return tf.matmul(last_layer, W) + tf.expand_dims(b, 0)
 
 
