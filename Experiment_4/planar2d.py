@@ -30,14 +30,15 @@ class env_2DOF_arm(Env):
         """
         self.prev_theta = theta_i
         self.link_length = link_length
-        self.target = [tuple(np.round(np.random.uniform(10,120,size = 2)))]
+        self.target = [(96,32)]
         self.sp = tt.shape_maker()
         self.init_theta = theta_i
         self.cur_theta = theta_i
         self.cur_image = self.render_image()
         self.epsilon = epsilon
         self.num_steps = num_steps
-        self._action_space = Box(np.array([-np.pi,-np.pi]),np.array([np.pi,np.pi]))
+        self._action_space = Box(-np.pi,np.pi,(2))
+        #self._action_space = Box(np.array([-np.pi,-np.pi]),np.array([np.pi,np.pi]))
         self._observation_space = PlanarSpace()
         self.itr=0
 
@@ -56,7 +57,8 @@ class env_2DOF_arm(Env):
         done : a boolean, indicating whether the episode has ended
         info : a dictionary containing other diagnostic information from the previous action
         """
-        self.cur_theta = self.prev_theta + action[0]
+        
+        self.cur_theta = np.sum([self.prev_theta,action[0]],axis = 0)
         self.cur_image = self.render_image()
         self.prev_theta = self.cur_theta
         #in addition compute the reward from the previous action
@@ -68,7 +70,7 @@ class env_2DOF_arm(Env):
         # else:
         #     reward = 0.
 
-        reward = 10/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 +1 )
+        reward = 10/(((self.end_effector[0] - self.target[0][0]) ** 2 + (self.end_effector[1] - self.target[0][1]) ** 2) ** 0.5 + 1)
 
         if abs(self.end_effector[0] - self.target[0][0]) < 9 and abs(self.end_effector[1] - self.target[0][1]) < 9:
             done = True
@@ -126,8 +128,8 @@ class env_2DOF_arm(Env):
         """
         print("env reset")
         #Reset the theta to the initial theta
-        self.cur_theta = np.array([0,np.pi/2])
-        self.prev_theta = np.array([0,np.pi/2])
+        self.cur_theta = np.random.uniform(-np.pi,np.pi,size = 2)
+        self.prev_theta = self.cur_theta
         #render the grid using this theta and
         #also reset the theta
         #self.target = [tuple(np.round(np.random.uniform(10,120,size = 2)))]
