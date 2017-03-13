@@ -2,7 +2,7 @@ import abc
 
 import tensorflow as tf
 
-from core.tf_util import he_uniform_initializer, mlp, linear
+from mod_tf_util import he_uniform_initializer, mlp, linear,conv
 from misc.rllab_util import get_action_dim
 from predictors.state_network import StateNetwork
 from rllab.core.serializable import Serializable
@@ -83,38 +83,19 @@ class FeedForwardPolicy(NNPolicy):
 
 class Conv_FeedForwardPolicy(NNPolicy):
 
-    def __init__(self,name_or_scope,**kwargs):
-        self.name_or_scope = name_or_scope
+    def __init__(self,
+                name_or_scope,
+                action_mlp_hidden_sizes = [200,200],
+                **kwargs):
         self.setup_serialization(locals())
-        with tf.variable_scope(name_or_scope) as scope:
-            try:
-
-              self.W_conv1 = tf.get_variable("W_conv1",[5,5,1,32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-              self.b_conv1 = tf.get_variable("b_conv1",[32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-              
-              self.W_conv2 = tf.get_variable("W_conv2",[5,5,32,32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-              self.b_conv2 = tf.get_variable("b_conv2",[32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-              
-              self.W_conv3 = tf.get_variable("W_conv3",[3,3,32,32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-              self.b_conv3 = tf.get_variable("b_conv3",[32],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-            
-              #now initialize the variables for the fc layers
-              self.W_fc = tf.get_variable("W_fc",[9*32,2],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-              self.b_fc = tf.get_variable("b_fc",[2],tf.float32,tf.random_uniform_initializer(-3e-3,3e-3))
-            except:
-              scope.reuse_variables()
-
-              self.W_conv1 = tf.get_variable("W_conv1")
-              self.b_conv1 = tf.get_variable("b_conv1")
-              
-              self.W_conv2 = tf.get_variable("W_conv2")
-              self.b_conv2 = tf.get_variable("b_conv2")
-              
-              self.W_conv3 = tf.get_variable("W_conv3")
-              self.b_conv3 = tf.get_variable("b_conv3")
-              #now initialize the variables for the fc layers
-              self.W_fc = tf.get_variable("W_fc")
-              self.b_fc = tf.get_variable("b_fc")
+        self.hidden_W_init = he_uniform_initializer()
+        self.hidden_b_init = tf.constant_initializer(0.)
+        self.output_W_init = tf.random_uniform_initializer(
+                -3e-4,3e-4)
+        self.output_b_init = tf.random_uniform_initializer(
+                -3e-4,3e-4)
+        self.name_or_scope = name_or_scope
+        self.action_mlp_hidden_sizes = action_mlp_hidden_sizes       
         super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,
                                                     **kwargs)
 
@@ -122,26 +103,60 @@ class Conv_FeedForwardPolicy(NNPolicy):
         """
         observation input is a tensor of shape [None,4096]
         you should output a tensor of shape [None,2]
-        	"""
-
+        """
         x = tf.expand_dims(tf.reshape(observation_input,shape = [-1,64,64]),-1)
-        conv1 = tf.nn.conv2d(x,self.W_conv1,strides = [1,3,3,1],padding = "SAME")
-        h_1 = tf.nn.tanh(tf.nn.bias_add(conv1,self.b_conv1))
+        #cast the input observation as a float and normalize before passing into layers
+        x = tf.to_float(x)/255.
+        with tf.variable_scope("Observation_ConvNet") as _:
+          
+          with tf.variable_scope("Conv_1") as _:
+            h_1 = conv(
+              x,
+              [7,7,1,32],
+              tf.nn.relu,
+              strides=[1,3,3,1],
+              W_initializer=self.hidden_W_init,
+              b_initializer=self.hidden_b_init
+              )
+          
+          with tf.variable_scope("Conv_2") as _:
+            h_2 = conv(
+              h_1,
+              [5,5,32,32],
+              tf.nn.relu,
+              strides=[1,2,2,1],
+              W_initializer=self.hidden_W_init,
+              b_initializer=self.hidden_b_init
+              )
 
-        conv2 = tf.nn.conv2d(h_1,self.W_conv2,strides = [1,3,3,1],padding = "SAME")
-        h_2 = tf.nn.tanh(tf.nn.bias_add(conv2,self.b_conv2))
+          with tf.variable_scope("Conv_3") as _:
+            h_3 = conv(
+              h_2,
+              [5,5,32,32],
+              tf.nn.relu,
+              strides=[1,2,2,1],
+              W_initializer=self.hidden_W_init,
+              b_initializer=self.hidden_b_init
+              )
+          print(h_3)
+          h_3_flattened = tf.reshape(h_3,shape = [-1,6*6*32])
 
-        conv3 = tf.nn.conv2d(h_2,self.W_conv3,strides = [1,3,3,1],padding = "SAME")
-        h_3 = tf.nn.tanh(tf.nn.bias_add(conv3,self.b_conv3))
+        with tf.variable_scope("Observation_mlp") as _:
+          observation_output = mlp(h_3_flattened,
+            6*6*32,
+            self.action_mlp_hidden_sizes,
+            tf.nn.relu,
+            W_initializer=self.hidden_W_init,
+            b_initializer=self.hidden_b_init
+            )
+
+        with tf.variable_scope("Action_readout") as _:
+          action = mlp(observation_output,
+                 self.action_mlp_hidden_sizes[-1],
+                 [2],
+                 tf.nn.tanh,
+                 W_initializer=self.output_W_init,
+                 b_initializer=self.output_b_init)
   
-        h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
-        #finally pass through fc layer with tanh non linearity
-        action = tf.nn.tanh(tf.matmul(h_3_flattened,self.W_fc) + self.b_fc)*np.pi
         return action
-
-    def get_params_internal(self):
-         if "target" in self.name_or_scope:
-             return [v for v in tf.all_variables() if self.name_or_scope[:-1] in v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
-         else:
-             return [v for v in tf.all_variables() if self.name_or_scope == v.name.split("/")[0] and not("Adam" in v.name.split("/")[-1])]
 
