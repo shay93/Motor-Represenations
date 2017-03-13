@@ -9,7 +9,7 @@ from scipy.misc import imresize
 import matplotlib.pyplot as plt
 parent_dir = os.path.dirname(os.getcwd())
 
-import training_tools as tt
+#import training_tools as tt
 import IPython
 
 class Planar_arm_2DOF_lowdim(Env):
@@ -30,12 +30,12 @@ class Planar_arm_2DOF_lowdim(Env):
         #randomly specify the location of the target over the 128 by 128 grid
         self.target = np.round(np.random.uniform(74,118,size=2))
         #initialize an object that will help you draw lines
-        self.sp = tt.shape_maker()
+        #self.sp = tt.shape_maker()
         #set both the current and previous theta to the given initial theta
         self.prev_theta = theta_i
         self.cur_theta = theta_i
         #based on the state of the arm render and target location render an image
-        self.cur_image = self.render_image()
+        #self.cur_image = self.render_image()
         #specify an epsilong wrt to the target that determines when the target has
         #been reached
         self.epsilon = epsilon
