@@ -40,7 +40,7 @@ class FeedForwardPolicy(NNPolicy):
     def __init__(
             self,
             name_or_scope,
-            observation_hidden_sizes=(400, 300),
+            observation_hidden_sizes=(100, 100),
             hidden_W_init=None,
             hidden_b_init=None,
             output_W_init=None,
@@ -85,15 +85,17 @@ class Conv_FeedForwardPolicy(NNPolicy):
 
     def __init__(self,
                 name_or_scope,
+                action_mlp_hidden_sizes = [200,200],
                 **kwargs):
+        self.setup_serialization(locals())
         self.hidden_W_init = he_uniform_initializer()
         self.hidden_b_init = tf.constant_initializer(0.)
         self.output_W_init = tf.random_uniform_initializer(
-                -3e-3,3e-3)
+                -3e-4,3e-4)
         self.output_b_init = tf.random_uniform_initializer(
-                -3e-3,3e-3)
+                -3e-4,3e-4)
         self.name_or_scope = name_or_scope
-        self.setup_serialization(locals())       
+        self.action_mlp_hidden_sizes = action_mlp_hidden_sizes       
         super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,
                                                     **kwargs)
 
@@ -103,15 +105,16 @@ class Conv_FeedForwardPolicy(NNPolicy):
         you should output a tensor of shape [None,2]
         """
         x = tf.expand_dims(tf.reshape(observation_input,shape = [-1,64,64]),-1)
-        #cast the input observation as a float before passing into layers
-        x = tf.to_float(x)
-        with tf.variable_scope("ConvNet") as _:
+        #cast the input observation as a float and normalize before passing into layers
+        x = tf.to_float(x)/255.
+        with tf.variable_scope("Observation_ConvNet") as _:
           
           with tf.variable_scope("Conv_1") as _:
             h_1 = conv(
               x,
-              [5,5,1,32],
+              [7,7,1,32],
               tf.nn.relu,
+              strides=[1,3,3,1],
               W_initializer=self.hidden_W_init,
               b_initializer=self.hidden_b_init
               )
@@ -121,6 +124,7 @@ class Conv_FeedForwardPolicy(NNPolicy):
               h_1,
               [5,5,32,32],
               tf.nn.relu,
+              strides=[1,2,2,1],
               W_initializer=self.hidden_W_init,
               b_initializer=self.hidden_b_init
               )
@@ -128,22 +132,31 @@ class Conv_FeedForwardPolicy(NNPolicy):
           with tf.variable_scope("Conv_3") as _:
             h_3 = conv(
               h_2,
-              [3,3,32,32],
+              [5,5,32,32],
               tf.nn.relu,
+              strides=[1,2,2,1],
               W_initializer=self.hidden_W_init,
               b_initializer=self.hidden_b_init
               )
+          print(h_3)
+          h_3_flattened = tf.reshape(h_3,shape = [-1,6*6*32])
 
-          h_3_flattened = tf.reshape(h_3,shape = [-1,9*32])
-
-        with tf.variable_scope("MLP") as _:
-          action = mlp(h_3_flattened,
-            9*32,
-            [2],
-            tf.nn.tanh,
-            W_initializer=self.output_W_init,
-            b_initializer=self.output_b_init
+        with tf.variable_scope("Observation_mlp") as _:
+          observation_output = mlp(h_3_flattened,
+            6*6*32,
+            self.action_mlp_hidden_sizes,
+            tf.nn.relu,
+            W_initializer=self.hidden_W_init,
+            b_initializer=self.hidden_b_init
             )
+
+        with tf.variable_scope("Action_readout") as _:
+          action = mlp(observation_output,
+                 self.action_mlp_hidden_sizes[-1],
+                 [2],
+                 tf.nn.tanh,
+                 W_initializer=self.output_W_init,
+                 b_initializer=self.output_b_init)
   
         return action
 
