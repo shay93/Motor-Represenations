@@ -1,11 +1,11 @@
 
 
 from algos.ddpg import DDPG
-from base_nn_policy import Conv_FeedForwardPolicy
-from mod_nn_qfunction import Conv_FeedForwardCritic
+from base_nn_policy import FeedForwardPolicy
+from mod_nn_qfunction import FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
-from planar2d import  env_2DOF_arm
+from planar_arm_2DOF_lowdim import  Planar_arm_2DOF_lowdim
 from planarspace import PlanarSpace
 from sandbox.rocky.tf.envs.base import TfEnv
 import IPython
@@ -15,13 +15,13 @@ import argparse
 import os
 
 def run_task(*_):
-    env = env_2DOF_arm()
+    env = Planar_arm_2DOF_lowdim()
     es = OUStrategy(env_spec=env.spec)
-    qf = Conv_FeedForwardCritic(
+    qf = FeedForwardCritic(
         name_or_scope = "critic",
         env_spec=env.spec,
     )
-    policy = Conv_FeedForwardPolicy(
+    policy = FeedForwardPolicy(
         name_or_scope="actor",
         env_spec=env.spec,
     )
@@ -30,18 +30,7 @@ def run_task(*_):
         es,
         policy,
         qf,
-        eval_samples = 100,
-        min_pool_size = 10000,
-        epoch_length = 1000,
-	n_epochs = 5000,
-        n_updates_per_time_step = 1,
-        max_path_length = 100,
-	batch_size = 16,
-        replay_pool_size = 1000000,
-        discount = 0.99,
-        summary_dir = args.summary_dir,
-        qf_learning_rate = args.qf_learning_rate,
-        scale_reward = args.scale_reward, 
+        summary_dir = args.summary_dir
     )
     #IPython.embed()
     algorithm.train()
