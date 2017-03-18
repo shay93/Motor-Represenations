@@ -40,7 +40,7 @@ class FeedForwardPolicy(NNPolicy):
     def __init__(
             self,
             name_or_scope,
-            observation_hidden_sizes=(100, 100),
+            observation_hidden_sizes=(200, 100),
             hidden_W_init=None,
             hidden_b_init=None,
             output_W_init=None,
@@ -84,8 +84,7 @@ class FeedForwardPolicy(NNPolicy):
 class Conv_FeedForwardPolicy(NNPolicy):
 
     def __init__(self,
-                name_or_scope,
-                action_mlp_hidden_sizes = [200,100],
+                name_or_scope, 
                 **kwargs):
         self.setup_serialization(locals())
         self.hidden_W_init = he_uniform_initializer()
@@ -95,7 +94,7 @@ class Conv_FeedForwardPolicy(NNPolicy):
         self.output_b_init = tf.random_uniform_initializer(
                 -3e-4,3e-4)
         self.name_or_scope = name_or_scope
-        self.action_mlp_hidden_sizes = action_mlp_hidden_sizes       
+        #self.action_mlp_hidden_sizes = action_mlp_hidden_sizes       
         super(Conv_FeedForwardPolicy, self).__init__(name_or_scope=name_or_scope,
                                                     **kwargs)
 
@@ -141,10 +140,10 @@ class Conv_FeedForwardPolicy(NNPolicy):
           print(h_3)
           h_3_flattened = tf.reshape(h_3,shape = [-1,6*6*32])
 
-        with tf.variable_scope("Observation_mlp") as _:
+        with tf.variable_scope("Action__mlp") as _:
           observation_output = mlp(h_3_flattened,
             6*6*32,
-            self.action_mlp_hidden_sizes,
+            [200,100],
             tf.nn.relu,
             W_initializer=self.hidden_W_init,
             b_initializer=self.hidden_b_init
@@ -152,7 +151,7 @@ class Conv_FeedForwardPolicy(NNPolicy):
 
         with tf.variable_scope("Action_readout") as _:
           action = mlp(observation_output,
-                 self.action_mlp_hidden_sizes[-1],
+                 100,
                  [2],
                  tf.nn.tanh,
                  W_initializer=self.output_W_init,

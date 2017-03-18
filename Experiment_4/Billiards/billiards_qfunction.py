@@ -101,9 +101,9 @@ class Conv_FeedForwardCritic(NNQFunction):
             -3e-4,3e-4)
         self.output_b_init= output_b_init or tf.random_uniform_initializer(
             -3e-4,3e-4)
-        self.action_mlp_hidden_sizes = (100,),
-        self.observation_mlp_hidden_sizes = (100,),
-        self.fusion_mlp_hidden_sizes = (100,50,),
+        self.action_mlp_hidden_sizes = 100,
+        self.observation_mlp_hidden_sizes = 100,
+        self.fusion_mlp_hidden_sizes=(100,50),
         self.hidden_nonlinearity = hidden_nonlinearity
         super().__init__(name_or_scope=name_or_scope, **kwargs)
 
@@ -174,7 +174,7 @@ class Conv_FeedForwardCritic(NNQFunction):
         with tf.variable_scope("fusion_mlp") as _:
             fused_encoded = mlp(embedded,
                                embedded_dim,
-                               self.fusion_mlp_hidden_sizes,
+                               [100,50],
                                self.hidden_nonlinearity,
                                W_initializer=self.hidden_W_init,
                                b_initializer=self.hidden_b_init,
@@ -182,7 +182,7 @@ class Conv_FeedForwardCritic(NNQFunction):
 
         with tf.variable_scope("output_linear") as _:
             return linear(fused_encoded,
-                          self.fusion_mlp_hidden_sizes[-1],
+                          50,
                           1,
                           W_initializer=self.output_W_init,
                           b_initializer=self.output_b_init,
