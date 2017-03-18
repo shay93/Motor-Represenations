@@ -31,13 +31,14 @@ def run_task(*_):
         #eval_samples = 1000,
         #min_pool_size = 100,
         #epoch_length = 10000,
-        #n_epochs = 400,
+        n_epochs = 100,
         #n_updates_per_time_step = 1,
         max_path_length = args.max_path_length,
         batch_size = args.batch_size,
         #replay_pool_size = 1000000,
         #discount = 0.99,
         summary_dir = args.summary_dir,
+        policy_learning_rate=arg.policy_lr
         #qf_learning_rate = args.qf_learning_rate,
         #scale_reward = args.scale_reward,
         soft_target_tau = args.tau,
@@ -51,10 +52,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--summary_dir',type=str,default='/home/shay93/Motor-Represenations/Experiment_4/Billiards/tensorflow_summaries/image_observation')
     parser.add_argument('--qf_learning_rate',type=float,default=1e-3)
-    parser.add_argument('--tau',type=float,default=1e-3),
+    parser.add_argument('--tau',type=float,default=1e-2),
     parser.add_argument('--scale_reward',type=float,default=1.)
     parser.add_argument('--batch_size',type=int,default=16)
     parser.add_argument('--max_path_length',type=int,default=100)
+    parser.add_argument('--policy_lr',type=float,default=1e-4)
     args = parser.parse_args()
     if not(os.path.exists(args.summary_dir)):
        os.makedirs(args.summary_dir)
