@@ -85,7 +85,7 @@ class Conv_FeedForwardPolicy(NNPolicy):
 
     def __init__(self,
                 name_or_scope,
-                action_mlp_hidden_sizes = [200,200],
+                action_mlp_hidden_sizes = [200,100],
                 **kwargs):
         self.setup_serialization(locals())
         self.hidden_W_init = he_uniform_initializer()

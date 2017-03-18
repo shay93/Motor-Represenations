@@ -1,10 +1,10 @@
 
 
 from algos.ddpg import DDPG
-#from billiards_nn_policy import FeedForwardPolicy
-#from billiards_qfunction import FeedForwardCritic
-from policies.nn_policy import FeedForwardPolicy
-from qfunctions.nn_qfunction import FeedForwardCritic
+from billiards_nn_policy import FeedForwardPolicy
+from billiards_qfunction import FeedForwardCritic
+#from policies.nn_policy import FeedForwardPolicy
+#from qfunctions.nn_qfunction import FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
 from billiards_2D import  Billiards_2D
@@ -42,7 +42,7 @@ def run_task(*_):
         summary_dir = args.summary_dir,
         #qf_learning_rate = args.qf_learning_rate,
         #scale_reward = args.scale_reward,
-        #soft_target_tau = args.tau,
+        soft_target_tau = args.tau,
     )
     #IPython.embed()
     algorithm.train()

@@ -7,13 +7,13 @@ from billiards_qfunction import Conv_FeedForwardCritic
 #from qfunctions.nn_qfunction import FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
-from billiards_2D import  Billiards_2D
+from billiards_2D_image_observation import  Billiards_2D
 import IPython
 import os
 import argparse
 
 def run_task(*_):
-    env = Billiards_2D(num_steps = 1000)
+    env = Billiards_2D(num_steps = args.max_path_length)
     es = OUStrategy(env_spec=env.spec)
     qf = Conv_FeedForwardCritic(
         name_or_scope = "critic",
@@ -33,14 +33,14 @@ def run_task(*_):
         #epoch_length = 10000,
         #n_epochs = 400,
         #n_updates_per_time_step = 1,
-        #max_path_length = args.max_path_length,
-        #batch_size = args.batch_size,
+        max_path_length = args.max_path_length,
+        batch_size = args.batch_size,
         #replay_pool_size = 1000000,
         #discount = 0.99,
         summary_dir = args.summary_dir,
         #qf_learning_rate = args.qf_learning_rate,
         #scale_reward = args.scale_reward,
-        #soft_target_tau = args.tau,
+        soft_target_tau = args.tau,
     )
     #IPython.embed()
     algorithm.train()
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parser.add_argument('--qf_learning_rate',type=float,default=1e-3)
     parser.add_argument('--tau',type=float,default=1e-3),
     parser.add_argument('--scale_reward',type=float,default=1.)
-    parser.add_argument('--batch_size',type=int,default=64)
+    parser.add_argument('--batch_size',type=int,default=16)
     parser.add_argument('--max_path_length',type=int,default=100)
     args = parser.parse_args()
     if not(os.path.exists(args.summary_dir)):
