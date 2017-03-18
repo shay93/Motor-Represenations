@@ -99,6 +99,7 @@ class Conv_FeedForwardCritic(NNQFunction):
         self.action_mlp_hidden_sizes = (100,),
         self.observation_mlp_hidden_sizes = (100,),
         self.fusion_mlp_hidden_sizes = (100,50,),
+        self.hidden_nonlinearity = tf.nn.relu
         super().__init__(name_or_scope=name_or_scope, **kwargs)
 
     def _create_network(self,observation_input,action_input):
