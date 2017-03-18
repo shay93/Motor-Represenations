@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument('--speedup', type=float, default=1,
                         help='Speedup')
     
-    parser.add_argument('--num_sequences',type=int,default=100,
+    parser.add_argument('--num_sequences',type=int,default=1000,
                         help='Number of sequences to evaluate')
 
     args = parser.parse_args()
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         #    policy.get_action(obs)
         data = joblib.load(args.file)
         if 'policy' in data:
-            print("Policty in data")
+            print("Policy in data")
             policy = data['policy']
         else:
             print("Optimizable policy")
@@ -93,7 +93,7 @@ if __name__ == "__main__":
                 image = imageio.imread(seq_directory + "timestep" + str(i))
                 writer.append_data(image, meta={'fps' : 5})
 
-    print(np.sum(terminal_list)/len(terminal_list))
+    print(str(np.sum(terminal_list)/len(terminal_list)))
     with open("terminal_list.npy",'wb') as f:
         pickle.dump(terminal_list,f)
 
