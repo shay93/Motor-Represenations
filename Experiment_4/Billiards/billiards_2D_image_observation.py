@@ -18,7 +18,7 @@ class Billiards_2D(Env):
     """
 
 
-    def __init__(self,num_steps = 100,box_width = 5):
+    def __init__(self,num_steps = 1000,box_width = 5):
         """
         theta_i of shape [2] np array
         """
@@ -112,7 +112,7 @@ class Billiards_2D(Env):
         #Do not terminate episode in order to ensure that actor sticks to target
         done = False
         
-        return self.cur_obs_image,reward,done,{"Observed Image" : self.cur_obs_image,"Overlap" : overlap}
+        return self.cur_obs_image.astype('uint8'),reward,done,{"Observed Image" : self.cur_obs_image.astype('uint8'),"Overlap" : overlap}
 
 
     def render_image(self):
@@ -145,7 +145,7 @@ class Billiards_2D(Env):
         self.target = [tuple(np.round(np.random.uniform(10,54,size = 2)))]
         #Reset the actor location
         self.actor = self.get_actor_loc()
-        return self.render_image()
+        return self.render_image().astype('uint8')
 
     @property
     def observation_space(self):
