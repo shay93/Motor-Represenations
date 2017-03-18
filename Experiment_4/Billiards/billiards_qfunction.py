@@ -86,20 +86,25 @@ class Conv_FeedForwardCritic(NNQFunction):
     the tensors along dimension 1 to obtain the embedded vector
     which may be passed to a few fuly connected layers in order to output a Q value of dimension None,1
     """
-    def __init__(self,name_or_scope, 
+    def __init__(self,name_or_scope,
+                hidden_W_init=None,
+                hidden_b_init=None,
+                output_W_init=None,
+                output_b_init=None,
+                hidden_nonlinearity=tf.nn.relu,
                  **kwargs):
         self.setup_serialization(locals())
         self.name = str(name_or_scope)
-        self.hidden_W_init=he_uniform_initializer()
-        self.hidden_b_init=tf.constant_initializer(0.)
-        self.output_W_init=tf.random_uniform_initializer(
+        self.hidden_W_init= hidden_W_init or he_uniform_initializer()
+        self.hidden_b_init= hidden_b_init or tf.constant_initializer(0.)
+        self.output_W_init=output_W_init or tf.random_uniform_initializer(
             -3e-4,3e-4)
-        self.output_b_init=tf.random_uniform_initializer(
+        self.output_b_init= output_b_init or tf.random_uniform_initializer(
             -3e-4,3e-4)
         self.action_mlp_hidden_sizes = (100,),
         self.observation_mlp_hidden_sizes = (100,),
         self.fusion_mlp_hidden_sizes = (100,50,),
-        self.hidden_nonlinearity = tf.nn.relu
+        self.hidden_nonlinearity = hidden_nonlinearity
         super().__init__(name_or_scope=name_or_scope, **kwargs)
 
     def _create_network(self,observation_input,action_input):
