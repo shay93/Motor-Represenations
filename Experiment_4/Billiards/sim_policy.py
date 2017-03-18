@@ -62,11 +62,12 @@ if __name__ == "__main__":
                 print("Trying to rollout")
                 rollout_dict = rollout(env, policy, max_path_length=args.max_path_length,
                                animated=False, speedup=args.speedup)
+                
                 rollout_lst_dict.append(rollout_dict)
                 # Hack for now. Not sure why rollout assumes that close is an
                 # keyword argument
                 #IPython.embed()
-                terminal_list.append(rollout_dict['terminal'])
+                terminal_list.append(np.max(rollout_dict['env_infos']['Overlap']))
             except TypeError as e:
                 if (str(e) != "render() got an unexpected keyword "
                               "argument 'close'"):
@@ -83,8 +84,10 @@ if __name__ == "__main__":
         seq_length = np.shape(rollout_lst_dict[j]['observations'])[0]
         
         for i in range(seq_length):
+            #IPython.embed()
             plt.imsave(seq_directory + "timestep" + str(i),
-                rollout_lst_dict[j]['observations'][i,:].reshape((64,64)),
+                rollout_lst_dict[j]['env_infos']\
+                ['Observed Image'][i,:].reshape((64,64)),
                 cmap = "Greys_r")
 
         with imageio.get_writer(movie_dir + "/" + "sequence_" + str(j) + ".gif", mode='I') as writer:
