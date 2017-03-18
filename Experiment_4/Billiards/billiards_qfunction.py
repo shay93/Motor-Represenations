@@ -142,17 +142,15 @@ class Conv_FeedForwardCritic(NNQFunction):
         h_3_flattened = tf.reshape(h_3,shape = [-1,6*6*32])
           
         
-        with tf.variable_scope("Observation_MLP_Obs") as _:
-            IPython.embed()
+        with tf.variable_scope("obsmlp") as _:
             observation_encoded = mlp(h_3_flattened,
-            int(6*6*32),
+            6*6*32,
             self.observation_mlp_hidden_sizes,
             tf.nn.relu,
-            W_initializer=self.hidden_W_init,
-            b_initializer=self.hidden_b_init,
+            W_initializer=he_uniform_initializer()
             )
        
-        with tf.variable_scope("Action_MLP_Obs") as _:
+        with tf.variable_scope("action_mlp") as _:
             action_encoded = mlp(action_input,
             2,
             self.action_mlp_hidden_sizes,
@@ -171,7 +169,7 @@ class Conv_FeedForwardCritic(NNQFunction):
           self.fusion_mlp_hidden_sizes,
           tf.nn.relu,
           W_initializer=self.hidden_W_init,
-          b_initializer=self.hidden_b_init
+          b_initializer=tf.constant_initializer(0.)
           )
 
         with tf.variable_scope("fusion_linear") as _:
