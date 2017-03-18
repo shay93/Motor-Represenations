@@ -99,7 +99,7 @@ class Conv_FeedForwardCritic(NNQFunction):
         self.action_mlp_hidden_sizes = (100,),
         self.observation_mlp_hidden_sizes = (100,),
         self.fusion_mlp_hidden_sizes = (100,50,),
-        super(Conv_FeedForwardCritic,self).__init__(name_or_scope=name_or_scope, **kwargs)
+        super().__init__(name_or_scope=name_or_scope, **kwargs)
 
     def _create_network(self,observation_input,action_input):
         #IPython.embed()
@@ -139,46 +139,49 @@ class Conv_FeedForwardCritic(NNQFunction):
               )
 
         
-        h_3_flattened = tf.reshape(h_3,shape = [-1,6*6*32])
+        h_3_flattened = tf.reshape(h_3,shape = [-1,1152])
           
         
-        with tf.variable_scope("obsmlp") as _:
+        with tf.variable_scope("observation_mlp") as _:
             observation_encoded = mlp(h_3_flattened,
-            6*6*32,
-            self.observation_mlp_hidden_sizes,
-            tf.nn.relu,
-            W_initializer=he_uniform_initializer()
-            )
+                               1152,
+                               self.observation_mlp_hidden_sizes,
+                               self.hidden_nonlinearity,
+                               W_initializer=self.hidden_W_init,
+                               b_initializer=self.hidden_b_init,
+                               )
        
         with tf.variable_scope("action_mlp") as _:
             action_encoded = mlp(action_input,
-            2,
-            self.action_mlp_hidden_sizes,
-            tf.nn.relu,
-            W_initializer=self.hidden_W_init,
-            b_initializer=self.hidden_b_init,
-            ) 
+                               self.action_dim,
+                               self.action_mlp_hidden_sizes,
+                               self.hidden_nonlinearity,
+                               W_initializer=self.hidden_W_init,
+                               b_initializer=self.hidden_b_init,
+                               )
 
 
         #once action has been encoded concatenate it with the observation 
         embedded = tf.concat(1,[observation_encoded,action_encoded])
         embedded_dim = self.observation_mlp_hidden_sizes[-1] + self.action_mlp_hidden_sizes[-1]
+        
         with tf.variable_scope("fusion_mlp") as _:
-          fused_output = mlp(embedded,
-          embedded_dim,
-          self.fusion_mlp_hidden_sizes,
-          tf.nn.relu,
-          W_initializer=self.hidden_W_init,
-          b_initializer=tf.constant_initializer(0.)
-          )
+            fused_encoded = mlp(embedded,
+                               embedded_dim,
+                               self.fusion_mlp_hidden_sizes,
+                               self.hidden_nonlinearity,
+                               W_initializer=self.hidden_W_init,
+                               b_initializer=self.hidden_b_init,
+                               )
 
-        with tf.variable_scope("fusion_linear") as _:
-          return linear(fused_output,
-          50,
-          1,
-          W_initializer=self.output_W_init,
-          b_initializer=self.output_b_init,
-          )
+        with tf.variable_scope("output_linear") as _:
+            return linear(fused_encoded,
+                          self.fusion_mlp_hidden_sizes[-1],
+                          1,
+                          W_initializer=self.output_W_init,
+                          b_initializer=self.output_b_init,
+                          )
+
 
 
 
