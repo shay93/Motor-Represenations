@@ -44,7 +44,7 @@ class Planar_arm_2DOF_lowdim(Env):
         #the action space is the change in the delta in the joint angles
         #restrict the action space to small angles in order to ensure smooth
         #trajectories
-        self._action_space = Box(-.1,.1,(2))
+        self._action_space = Box(-1.,1.,(2))
         #The observation is a concatenation of the joint states and target loc
         self._observation_space = Box(-1.,1.,(4))
 
@@ -72,9 +72,9 @@ class Planar_arm_2DOF_lowdim(Env):
         #compute the L2 distance between the end effector location and target location
         distance = np.linalg.norm(np.subtract(end_effector,self.target))
         #compute the normalized distance by dividing by the length of the box
-        distance_normalized = distance / 128.
+        distance_normalized = distance / 90.
         #compute the reward as hte inverse of the normalized distance and scale between 0 and 1
-        reward = (1./(distance_normalized + 1.) - 0.5)*2.
+        reward = (1./(distance_normalized + 1.)-0.5)*2.
         #let info record the joint angle state at the current timestep
         info = {"Joint State" : self.cur_theta}
         #do not specify completion
@@ -82,7 +82,8 @@ class Planar_arm_2DOF_lowdim(Env):
         #scale the target location to get an observation
         scaled_target_obs = (self.target - 95.)/22.
         #stack the target location and the joint angle state to obtain the obs
-        obs = np.concatenate([self.cur_theta - 1.,scaled_target_obs])
+        obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])
+        #IPython.embed()
         return np.copy(obs),reward,done,info
     
     def get_end_effector_pos(self):
@@ -104,6 +105,7 @@ class Planar_arm_2DOF_lowdim(Env):
         link1_end_point = (int(x_link_1),int(y_link_1))
         link2_end_point = (int(x_link_2),int(y_link_2))
         self.end_effector = link2_end_point
+        #IPython.embed()
         return self.end_effector
     
     def reset(self):
@@ -119,7 +121,20 @@ class Planar_arm_2DOF_lowdim(Env):
         #reset the location of the target by sampling over a 128 by 128 grid
         self.target = np.round(np.random.uniform(73,117,size=2))
         scaled_target_obs = (self.target - 95.)/22.
-        return np.copy(np.concatenate([self.cur_theta - 1.,scaled_target_obs]))
+        return np.copy(np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs]))
+
+    def shift_theta_range(self,angle_array):
+       """
+       Shifts range of angle given between to 0 to 2pi to -pi and pi
+       """
+       array_length = np.shape(angle_array)[0]
+       shifted_angles = np.zeros(array_length)
+       for i,angle in enumerate(angle_array):
+          if angle > 1.:
+            shifted_angles[i] = angle - 2.
+          else:
+            shifted_angles[i] = angle
+       return shifted_angles
 
     @property
     def action_space(self):
