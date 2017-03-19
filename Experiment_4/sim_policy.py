@@ -10,9 +10,14 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 import IPython
+import imageio
 filename = str(uuid.uuid4())
 root_dir = "Eval_Sequences/"
 movie_dir = "Eval_Movies/"
+
+if not(os.path.exists(movie_dir)):
+	os.makedirs(movie_dir)
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -67,7 +72,7 @@ if __name__ == "__main__":
 
 
     #now run through all the sequences and plot them
-    for j in range(6):
+    for j in range(100):
         seq_directory = root_dir + "sequence_" + str(j) + "/"
         #first create a directory
         if not(os.path.exists(seq_directory)):
@@ -82,7 +87,7 @@ if __name__ == "__main__":
         with imageio.get_writer(movie_dir + "/" + "sequence_" + str(j) + ".gif", mode='I') as writer:
             num_files = seq_length
             for i in range(num_files):
-                image = imageio.imread(root_dir + '/' + seq_directory + "/" + "timestep" + str(i))
+                image = imageio.imread(seq_directory + "timestep" + str(i))
                 writer.append_data(image, meta={'fps' : 2})
 
     print(np.sum(terminal_list)/len(terminal_list))
