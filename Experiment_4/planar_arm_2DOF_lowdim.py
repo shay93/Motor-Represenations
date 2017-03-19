@@ -34,19 +34,13 @@ class Planar_arm_2DOF_lowdim(Env):
         #set both the current and previous theta to the given initial theta
         self.prev_theta = theta_i
         self.cur_theta = theta_i
-        #based on the state of the arm render and target location render an image
-        #self.cur_image = self.render_image()
-        #specify an epsilong wrt to the target that determines when the target has
-        #been reached
-        self.epsilon = epsilon
-        #num of steps determines the time horizon for the task
         self.num_steps = num_steps
         #the action space is the change in the delta in the joint angles
         #restrict the action space to small angles in order to ensure smooth
         #trajectories
         self._action_space = Box(-1.,1.,(2))
         #The observation is a concatenation of the joint states and target loc
-        self._observation_space = Box(-1.,1.,(4))
+        self._observation_space = Box(-1.,1.,(7))
 
     def step(self, action):
         """
@@ -82,9 +76,9 @@ class Planar_arm_2DOF_lowdim(Env):
         #scale the target location to get an observation
         scaled_target_obs = (self.target - 95.)/22.
         #stack the target location and the joint angle state to obtain the obs
-        obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])
+        obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs,end_effector,[distance_normalized]])
     
-        return np.copy(obs),np.copy(reward),done,info
+        return np.copy(obs).astype('float64'),np.copy(reward),done,info
     
     def get_end_effector_pos(self):
         """
@@ -121,7 +115,9 @@ class Planar_arm_2DOF_lowdim(Env):
         #reset the location of the target by sampling over a 128 by 128 grid
         self.target = np.round(np.random.uniform(73,117,size=2))
         scaled_target_obs = (self.target - 95.)/22.
-        return np.copy(np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs]))
+        #get the end effector position 
+        end_effector = self.get_end_effector_pos()
+        return np.copy(np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs,end_effector,[0]])).astype("float64")
 
     def shift_theta_range(self,angle_array):
        """
