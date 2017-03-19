@@ -83,8 +83,8 @@ class Planar_arm_2DOF_lowdim(Env):
         scaled_target_obs = (self.target - 95.)/22.
         #stack the target location and the joint angle state to obtain the obs
         obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])
-        #IPython.embed()
-        return np.copy(obs),reward,done,info
+    
+        return np.copy(obs),np.copy(reward),done,info
     
     def get_end_effector_pos(self):
         """
@@ -106,7 +106,7 @@ class Planar_arm_2DOF_lowdim(Env):
         link2_end_point = (int(x_link_2),int(y_link_2))
         self.end_effector = link2_end_point
         #IPython.embed()
-        return self.end_effector
+        return np.copy(link2_end_point)
     
     def reset(self):
         """
