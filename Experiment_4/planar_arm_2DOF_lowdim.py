@@ -8,7 +8,7 @@ import sys
 from scipy.misc import imresize
 import matplotlib.pyplot as plt
 parent_dir = os.path.dirname(os.getcwd())
-sys.path.append("parent_dir")
+sys.path.append(parent_dir)
 import training_tools as tt
 import IPython
 
@@ -30,7 +30,7 @@ class Planar_arm_2DOF_lowdim(Env):
         #randomly specify the location of the target over the 128 by 128 grid
         self.target = np.round(np.random.uniform(74,118,size=2))
         #initialize an object that will help you draw lines
-        #self.sp = tt.shape_maker()
+        self.sp = tt.shape_maker()
         #set both the current and previous theta to the given initial theta
         self.prev_theta = theta_i
         self.cur_theta = theta_i
@@ -38,9 +38,9 @@ class Planar_arm_2DOF_lowdim(Env):
         #the action space is the change in the delta in the joint angles
         #restrict the action space to small angles in order to ensure smooth
         #trajectories
-        self._action_space = Box(-1.,1.,(2))
+        self._action_space = Box(-0.05,0.05,(2))
         #The observation is a concatenation of the joint states and target loc
-        self._observation_space = Box(-1.,1.,(7))
+        self._observation_space = Box(-1.,1.,(4))
 
     def step(self, action):
         """
