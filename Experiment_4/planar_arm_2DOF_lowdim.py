@@ -57,12 +57,12 @@ class Planar_arm_2DOF_lowdim(Env):
         done : a boolean, indicating whether the episode has ended
         info : a dictionary containing other diagnostic information from the previous action
         """
+        #using the current state find the end effector position 
+        end_effector = self.get_end_effector_pos()
         #add the action to the previous joint state to obtain the new state
         self.cur_theta = np.mod(np.sum([self.prev_theta,action[0]],axis = 0),2.)
         #Make the current state equal to the previous state
         self.prev_theta = self.cur_theta
-        #using the current state find the end effector position 
-        end_effector = self.get_end_effector_pos()
         #compute the L2 distance between the end effector location and target location
         distance = np.linalg.norm(np.subtract(end_effector,self.target))
         #compute the normalized distance by dividing by the length of the box
@@ -76,7 +76,7 @@ class Planar_arm_2DOF_lowdim(Env):
         #scale the target location to get an observation
         scaled_target_obs = (self.target - 95.)/22.
         #stack the target location and the joint angle state to obtain the obs
-        obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs,end_effector,[distance_normalized]])
+        obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])
     
         return np.copy(obs).astype('float64'),np.copy(reward),done,info
     
@@ -108,16 +108,17 @@ class Planar_arm_2DOF_lowdim(Env):
         -------
         observation : the initial observation of the space. (Initial reward is assumed to be 0.)
         """
+        
         #Reset the joint angle state randomly
         self.cur_theta = np.random.uniform(0.,2.,size = 2)
+        #get the end effector position 
+        end_effector = self.get_end_effector_pos()
         #set the previous and current state to be equal to one another
         self.prev_theta = self.cur_theta
         #reset the location of the target by sampling over a 128 by 128 grid
         self.target = np.round(np.random.uniform(73,117,size=2))
         scaled_target_obs = (self.target - 95.)/22.
-        #get the end effector position 
-        end_effector = self.get_end_effector_pos()
-        return np.copy(np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs,end_effector,[0]])).astype("float64")
+        return np.copy(np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])).astype("float64")
 
     def shift_theta_range(self,angle_array):
        """
