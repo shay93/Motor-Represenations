@@ -93,12 +93,7 @@ class Billiards_2D(Env):
         rounded_action = np.round(action)
         #adjust the location of actor based on the produced action 
         new_actor = [(self.actor[0][0] + rounded_action[0][0],self.actor[0][1] + rounded_action[0][1])]
-        #only update actor if it is still on screen else do nothing
-        if self.check_on_screen(new_actor):
-            self.actor = new_actor
-        #get the current observation image after the step has been taken
-        self.cur_obs_image = self.render_image()
-
+        
         if self.check_on_screen(self.actor):
             distance = np.linalg.norm(np.subtract(self.actor,self.target))
             #compute the normalized distance
@@ -107,12 +102,19 @@ class Billiards_2D(Env):
         else:
             reward = -1.
 
+        #only update actor if it is still on screen else do nothing
+        if self.check_on_screen(new_actor):
+            self.actor = new_actor
+        #get the current observation image after the step has been taken
+        self.cur_obs_image = self.render_image()
+
+
         #determine if the actor overlaps with the target or not
         overlap = self.check_overlap(self.actor)
         #Do not terminate episode in order to ensure that actor sticks to target
         done = False
         
-        return self.cur_obs_image.astype('uint8'),reward,done,{"Observed Image" : self.cur_obs_image.astype('uint8'),"Overlap" : overlap}
+        return np.copy(self.cur_obs_image.astype('uint8')),reward,done,{"Observed Image" : self.cur_obs_image.astype('uint8'),"Overlap" : overlap}
 
 
     def render_image(self):
@@ -145,7 +147,7 @@ class Billiards_2D(Env):
         self.target = [tuple(np.round(np.random.uniform(10,54,size = 2)))]
         #Reset the actor location
         self.actor = self.get_actor_loc()
-        return self.render_image().astype('uint8')
+        return np.copy(self.render_image().astype('uint8'))
 
     @property
     def observation_space(self):
