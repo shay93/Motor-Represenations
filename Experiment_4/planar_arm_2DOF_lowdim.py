@@ -8,8 +8,8 @@ import sys
 from scipy.misc import imresize
 import matplotlib.pyplot as plt
 parent_dir = os.path.dirname(os.getcwd())
-
-#import training_tools as tt
+sys.path.append("parent_dir")
+import training_tools as tt
 import IPython
 
 class Planar_arm_2DOF_lowdim(Env):
@@ -59,6 +59,8 @@ class Planar_arm_2DOF_lowdim(Env):
         """
         #using the current state find the end effector position 
         end_effector = self.get_end_effector_pos()
+        #let info record the image at the current timestep
+        info = {"Observed Image" : self.render_image()}
         #add the action to the previous joint state to obtain the new state
         self.cur_theta = np.mod(np.sum([self.prev_theta,action[0]],axis = 0),2.)
         #Make the current state equal to the previous state
@@ -69,8 +71,6 @@ class Planar_arm_2DOF_lowdim(Env):
         distance_normalized = distance / 90.
         #compute the reward as hte inverse of the normalized distance and scale between 0 and 1
         reward = (1./(distance_normalized + 1.)-0.5)*2.
-        #let info record the joint angle state at the current timestep
-        info = {"Joint State" : self.cur_theta}
         #do not specify completion
         done = False
         #scale the target location to get an observation
@@ -113,6 +113,8 @@ class Planar_arm_2DOF_lowdim(Env):
         self.cur_theta = np.random.uniform(0.,2.,size = 2)
         #get the end effector position 
         end_effector = self.get_end_effector_pos()
+        #let info record the image at the current timestep
+        info = {"Observed Image" : self.render_image()}
         #set the previous and current state to be equal to one another
         self.prev_theta = self.cur_theta
         #reset the location of the target by sampling over a 128 by 128 grid
@@ -132,6 +134,35 @@ class Planar_arm_2DOF_lowdim(Env):
           else:
             shifted_angles[i] = angle
        return shifted_angles
+       
+    def render_image(self):
+        theta_1 = self.cur_theta[0]
+        theta_2 = self.cur_theta[1]
+        #specify the anchor point
+        start_x = 63
+        start_y = 63
+        start_point = (start_x,start_y)
+        #get positions of the end of each link by applying forward kinematics
+        x_link_1 = np.round(np.cos(theta_1)*self.link_length + start_x)
+        y_link_1 = np.round(np.sin(theta_1)*self.link_length + start_y)
+        x_link_2 = np.round(x_link_1 + np.cos(theta_1 + theta_2)*self.link_length)
+        y_link_2 = np.round(y_link_1 + np.sin(theta_1 + theta_2)*self.link_length)
+        #concatentate the x and y positions to get the tuple position
+        link1_end_point = (int(x_link_1),int(y_link_1))
+        link2_end_point = (int(x_link_2),int(y_link_2))
+        #get a list of positions that draw the intermediary points between the end effector positions
+        pos_list = self.sp.draw_line(start_point,link1_end_point) + self.sp.draw_line(link1_end_point,link2_end_point)
+        #now get the extended point list in order to thicken the lines
+        arm_points = self.sp.get_points_to_increase_line_thickness(pos_list,width = 7)
+        #now initialize a grid in order to save the correct images
+        temp_grid = tt.grid(grid_size = (128,128))
+        #draw the the points
+        temp_grid.draw_figure(arm_points)
+        #thicken the lines
+        cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = 9),pixel_value = 125.)
+        resize_im = imresize(cur_image,[64,64])
+        return (resize_im/255.0).astype('uint8').flatten() #Making it binary
+
 
     @property
     def action_space(self):
