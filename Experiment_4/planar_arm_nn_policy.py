@@ -77,7 +77,7 @@ class FeedForwardPolicy(NNPolicy):
             self.output_dim,
             W_initializer=self.output_W_init,
             b_initializer=self.output_b_init,
-        ))
+        ))*0.05
 
 
 

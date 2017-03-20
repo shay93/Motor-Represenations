@@ -4,7 +4,7 @@ import numpy as np
 import joblib
 import uuid
 import tensorflow as tf
-from billiards_2D import Billiards_2D
+from planar_arm_2DOF_lowdim import Planar_arm_2DOF_lowdim
 import json
 import matplotlib.pyplot as plt
 import os
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument('--speedup', type=float, default=1,
                         help='Speedup')
     
-    parser.add_argument('--num_sequences',type=int,default=1000,
+    parser.add_argument('--num_sequences',type=int,default=100,
                         help='Number of sequences to evaluate')
 
     args = parser.parse_args()

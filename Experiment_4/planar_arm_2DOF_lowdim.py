@@ -159,10 +159,18 @@ class Planar_arm_2DOF_lowdim(Env):
         #draw the the points
         temp_grid.draw_figure(arm_points)
         #thicken the lines
-        cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness(self.target,width = 9),pixel_value = 125.)
+        cur_image = temp_grid.draw_figure(self.sp.get_points_to_increase_line_thickness([self.target],width = 9),pixel_value = 125)
         resize_im = imresize(cur_image,[64,64])
-        return (resize_im/255.0).astype('uint8').flatten() #Making it binary
-
+        return (resize_im).astype('uint8').flatten() #Making it binary
+    
+    def check_overlap(self,end_effector):
+        """
+        Check if there is an overlap between the end effector position and the target box
+        """
+        if abs(end_effector[0] - target[0]) < 3 and abs(end_effector[1] - target[1]) < 3:
+           return True
+        else:
+           return False
 
     @property
     def action_space(self):
