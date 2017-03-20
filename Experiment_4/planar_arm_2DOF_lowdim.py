@@ -18,8 +18,7 @@ class Planar_arm_2DOF_lowdim(Env):
     and where its observations are 
     """
 
-    def __init__(self,num_steps = 100,
-                epsilon = 18,
+    def __init__(self,num_steps = 1000,
                 theta_i = np.random.uniform(0.,2.,size = 2),
                 link_length = 40):
         """
@@ -28,7 +27,7 @@ class Planar_arm_2DOF_lowdim(Env):
         """
         self.link_length = link_length
         #randomly specify the location of the target over the 128 by 128 grid
-        self.target = np.round(np.random.uniform(74,118,size=2))
+        self.target = np.round(np.random.uniform(20,108,size=2))
         #initialize an object that will help you draw lines
         self.sp = tt.shape_maker()
         #set both the current and previous theta to the given initial theta
@@ -38,7 +37,7 @@ class Planar_arm_2DOF_lowdim(Env):
         #the action space is the change in the delta in the joint angles
         #restrict the action space to small angles in order to ensure smooth
         #trajectories
-        self._action_space = Box(-0.05,0.05,(2))
+        self._action_space = Box(-1.,1.,(2))
         #The observation is a concatenation of the joint states and target loc
         self._observation_space = Box(-1.,1.,(4))
 
@@ -60,7 +59,7 @@ class Planar_arm_2DOF_lowdim(Env):
         #using the current state find the end effector position 
         end_effector = self.get_end_effector_pos()
         #let info record the image at the current timestep
-        info = {"Observed Image" : self.render_image()}
+        info = {"Observed Image" : self.render_image(),"Overlap" : self.check_overlap(end_effector)}
         #add the action to the previous joint state to obtain the new state
         self.cur_theta = np.mod(np.sum([self.prev_theta,action[0]],axis = 0),2.)
         #Make the current state equal to the previous state
@@ -118,7 +117,7 @@ class Planar_arm_2DOF_lowdim(Env):
         #set the previous and current state to be equal to one another
         self.prev_theta = self.cur_theta
         #reset the location of the target by sampling over a 128 by 128 grid
-        self.target = np.round(np.random.uniform(73,117,size=2))
+        self.target = np.round(np.random.uniform(20,108,size=2))
         scaled_target_obs = (self.target - 95.)/22.
         return np.copy(np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])).astype("float64")
 
