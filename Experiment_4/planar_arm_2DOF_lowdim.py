@@ -167,7 +167,7 @@ class Planar_arm_2DOF_lowdim(Env):
         """
         Check if there is an overlap between the end effector position and the target box
         """
-        if abs(end_effector[0] - target[0]) < 3 and abs(end_effector[1] - target[1]) < 3:
+        if abs(end_effector[0] - self.target[0]) < 3 and abs(end_effector[1] - self.target[1]) < 3:
            return True
         else:
            return False
