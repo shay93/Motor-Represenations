@@ -1,5 +1,8 @@
 import tensorflow as tf
-
+import os
+import sys
+parent_dir = os.path.dirname(os.getcwd())
+sys.path.append(parent_dir)
 from mod_tf_util import he_uniform_initializer, mlp, linear,conv
 from predictors.state_action_network import StateActionNetwork
 from rllab.core.serializable import Serializable

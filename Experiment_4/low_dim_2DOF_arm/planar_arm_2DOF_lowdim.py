@@ -7,7 +7,7 @@ import os
 import sys
 from scipy.misc import imresize
 import matplotlib.pyplot as plt
-parent_dir = os.path.dirname(os.getcwd())
+parent_dir = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.append(parent_dir)
 import training_tools as tt
 import IPython
