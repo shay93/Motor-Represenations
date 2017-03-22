@@ -30,14 +30,13 @@ class Planar_arm_2DOF_lowdim(Env):
         self.target = np.round(np.random.uniform(20,108,size=2))
         #initialize an object that will help you draw lines
         self.sp = tt.shape_maker()
-        #set both the current and previous theta to the given initial theta
-        self.prev_theta = theta_i
+        #set both the current theta to the given initial theta
         self.cur_theta = theta_i
         self.num_steps = num_steps
         #the action space is the change in the delta in the joint angles
         #restrict the action space to small angles in order to ensure smooth
         #trajectories
-        self._action_space = Box(-1.,1.,(2))
+        self._action_space = Box(-1,1,(2))
         #The observation is a concatenation of the joint states and target loc
         self._observation_space = Box(-1.,1.,(4))
 
@@ -59,25 +58,24 @@ class Planar_arm_2DOF_lowdim(Env):
         #using the current state find the end effector position 
         end_effector = self.get_end_effector_pos()
         #let info record the image at the current timestep
-        info = {"Observed Image" : self.render_image(),"Overlap" : self.check_overlap(end_effector)}
-        #add the action to the previous joint state to obtain the new state
-        self.cur_theta = np.mod(np.sum([self.prev_theta,action[0]],axis = 0),2.)
-        #Make the current state equal to the previous state
-        self.prev_theta = self.cur_theta
+        info = {"Observed Image" : self.render_image(),"Overlap" : self.check_overlap(end_effector)} 
         #compute the L2 distance between the end effector location and target location
         distance = np.linalg.norm(np.subtract(end_effector,self.target))
         #compute the normalized distance by dividing by the length of the box
         distance_normalized = distance / 90.
         #compute the reward as hte inverse of the normalized distance and scale between 0 and 1
         reward = (1./(distance_normalized + 1.)-0.5)*2.
+        if self.check_overlap(end_effector):
+           reward += 0.5
         #do not specify completion
         done = False
         #scale the target location to get an observation
         scaled_target_obs = (self.target - 95.)/22.
-        #stack the target location and the joint angle state to obtain the obs
-        obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])
+        #add the action to the previous joint state to obtain the new state
+        self.cur_theta = np.mod(np.sum([self.cur_theta,action[0]/20],axis = 0),2.) #stack the target location and the joint angle state to obtain the obs
+        next_obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])
     
-        return np.copy(obs).astype('float64'),np.copy(reward),done,info
+        return np.copy(next_obs).astype('float64'),np.copy(reward),done,info
     
     def get_end_effector_pos(self):
         """
@@ -97,7 +95,6 @@ class Planar_arm_2DOF_lowdim(Env):
         y_link_2 = np.round(y_link_1 + np.sin(theta_1 + theta_2)*self.link_length)
         link1_end_point = (int(x_link_1),int(y_link_1))
         link2_end_point = (int(x_link_2),int(y_link_2))
-        self.end_effector = link2_end_point
         #IPython.embed()
         return np.copy(link2_end_point)
     
@@ -114,8 +111,6 @@ class Planar_arm_2DOF_lowdim(Env):
         end_effector = self.get_end_effector_pos()
         #let info record the image at the current timestep
         info = {"Observed Image" : self.render_image()}
-        #set the previous and current state to be equal to one another
-        self.prev_theta = self.cur_theta
         #reset the location of the target by sampling over a 128 by 128 grid
         self.target = np.round(np.random.uniform(20,108,size=2))
         scaled_target_obs = (self.target - 95.)/22.
@@ -135,8 +130,8 @@ class Planar_arm_2DOF_lowdim(Env):
        return shifted_angles
        
     def render_image(self):
-        theta_1 = self.cur_theta[0]
-        theta_2 = self.cur_theta[1]
+        theta_1 = self.cur_theta[0]*np.pi
+        theta_2 = self.cur_theta[1]*np.pi
         #specify the anchor point
         start_x = 63
         start_y = 63

@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument('--speedup', type=float, default=1,
                         help='Speedup')
     
-    parser.add_argument('--num_sequences',type=int,default=100,
+    parser.add_argument('--num_sequences',type=int,default=1000,
                         help='Number of sequences to evaluate')
 
     args = parser.parse_args()
@@ -67,6 +67,7 @@ if __name__ == "__main__":
                 # Hack for now. Not sure why rollout assumes that close is an
                 # keyword argument
                 #IPython.embed()
+                print(rollout_dict['env_infos']['Overlap'].shape)
                 terminal_list.append(np.max(rollout_dict['env_infos']['Overlap']))
             except TypeError as e:
                 if (str(e) != "render() got an unexpected keyword "
