@@ -17,19 +17,31 @@ def inverse_kinematics_2DOF(end_effector,link_length):
     end_effector_x = end_effector[...,0]
     end_effector_y = end_effector[...,1]
     #find the angle betweeen the first and second links
-    theta_2 = np.arccos(np.divide(end_effector_x**2 + end_effector_y**2 - 2*(link_length**2),2*(link_length**2)))
-    k1 = link_length*(1 + np.cos(theta_2))
-    k2 = link_length*np.sin(theta_2)
-    #find the angle between first link and x axis
-    theta_1 = np.arctan(end_effector_y/end_effector_x) - np.arctan(k2/k1)
+    # theta_2 = np.arccos(np.divide(end_effector_x**2 + end_effector_y**2 - 2*(link_length**2),2*(link_length**2)))
+    # k1 = link_length*(1 + np.cos(theta_2))
+    # k2 = link_length*np.sin(theta_2)
+    # #find the angle between first link and x axis
+    # theta_1 = np.arctan(end_effector_y/end_effector_x) - np.arctan(k2/k1)
+    # states_2DOF = np.concatenate((theta_1[...,np.newaxis], \
+    #                         theta_2[...,np.newaxis]),axis = -1)
+    
+    l = (end_effector_x**2 + end_effector_y**2)**0.5
+    gamma = np.arccos(l/(2*link_length))
+    theta_1 = np.arctan(end_effector_y/end_effector_x) - gamma
+    
+    theta_2 = np.arctan(np.divide(end_effector_y - link_length*np.sin(theta_1), \
+                        end_effector_x -link_length*np.cos(theta_1))) - theta_1
+    
     states_2DOF = np.concatenate((theta_1[...,np.newaxis], \
-                            theta_2[...,np.newaxis]),axis = -1)
+                             theta_2[...,np.newaxis]),axis = -1)
+
     print(end_effector[0,:5,:])
     print(forward_kinematics(states_2DOF,link_length)[0,:5,:])
     IPython.embed()
     assert (np.all(np.round(forward_kinematics(states_2DOF,link_length)) == np.round(end_effector))),\
     "Inverse and Forward Kinematics dont line up"
     return states_2DOF
+    
     
 def forward_kinematics(joint_angle_state,link_length):
 	"""
