@@ -17,13 +17,12 @@ def inverse_kinematics_2DOF(end_effector,link_length):
     end_effector_x = end_effector[...,0]
     end_effector_y = end_effector[...,1]
     #find the angle betweeen the first and second links
-    # theta_2 = np.arccos(np.divide(end_effector_x**2 + end_effector_y**2 - 2*(link_length**2),2*(link_length**2)))
-    k1 = link_length*(1 + np.cos(theta_2))
-    k2 = link_length*np.sin(theta_2)
-    gamma = np.arctan2(k2,k1)
     #define a variable c to help you 
     c = np.divide(end_effector_x**2 + end_effector_y**2 - 2*(link_length**2),2*link_length**2)
     theta_2 = np.arctan2((1 - c**2)**0.5,c)
+    k1 = link_length*(1 + np.cos(theta_2))
+    k2 = link_length*np.sin(theta_2)
+    gamma = np.arctan2(k2,k1)
     theta_1 = np.arctan2(end_effector_y,end_effector_x) - gamma
     
     states_2DOF = np.concatenate((theta_1[...,np.newaxis], \
