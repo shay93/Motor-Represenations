@@ -7,7 +7,13 @@ sys.path.append(parent_dir)
 import training_tools as tt
 import pickle
 import IPython
+#specify directory where npy files will be saved
+save_dir = os.path.dirname(parent_dir) + "/" + "/Data/" + "Experiment_2/"
 
+#create the save directory
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
+    
 def inverse_kinematics_2DOF(end_effector,link_length):
     """ Args: Effector_Position - An ndarray consisting of the desired
                 end_effector positions of an arm
@@ -69,12 +75,7 @@ states_3DOF = np.mod(np.cumsum(np.concatenate(
     [initial_states_3DOF,actions_3DOF[:,:-1,:]],axis = 1),axis=1),2.)
 #get the next states at each timestep by adding the actions to the states
 next_states_3DOF = np.mod(states_3DOF + actions_3DOF,2.)
-    
-#as a sanity check the dimensions of states_3DOF
-#print(states_3DOF.shape)
-#check what the min and max of the 3DOF states are
-#print(np.max(states_3DOF))
-#print(np.min(states_3DOF))
+
 #now compute the end effector position of the 3DOF arm
 end_effector = forward_kinematics(states_3DOF,30)
 #use the end effector position to get the state for the 2DOF arm
@@ -88,15 +89,15 @@ actions_2DOF = next_states_2DOF - states_2DOF
 
 
 #now save all of the above in a data directory 
-with open("states_2DOF.npy","wb") as f:
+with open(save_dir + "states_2DOF.npy","wb") as f:
     pickle.dump(states_2DOF,f)
     
-with open("states_3DOF.npy","wb") as f:
+with open(save_dir + "states_3DOF.npy","wb") as f:
     pickle.dump(states_3DOF,f)
 
-with open("actions_2DOF.npy","wb") as f:
+with open(save_dir + "actions_2DOF.npy","wb") as f:
     pickle.dump(actions_2DOF,f)
 
-with open("actions_3DOF.npy","wb") as f:
+with open(save_dir + "actions_3DOF.npy","wb") as f:
     pickle.dump(actions_3DOF,f)
     
