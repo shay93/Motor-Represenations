@@ -26,11 +26,11 @@ def inverse_kinematics_2DOF(end_effector,link_length):
     theta_1 = np.arctan2(end_effector_y,end_effector_x) - gamma
     
     states_2DOF = np.concatenate((theta_1[...,np.newaxis], \
-                             theta_2[...,np.newaxis]),axis = -1)
+                             theta_2[...,np.newaxis]),axis = -1)/np.pi
 
-    print(end_effector[0,:5,:])
-    print(forward_kinematics(states_2DOF,link_length)[0,:5,:])
-    IPython.embed()
+    #print(end_effector[0,:5,:])
+    #print(forward_kinematics(states_2DOF,link_length)[0,:5,:])
+    #IPython.embed()
     assert (np.all(np.round(forward_kinematics(states_2DOF,link_length)) == np.round(end_effector))),\
     "Inverse and Forward Kinematics dont line up"
     return states_2DOF
@@ -46,14 +46,14 @@ def forward_kinematics(joint_angle_state,link_length):
 	xpos = np.zeros(shape = joint_angle_state.shape[:-1] + (1,))
 	ypos = np.zeros(shape = joint_angle_state.shape[:-1] + (1,))
 	for i in range(1,n_dof+1):
-		print(i)
+		#print(i)
 		#IPython.embed()
-		xpos += link_length*np.cos(np.expand_dims(np.sum(joint_angle_state[...,:i],axis = -1),-1))
-		ypos += link_length*np.sin(np.expand_dims(np.sum(joint_angle_state[...,:i],axis = -1),-1))
+		xpos += link_length*np.cos(np.expand_dims(np.sum(joint_angle_state[...,:i]*np.pi,axis = -1),-1))
+		ypos += link_length*np.sin(np.expand_dims(np.sum(joint_angle_state[...,:i]*np.pi,axis = -1),-1))
 	return np.concatenate((xpos,ypos),axis = -1)
 
 #specify the num_sequences for which to generate data for
-num_sequences = 5
+num_sequences = 5000
 #specify the sequence length, we could make this variable but let's stick
 #to fixed length sequences for now
 sequence_length = 100
@@ -73,8 +73,8 @@ next_states_3DOF = np.mod(states_3DOF + actions_3DOF,2.)
 #as a sanity check the dimensions of states_3DOF
 #print(states_3DOF.shape)
 #check what the min and max of the 3DOF states are
-print(np.max(states_3DOF))
-print(np.min(states_3DOF))
+#print(np.max(states_3DOF))
+#print(np.min(states_3DOF))
 #now compute the end effector position of the 3DOF arm
 end_effector = forward_kinematics(states_3DOF,30)
 #use the end effector position to get the state for the 2DOF arm
@@ -93,4 +93,10 @@ with open("states_2DOF.npy","wb") as f:
     
 with open("states_3DOF.npy","wb") as f:
     pickle.dump(states_3DOF,f)
+
+with open("actions_2DOF.npy","wb") as f:
+    pickle.dump(actions_2DOF,f)
+
+with open("actions_3DOF.npy","wb") as f:
+    pickle.dump(actions_3DOF,f)
     
