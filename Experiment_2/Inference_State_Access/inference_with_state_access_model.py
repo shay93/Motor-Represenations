@@ -53,7 +53,7 @@ class Inference_with_state_access(tensorflow_graph):
         W_fc_actions = tf.Variable(tf.truncated_normal(shape = [self.hidden_units,3],stddev = 0.1),name="action/weights")
         b_fc_actions = tf.Variable(tf.constant(0.,shape = [3]),name="action/bias")
         #now compute the state and aciton list at each time step
-        state_list = [tf.nn.tanh(tf.matmul(output_timestep,W_fc_states) + b_fc_states) for output_timestep in outputs]
+        state_list = [tf.nn.tanh(tf.matmul(output_timestep,W_fc_states) + b_fc_states) + 1. for output_timestep in outputs]
         action_list = [tf.nn.tanh(tf.matmul(output_timestep,W_fc_actions) + b_fc_actions) for output_timestep in outputs]
         #at this point y_list of shape [None,3]*self.seq_max_length for each state action list
         #now get the state and action tensors

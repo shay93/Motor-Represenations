@@ -13,13 +13,13 @@ import results_handling as rh
 eval_set_size = 500
 eval_batch_size = 50
 data_dir = parent_dir + "/" + "Data" + "/Experiment_2/"
-log_dir = "tmp/lr_1e_2"
+log_dir = "tmp/lr_1e_3"
 save_dir = "model/"
 output_dir = "Output_Images/"
 ###model parameters
 learning_rate = 1e-3
 Epochs =1000
-batch_size = 100
+batch_size = 200
 
 
 #check if the directories exist and create them if necessary
