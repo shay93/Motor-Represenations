@@ -10,17 +10,16 @@ import pickle
 import png
 import results_handling as rh
 
-root_dir = "physics_emulator/"
 eval_set_size = 500
 eval_batch_size = 50
 data_dir = parent_dir + "/" + "Data" + "/Experiment_2/"
-log_dir = "tmp/"
+log_dir = "tmp/lr_1e_2"
 save_dir = "model/"
 output_dir = "Output_Images/"
 ###model parameters
-learning_rate = 1e-2
+learning_rate = 1e-3
 Epochs =1000
-batch_size = 500
+batch_size = 100
 
 
 #check if the directories exist and create them if necessary
@@ -43,7 +42,10 @@ def load_data():
 	with open(data_dir + "actions_3DOF.npy","rb") as f:
 		actions_3DOF = pickle.load(f)
 	#concatenate the 3DOF states and actions to get y
-	y = np.concatenate([states_3DOF,actions_3DOF],axis = 2)
+        #rescale actions to range -1 to 1
+	y = np.concatenate([states_3DOF,actions_3DOF*20.],axis = 2)
+	y = np.transpose(y,(0,2,1))
+	x = np.transpose(x,(0,2,1))
 	return x,y
 
 x,y = load_data()
@@ -73,5 +75,5 @@ placeholder_eval_dict[op_dict["x"]] = x_eval
 placeholder_eval_dict[op_dict["y_"]] = y_eval
 predictions,test_loss_array = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["y_"],loss_op = op_dict["loss"])
 
-with open(data_dir + "predicted_states_3DOF.npy","rb") as f:
+with open(data_dir + "predicted_states_3DOF.npy","wb") as f:
 	pickle.dump(predictions,f)
