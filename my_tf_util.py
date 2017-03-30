@@ -5,7 +5,7 @@ import tensorflow as tf
 
 
 class graph_construction_helper:
-	
+
 	def conv(self,x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables = False):
 		"""
 		x should be the 4d tensor which is being convolved
@@ -22,7 +22,6 @@ class graph_construction_helper:
 				scope.reuse_variables()
 				W = tf.get_variable("W_conv")
 				b = tf.get_variable("b_conv")
-			
 			#calculate the output from the convolution 
 			conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
 			#compute the activations
@@ -43,27 +42,27 @@ class graph_construction_helper:
 				#initiaize the biases
 				b = tf.get_variable("b_fc",weight_shape[-1],tf.float32,tf.constant_initializer(0.0),trainable = trainable)
 			else:
-				scope.reuse_variables()			
+				scope.reuse_variables()
 				W = tf.get_variable("W_fc")
 				b = tf.get_variable("b_fc")
-				
+
 			h = tf.nn.relu(tf.matmul(x,W) + b, name = "activations_fc")
 
-		return h,W,b 
-		
+		return h,W,b
+
 
 	def deconv(self,x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False,non_linearity = True):
 		"""
 		generalizable deconv function
 		"""
 		with tf.variable_scope(scope) as scope:
-			if not(reuse_variables):
+                    if not(reuse_variables):
 				#initialize the weights for the deconv layer
 				W = tf.get_variable("W_deconv",weight_shape,tf.float32,tf.random_normal_initializer(0,stddev), trainable = trainable)
 				#initiaize the biases
 				b = tf.get_variable("b_deconv",weight_shape[-2],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
 			else:
-				scope.reuse_variables()			
+				scope.reuse_variables()
 				W = tf.get_variable("W_deconv")
 				b = tf.get_variable("b_deconv")
 
@@ -76,11 +75,10 @@ class graph_construction_helper:
 				h = tf.nn.bias_add(deconv,b, name = "activations_deconv")
 
 		return h,W,b
-		
+
 class tensorflow_graph:
 	#all graphs should be a subclass of the tensorflow graph object which has methods that can be used to train and evaluate the graph
 	#so given the model the trainer or evaluator calls on the train_op in the graph to construct the graph
-	
 	def create_session(self):
 		#initialize a configuration protobuf object that can be used to initialize a session
 		config = tf.ConfigProto()
@@ -89,7 +87,7 @@ class tensorflow_graph:
 		sess = tf.Session(config = config)
 		return sess
 
-	
+
 	def train_graph(self,sess,Epochs,batch_size,placeholder_dict,train_op,loss_op, merge_summary_op = None,log_dir = None,summary_writer_freq = 20):
 		"""
 		1)Epochs is the number determines the number of iterations and hence the number of times that parameter updates are made
@@ -142,7 +140,7 @@ class tensorflow_graph:
 		#initialize the variables in the graph
 		sess.run(init_op)
 		print "Variables have been initialized"
-	
+
 	def evaluate_graph(self,sess,eval_batch_size,placeholder_dict,y_op,y_label_op, output_shape = None, loss_op = None):
 		"""
 		Pass in the eval set data to compute predictions, this function returns the predictions whatever those may be
@@ -156,7 +154,7 @@ class tensorflow_graph:
 		if (output_shape == None):
 			predictions = np.ndarray(shape = np.shape(placeholder_dict[y_label_op]),dtype = np.float32)
 		else:
-			predictions = np.ndarray(shape = output_shape,dtype = np.float32)			
+			predictions = np.ndarray(shape = output_shape,dtype = np.float32)
 		#furthermore initialize a list to record the test set loss
 		test_loss_array = [0]*((num_samples // eval_batch_size) + 1)
 		#initialize a variable to record how many eval iterations have taken place
@@ -173,14 +171,14 @@ class tensorflow_graph:
 				if not(loss_op == None):
 					predictions[begin:end,...],l = sess.run([y_op,loss_op],feed_dict = feed_dict)
 				else:
-					predictions[begin:end,...] = sess.run([y_op],feed_dict = feed_dict)					 
+					predictions[begin:end,...] = sess.run([y_op],feed_dict = feed_dict)
 			else:
 				for op in placeholder_dict.keys():
 					feed_dict[op] = placeholder_dict[op][-eval_batch_size,...]
 				if not(loss_op == None):
 					batch_predictions,l = sess.run([y_op,loss_op], feed_dict = feed_dict)
 				else:
-					batch_predictions = sess.run([y_op], feed_dict = feed_dict)									
+					batch_predictions = sess.run([y_op], feed_dict = feed_dict)
 				predictions[begin:, ...] = batch_predictions[-(num_samples - begin):,...]
 
 			if not(loss_op == None):
@@ -189,13 +187,13 @@ class tensorflow_graph:
 			#increment the step variable
 			step += 1
 		return predictions,test_loss_array
-		
+
 	def add_placeholder_ops(self):
 		raise NotImplementedError
-		
+
 	def add_model_ops(self):
 		raise NotImplementedError
-		
+
 	def add_auxillary_ops(self):
 		raise NotImplementedError
 
@@ -208,4 +206,3 @@ class tensorflow_graph:
 		self.add_auxillary_ops()
 		#return the session environment in which the graph is defined and dictionary of the operations
 		return self.op_dict,self.create_session()
-
