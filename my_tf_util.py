@@ -1,4 +1,4 @@
-from __future__ import division 
+from __future__ import division,print_function 
 import os
 import numpy as np
 import tensorflow as tf
@@ -97,7 +97,7 @@ class tensorflow_graph:
 		5)train_op is the training operation of the graph which is called upon when gradients are computed/applied
 		"""
 		#first get the number of samples by getting finding the shape of the first data variable
-		num_samples = np.shape(placeholder_dict[placeholder_dict.keys()[0]])[0]
+		num_samples = np.shape(placeholder_dict[list(placeholder_dict.keys())[0]])[0]
 		#if we have a merge summary op initialize a summary writer
 		if merge_summary_op is not(None):
 			#initialize a summary writer and pass the graph to it
@@ -105,42 +105,41 @@ class tensorflow_graph:
 
 
 		#now loop through all the iterations compute,apply parameter updates and record values of interest
-		for step in xrange(int(Epochs * num_samples) // batch_size):
+		for step in range(int(Epochs * num_samples) // batch_size):
 			#first step is to get a random offset into the dataset
 			random_offset = np.random.randint(0,num_samples - batch_size)
 			#initialize an empty feed_dict for each step
 			feed_dict = {}
-			for op in placeholder_dict.keys():
+			for op in list(placeholder_dict.keys()):
 				#construct a dictionary that stores the spliced input batch data keyed by the tensor placeholders
 				feed_dict[op] = placeholder_dict[op][random_offset:random_offset + batch_size,...]
 			#every 20 steps record the outputs from the summary if a merge_summary_op is provided
 			if (step % summary_writer_freq == 0) and (merge_summary_op is not(None)):
 				_,merged_summary,l = sess.run([train_op,merge_summary_op,loss_op], feed_dict = feed_dict)
-				print l,step
+				print(l,step)
 				#pass the summary to the writer to record in the log file
 				summary_writer.add_summary(merged_summary,step)
 			else:
 				#use the feed dict along with the train_op to compute, and apply gradients
 				_ ,l = sess.run([train_op,loss_op],feed_dict = feed_dict)
 				if (step % 20) == 0:
-					print l,step
+					print(l,step)
 
 	def save_graph_vars(self,sess,save_op,save_directory):
 		#save_directory = os.path.abspath(save_directory)
 		save_op.save(sess,save_directory)
-		print "Variables have been saved"
+		print("Variables have been saved")
 
 
 	def load_graph_vars(self,sess,save_op,load_path):
 		load_path = os.path.abspath(load_path)
 		save_op.restore(sess,load_path)
-		print "Model Restored"
+		print("Model Restored")
 
 	def init_graph_vars(self,sess,init_op):
 		#initialize the variables in the graph
 		sess.run(init_op)
-		print "Variables have been initialized"
-
+		print("Variables have been initialized")
 	def evaluate_graph(self,sess,eval_batch_size,placeholder_dict,y_op,y_label_op, output_shape = None, loss_op = None):
 		"""
 		Pass in the eval set data to compute predictions, this function returns the predictions whatever those may be
@@ -160,20 +159,20 @@ class tensorflow_graph:
 		#initialize a variable to record how many eval iterations have taken place
 		step = 0
 		#loop through all the eval data
-		for begin in xrange(0,num_samples,eval_batch_size):
+		for begin in range(0,num_samples,eval_batch_size):
 			#specify the index of the end of the batch
 			end = begin + eval_batch_size
 			#now construct the feed dict based whether a whole batch is available or not
 			feed_dict = {}
 			if end <= num_samples:
-				for op in placeholder_dict.keys():
+				for op in list(placeholder_dict.keys()):
 					feed_dict[op] = placeholder_dict[op][begin:end, ...]
 				if not(loss_op == None):
 					predictions[begin:end,...],l = sess.run([y_op,loss_op],feed_dict = feed_dict)
 				else:
 					predictions[begin:end,...] = sess.run([y_op],feed_dict = feed_dict)
 			else:
-				for op in placeholder_dict.keys():
+				for op in list(placeholder_dict.keys()):
 					feed_dict[op] = placeholder_dict[op][-eval_batch_size,...]
 				if not(loss_op == None):
 					batch_predictions,l = sess.run([y_op,loss_op], feed_dict = feed_dict)
