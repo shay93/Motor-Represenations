@@ -30,7 +30,7 @@ class graph_construction_helper:
 		return h,W,b
 
 
-	def fc_layer(self,x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variables = False):
+	def fc_layer(self,x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variables = False, non_linearity=tf.nn.relu):
 		"""
 		Compute the activations of the fc layer
 
@@ -46,7 +46,7 @@ class graph_construction_helper:
 				W = tf.get_variable("W_fc")
 				b = tf.get_variable("b_fc")
 
-			h = tf.nn.relu(tf.matmul(x,W) + b, name = "activations_fc")
+			h = non_linearity(tf.matmul(x,W) + b, name = "activations_fc")
 
 		return h,W,b
 
