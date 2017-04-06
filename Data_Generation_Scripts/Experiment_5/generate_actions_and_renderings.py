@@ -11,6 +11,7 @@ data_dir = root_dir + "/Data" + "/Experiment_5"
 #create the data dir if it does not exist
 if not(os.path.exists(data_dir)):
     os.makedirs(data_dir)
+
 #specify the link length for the 2DOF and 3DOF arms
 link_length_2DOF = 40
 link_length_3DOF = 30
@@ -47,8 +48,8 @@ def inverse_kinematics_2DOF(end_effector,
     return states_2DOF
 
 
-def forward_kinematics(joint_angle_state,
-                       link_length):
+
+def forward_kinematics(joint_angle_state,link_length):
 	"""
 	use the joint angle information to get an end effector position
 	"""
@@ -127,6 +128,36 @@ actions_3DOF,states_2DOF,next_states_2DOF = random_3DOF_action_states()
 #now use the 2DOF states to render the images
 states_2DOF_rendered = Render_2DOF_arm(states_2DOF,link_length_2DOF)
 next_states_2DOF_rendered = Render_2DOF_arm(next_states_2DOF,link_length_2DOF)
+=======
+		xpos += link_length*np.cos(np.expand_dims(np.sum(joint_angle_state[...,:i]*np.pi,axis = -1),-1))
+		ypos += link_length*np.sin(np.expand_dims(np.sum(joint_angle_state[...,:i]*np.pi,axis = -1),-1))
+	return np.concatenate((xpos,ypos),axis = -1)
+
+
+#specify the num_sequences for which to generate data for
+num_sequences = 5000
+#specify the delta_range, delta range is in radians normalized to range -1 to 1
+delta_range = 0.05
+#generate randome 3DOF joint ACTIONS between -delta_range and delta_range
+actions_3DOF = (np.random.rand(num_sequences,3) - 0.5)*2*delta_range
+#now randomly select the initial states between 0 and 2
+states_3DOF = (np.random.rand(num_sequences,3))*2
+#states for the 3DOF arm between 0 and 2
+next_states_3DOF = np.mod(np.sum(initial_states_3DOF,\
+                           actions_3DOF),2.)
+
+#now compute the end effector position of the 3DOF arm
+end_effector = forward_kinematics(states_3DOF,30)
+#use the end effector position to get the state for the 2DOF arm
+states_2DOF = inverse_kinematics_2DOF(end_effector,40)
+#get the next end_effector position at each timestep
+next_end_effector = forward_kinematics(next_states_3DOF,30)
+#get the next states for 2DOF
+next_states_2DOF = inverse_kinematics_2DOF(next_end_effector,40)
+#now use the 2DOF states to render the images
+states_2DOF_rendered = Render_2DOF_arm(states_2DOF,40)
+next_states_2DOF_rendered = Render_2DOF_arm(next_states_2DOF,40)
+>>>>>>> 86a93ed378a1e9ff28ccdfe7b2f439bb0966bee4
 #concatenate the two images along the second dimension
 rendered_arm_obs = np.concatenate((states_2DOF_rendered, \
                             next_states_2DOF_rendered),axis = 3)

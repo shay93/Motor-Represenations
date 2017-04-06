@@ -74,6 +74,77 @@ class graph_construction_helper:
                 h = tf.nn.bias_add(deconv,b, name = "activations_deconv")
 
         return h,W,b
+=======
+	def conv(self,x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables = False):
+		"""
+		x should be the 4d tensor which is being convolved
+		weight shape should be a list of the form [Kernel Width, Kernel Width, input channels, output channels]
+		scope should be string specifying the scope of the variables in question
+		"""
+		with tf.variable_scope(scope) as scope:
+			if not(reuse_variables):
+				#initialize the weights for the convolutional layer
+				W = tf.get_variable("W_conv",weight_shape,tf.float32,tf.random_normal_initializer(0.0,stddev),trainable = trainable)
+				#initiaize the biases
+				b = tf.get_variable("b_conv",weight_shape[-1],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
+			else:
+				scope.reuse_variables()
+				W = tf.get_variable("W_conv")
+				b = tf.get_variable("b_conv")
+			#calculate the output from the convolution 
+			conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
+			#compute the activations
+			h = tf.nn.relu(tf.nn.bias_add(conv,b), name = "activations_conv")
+
+		return h,W,b
+
+
+	def fc_layer(self,x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variables = False, non_linearity=tf.nn.relu):
+		"""
+		Compute the activations of the fc layer
+
+		"""
+		with tf.variable_scope(scope) as scope:
+			if not(reuse_variables):
+				#initialize the weights for the fc layer
+				W = tf.get_variable("W_fc",weight_shape,tf.float32,tf.random_normal_initializer(0.0,stddev), trainable = trainable)
+				#initiaize the biases
+				b = tf.get_variable("b_fc",weight_shape[-1],tf.float32,tf.constant_initializer(0.0),trainable = trainable)
+			else:
+				scope.reuse_variables()
+				W = tf.get_variable("W_fc")
+				b = tf.get_variable("b_fc")
+
+			h = non_linearity(tf.matmul(x,W) + b, name = "activations_fc")
+
+		return h,W,b
+
+
+	def deconv(self,x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False,non_linearity = True):
+		"""
+		generalizable deconv function
+		"""
+		with tf.variable_scope(scope) as scope:
+                    if not(reuse_variables):
+				#initialize the weights for the deconv layer
+				W = tf.get_variable("W_deconv",weight_shape,tf.float32,tf.random_normal_initializer(0,stddev), trainable = trainable)
+				#initiaize the biases
+				b = tf.get_variable("b_deconv",weight_shape[-2],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
+			else:
+				scope.reuse_variables()
+				W = tf.get_variable("W_deconv")
+				b = tf.get_variable("b_deconv")
+
+			#calculate the output from the deconvolution
+			deconv = tf.nn.conv2d_transpose(x,W,output_shape,strides = strides)
+			#calculate the activations
+			if non_linearity:
+				h = tf.nn.relu(tf.nn.bias_add(deconv,b), name = "activations_deconv_relu")
+			else:
+				h = tf.nn.bias_add(deconv,b, name = "activations_deconv")
+
+		return h,W,b
+>>>>>>> 86a93ed378a1e9ff28ccdfe7b2f439bb0966bee4
 
 class tensorflow_graph:
     #all graphs should be a subclass of the tensorflow graph object which has methods that can be used to train and evaluate the graph

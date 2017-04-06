@@ -3,7 +3,11 @@ import numpy as np
 import sys
 import os
 #add parent dir to path in order to import my_tf_util which will be used to constuct the model
+<<<<<<< HEAD
 parent_dir = os.path.dirname(os.path.dirname(os.getcwd()))
+=======
+parent_dir = os.path.dirname(os.getcwd())
+>>>>>>> 86a93ed378a1e9ff28ccdfe7b2f439bb0966bee4
 sys.path.append(parent_dir)
 from my_tf_util import graph_construction_helper,tensorflow_graph
 
@@ -14,10 +18,17 @@ class Action_inference(tensorflow_graph):
     of the end effector position
     """
     def __init__(self,
+<<<<<<< HEAD
                 learning_rate = 1e-3,
                 gc = graph_construction_helper()):
         self.lr = learning_rate
         self.gc = gc
+=======
+                learning_rate
+                gc = graph_construction_helper()):
+        self.lr = learning_rate
+        self.gc = graph_construction_helper
+>>>>>>> 86a93ed378a1e9ff28ccdfe7b2f439bb0966bee4
         self.op_dict = {}
         self.var_dict = {}
 
@@ -37,6 +48,7 @@ class Action_inference(tensorflow_graph):
         h_conv1,W_conv1,b_conv1 = self.gc.conv(\
                             self.op_dict["x"],
                             [5,5,2,32],
+<<<<<<< HEAD
                             "Conv_1",)
         h_conv2,W_conv2,b_conv2 = self.gc.conv(\
                             h_conv1,
@@ -46,6 +58,17 @@ class Action_inference(tensorflow_graph):
                             h_conv2,
                             [5,5,16,1],
                             "Conv_3",)
+=======
+                            "Conv_1")
+        h_conv2,W_conv2,b_conv2 = self.gc.conv(\
+                            h_conv1,
+                            [5,5,32,16],
+                            "Conv_2")
+        h_conv3,W_conv3,b_conv3 = self.gc.conv(\
+                            h_conv2,
+                            [5,5,16,1],
+                            "Conv_3")
+>>>>>>> 86a93ed378a1e9ff28ccdfe7b2f439bb0966bee4
         print(h_conv3)
         #now flatten the activations in anticipation of fc layers
         h_conv3_flatten = tf.reshape(h_conv3, \
