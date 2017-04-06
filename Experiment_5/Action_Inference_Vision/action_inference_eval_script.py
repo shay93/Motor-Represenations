@@ -189,7 +189,7 @@ infer_reward = (1./(distance_normalized + 1) - 0.5)*2
 #but we also have to add bonus reward for overlap
 overlap_boolean = np.all(infer_end_effector == target_loc_repeat,axis = -1)
 #now add bonus reward if true
-overlap_boolean_repeat = np.repeat(overlap_boolean,episode_length,axis = 2)
+overlap_boolean_repeat = np.repeat(overlap_boolean[...,np.newaxis],episode_length,axis = 2)
 infer_reward[overlap_boolean_repeat] += 0.5
 #now concatenate the states and target loc in order to get the observations
 obs = np.concatenate(states_3DOF,target_loc_repeat,axis = -1)

@@ -115,5 +115,4 @@ def Render_3DOF_arm(state,
         #add the image to the output
         rendered_images[i,:,:,0] = resize_im
     return rendered_images
-=======
->>>>>>> 86a93ed378a1e9ff28ccdfe7b2f439bb0966bee4
+
