@@ -7,7 +7,7 @@ import pickle
 #get the root repo directory
 root_dir = os.path.dirname(os.path.dirname(os.getcwd()))
 #data directory
-data_dir = root_dir +"/Data/Experiment_5/Action_Inference_Vision/samples_5000/"
+data_dir = root_dir + "/Data/Experiment_5/Action_Inference_Constrained_Space/"
 #create the data dir if it does not exist
 if not(os.path.exists(data_dir)):
     os.makedirs(data_dir)
@@ -16,7 +16,7 @@ if not(os.path.exists(data_dir)):
 link_length_2DOF = 40
 link_length_3DOF = 30
 #specify the num_sequences for which to generate data for
-NUM_SEQUENCES = 5000
+NUM_SEQUENCES = 100000
 #specify the delta_range, delta range is in radians
 DELTA_RANGE = 0.05*np.pi
 
@@ -90,7 +90,8 @@ def get_2DOF_states(actions_3DOF,
 def random_3DOF_action_states(num_sequences = NUM_SEQUENCES,
                              delta_range = DELTA_RANGE):
     #generate random 3DOF actions between -DELTA_RANGE and DELTA_RANGE
-    actions_3DOF = (np.random.rand(num_sequences,3) - 0.5)*2*delta_range
+    actions_3DOF = np.concatenate((np.zeros((num_sequences,1)),
+        (np.random.rand(num_sequences,2) - 0.5)*2*delta_range),1)
     #now randomly select the initial states between 0 and 2pi
     states_3DOF = (np.random.rand(num_sequences,3))*2*np.pi
     #get the 2DOF states using the above
@@ -109,13 +110,20 @@ def random_3DOF_action_states(num_sequences = NUM_SEQUENCES,
                     next_states_isnan,axis = 1)[...,np.newaxis],\
                         3, axis = 1)
         #regenerate the problematic samples
-        #import IPython; IPython.embed()
+        #find the number of actions to regenerate
+        num_actions_regen = np.sum(np.sum(next_states_logic,0))
+        #find the number of states to regenerate
+        num_states_regen = np.sum(np.sum(states_logic,0))
+
         actions_3DOF[next_states_logic] = \
-                (np.random.rand(
-                    np.sum(np.sum(next_states_logic,0))) - 0.5)*2*delta_range
+                (np.random.rand(num_actions_regen) - 0.5)*2*delta_range
+
+        #set all actions for the the first link to 0
+        actions_3DOF[:,0] = 0.
+ 
         states_3DOF[states_logic] = \
-                (np.random.rand(\
-                    np.sum(np.sum(states_logic,0))))*2*np.pi
+                (np.random.rand(num_states_regen))*2*np.pi
+
         #now get the new 2DOF states
         states_2DOF,next_states_2DOF = get_2DOF_states(actions_3DOF,\
                                                    states_3DOF)

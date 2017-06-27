@@ -7,7 +7,7 @@ import pickle
 #get the root repo directory
 root_dir = os.path.dirname(os.path.dirname(os.getcwd()))
 #data directory
-data_dir = root_dir +"/Data/Experiment_5/Action_Inference_Vision/samples_5000/"
+data_dir = root_dir + "/Data/Experiment_5/Action_Inference_State_Access/"
 #create the data dir if it does not exist
 if not(os.path.exists(data_dir)):
     os.makedirs(data_dir)
@@ -16,7 +16,7 @@ if not(os.path.exists(data_dir)):
 link_length_2DOF = 40
 link_length_3DOF = 30
 #specify the num_sequences for which to generate data for
-NUM_SEQUENCES = 5000
+NUM_SEQUENCES = 20000
 #specify the delta_range, delta range is in radians
 DELTA_RANGE = 0.05*np.pi
 
@@ -32,7 +32,8 @@ def inverse_kinematics_2DOF(end_effector,
     end_effector_y = end_effector[...,1]
     #find the angle betweeen the first and second links
     #define a variable c to help you 
-    c = np.divide(end_effector_x**2 + end_effector_y**2 - 2*(link_length**2),2*link_length**2)
+    c = np.divide(end_effector_x**2 + end_effector_y**2\
+                  - 2*(link_length**2),2*link_length**2)
     theta_2 = np.arctan2((1 - c**2)**0.5,c)
     k1 = link_length*(1 + np.cos(theta_2))
     k2 = link_length*np.sin(theta_2)
@@ -64,8 +65,7 @@ def forward_kinematics(joint_angle_state,link_length):
 	return np.concatenate((xpos,ypos),axis = -1)
 
 def get_2DOF_states(actions_3DOF,
-                    states_3DOF,
-                    check = False):
+                    states_3DOF):
     """
     Get 2DOF states such that end effector position
     matches the 3DOF end effector over the two timesteps
@@ -78,13 +78,14 @@ def get_2DOF_states(actions_3DOF,
     #use the end effector position to get the state for the 2DOF arm
     states_2DOF = inverse_kinematics_2DOF(end_effector,\
                                           link_length_2DOF,\
-                                          check = check)
+                                          check = False)
     #get the next end_effector position at each timestep
     next_end_effector = forward_kinematics(next_states_3DOF,link_length_3DOF)
     #get the next states for 2DOF
     next_states_2DOF = inverse_kinematics_2DOF(next_end_effector,\
                                                link_length_2DOF,\
-                                              check = check)
+                                              check = False)
+    #import IPython; IPython.embed()
     return states_2DOF,next_states_2DOF
 
 def random_3DOF_action_states(num_sequences = NUM_SEQUENCES,
@@ -109,64 +110,26 @@ def random_3DOF_action_states(num_sequences = NUM_SEQUENCES,
                     next_states_isnan,axis = 1)[...,np.newaxis],\
                         3, axis = 1)
         #regenerate the problematic samples
-        #import IPython; IPython.embed()
         actions_3DOF[next_states_logic] = \
-                (np.random.rand(
-                    np.sum(np.sum(next_states_logic,0))) - 0.5)*2*delta_range
+                (np.random.rand(next_states_logic.shape[0],3) - 0.5)*2*delta_range
         states_3DOF[states_logic] = \
-                (np.random.rand(\
-                    np.sum(np.sum(states_logic,0))))*2*np.pi
+                (np.random.rand(states_logic.shape[0],3))*2*np.pi
         #now get the new 2DOF states
         states_2DOF,next_states_2DOF = get_2DOF_states(actions_3DOF,\
                                                    states_3DOF)
         #check for nan's i.e. the 3DOF pos not reachable by 2DOF
         states_isnan = np.isnan(states_2DOF)
         next_states_isnan = np.isnan(next_states_2DOF)
-    #check whether the forward and inverse kinematics works
-    _,_ = get_2DOF_states(actions_3DOF,states_3DOF,check = True)
     #now return the 2DOF states and 3DOF actions which satisfy criteria
     assert not((np.any(np.isnan(states_2DOF)) or \
             np.any(np.isnan(next_states_2DOF)))),\
             "There are still nan's in the 2DOF states"
-    return actions_3DOF,states_3DOF,states_2DOF,next_states_2DOF
+    return states_3DOF,actions_3DOF,states_2DOF,next_states_2DOF
 
-actions_3DOF,states_3DOF,states_2DOF,next_states_2DOF = random_3DOF_action_states()
-#now it is necessary to actually render these states
-rendered_states_2DOF = Render_2DOF_arm(states_2DOF[:,np.newaxis,:],
-                                       link_length_2DOF)
-
-next_rendered_states_2DOF = Render_2DOF_arm(next_states_2DOF[:,np.newaxis,:],
-                                            link_length_2DOF)
-
-rendered_arm_obs = np.concatenate((rendered_states_2DOF,\
-                                   next_rendered_states_2DOF),axis = -1)
+states_3DOF,actions_3DOF,states_2DOF,next_states_2DOF = random_3DOF_action_states()
 #now concatenate the states along a new dimension
 stacked_states_2DOF = np.concatenate((states_2DOF,\
                                 next_states_2DOF),axis = 1)
-#furthermore get the states to lie in the range -pi to pi
-stacked_states_2DOF[stacked_states_2DOF < -np.pi] = \
-    stacked_states_2DOF[stacked_states_2DOF < -np.pi] + 2*np.pi
-
-#now shift the range of the states to 0 to 2pi and call it something else
-stacked_states = np.copy(stacked_states_2DOF)
-stacked_states[stacked_states < 0] = stacked_states[stacked_states < 0]\
-                                        + 2*np.pi
-
-
-#now compute the difference between the states at each tstep
-actions_2DOF = stacked_states[:,2:] - stacked_states[:,:2]
-
-#now deal with actions which are greater than pi
-actions_2DOF[actions_2DOF > np.pi] = actions_2DOF[actions_2DOF > np.pi] - 2*np.pi
-#nex actions less than -np.pi
-actions_2DOF[actions_2DOF < -np.pi] = actions_2DOF[actions_2DOF < -np.pi] + 2*np.pi
-#at this point actions are in range -pi to pi
-
-#now shift 3DOF states to -pi to pi range
-states_3DOF[states_3DOF > np.pi] = states_3DOF[states_3DOF > np.pi] -2*np.pi
-
-with open(data_dir + "rendered_arm_obs.npy","wb") as f:
-    pickle.dump(rendered_arm_obs,f)
 
 with open(data_dir + "stacked_states_2DOF.npy","wb") as f:
     pickle.dump(stacked_states_2DOF,f)
@@ -174,11 +137,6 @@ with open(data_dir + "stacked_states_2DOF.npy","wb") as f:
 with open(data_dir + "actions_3DOF.npy","wb") as f:
     pickle.dump(actions_3DOF,f)
 
-with open(data_dir + "actions_2DOF.npy","wb") as f:
-    pickle.dump(actions_2DOF,f)
-
 with open(data_dir + "states_3DOF.npy","wb") as f:
     pickle.dump(states_3DOF,f)
-
-
 
