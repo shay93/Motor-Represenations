@@ -1,18 +1,20 @@
-
+import os
+import sys
+parent_dir = os.path.dirname(os.getcwd())
+sys.path.append(parent_dir)
+print(parent_dir)
 
 from algos.ddpg import DDPG
 from planar_arm_nn_policy import FeedForwardPolicy
 from planar_arm_qfunction import FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
-from planar_arm_2DOF_lowdim import  Planar_arm_2DOF_lowdim
+from planar_arm_3DOF_lowdim import  Planar_arm_3DOF_lowdim
 import IPython
-import sys
 import argparse
-import os
 
 def run_task(*_):
-    env = Planar_arm_2DOF_lowdim(num_steps=args.max_path_length)
+    env = Planar_arm_3DOF_lowdim(num_steps=args.max_path_length)
     es = OUStrategy(env_spec=env.spec)
     qf = FeedForwardCritic(
         name_or_scope = "critic",
@@ -32,11 +34,7 @@ def run_task(*_):
         policy_learning_rate = args.policy_lr,
         qf_learning_rate = args.qf_lr,
         max_path_length=args.max_path_length,
-        use_preinitialized_pool=args.policy_transfer,
-        pool_loc = args.pool_loc,
-        pretrain_qf_flag = args.pretrain_qf_flag,
-        qf_save_dir = args.qf_save_dir,
-        fix_qf_flag = args.fix_qf_flag,
+        #use_preinitialized_pool = False,
     )
     #IPython.embed()
     algorithm.train()
@@ -46,32 +44,15 @@ def run_task(*_):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--summary_dir',type=str,\
-            default='/home/shay93/Motor-Represenations/Experiment_4/' + \
-                        'tensorflow_summaries/default_2DOF')
+        default='/home/shay93/Motor-Represenations/Experiment_4/tensorflow_summaries')
     parser.add_argument('--qf_lr',type=float,default=1e-3)
-    parser.add_argument('--policy_transfer',type=bool,default = False)
     parser.add_argument('--policy_lr',type=float,default=1e-4)
     parser.add_argument('--scale_reward',type=float,default=1.)
     parser.add_argument('--soft_target_tau',type=float,default=1e-2)
     parser.add_argument('--max_path_length',type=int,default=1000)
-    parser.add_argument('--pool_loc',type=str,\
-        default="/home/shay93/Motor-Represenations/Data/Experiment_5" + \
-                        "/Pool_Data/preinitialized_2DOF_pool.npy")
-    parser.add_argument('--pretrain_qf_flag',type=bool,default = False)
-
-    parser.add_argument('--qf_save_dir',type=str,\
-                        default="/home/shay93/Motor-Represenations/" + \
-                        "Experiment_4/qf_model/")
-    parser.add_argument('--fix_qf_flag',type=bool,\
-                        default=False)
-    parser.add_argument('--n_epochs',type=int,default=1000)
-
     args = parser.parse_args()
-
     if not(os.path.exists(args.summary_dir)):
        os.makedirs(args.summary_dir)
-    if not(os.path.exists(args.qf_save_dir)):
-       os.makedirs(args.qf_save_dir)
     run_experiment_lite(
         run_task,
         n_parallel=1,

@@ -1,6 +1,6 @@
 import tensorflow as tf
-import os
 import sys
+import os
 parent_dir = os.path.dirname(os.getcwd())
 sys.path.append(parent_dir)
 from mod_tf_util import he_uniform_initializer, mlp, linear,conv
@@ -61,10 +61,10 @@ class FeedForwardCritic(NNQFunction):
                                 W_initializer=self.hidden_W_init,
                                 b_initializer=self.hidden_b_init,
                                 )
-
+        
         embedded = tf.concat(1, [observation_output, action_output])
         embedded_dim = self.action_hidden_sizes[-1] + self.observation_hidden_sizes[-1]
-
+        
         with tf.variable_scope("fusion_mlp") as _:
             fused_output = mlp(embedded,
                                embedded_dim,

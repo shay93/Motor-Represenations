@@ -1,15 +1,17 @@
+import os
+import sys
+parent_dir = os.path.dirname(os.getcwd())
+sys.path.append(parent_dir)
+print(parent_dir)
 
-
-from algos.ddpg import DDPG
+from mod_ddpg import DDPG
 from planar_arm_nn_policy import FeedForwardPolicy
 from planar_arm_qfunction import FeedForwardCritic
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from rllab.misc.instrument import run_experiment_lite, stub
 from planar_arm_3DOF_lowdim import  Planar_arm_3DOF_lowdim
 import IPython
-import sys
 import argparse
-import os
 
 def run_task(*_):
     env = Planar_arm_3DOF_lowdim(num_steps=args.max_path_length)
@@ -32,6 +34,7 @@ def run_task(*_):
         policy_learning_rate = args.policy_lr,
         qf_learning_rate = args.qf_lr,
         max_path_length=args.max_path_length,
+        use_preinitialized_pool = True,
     )
     #IPython.embed()
     algorithm.train()

@@ -1,7 +1,7 @@
 import numpy as np
 from random import randint
 from rllab.envs.base import Env
-from planarspace import PlanarSpace
+#from planarspace import PlanarSpace
 from rllab.spaces.box import Box
 import os
 import sys
@@ -19,7 +19,7 @@ class Planar_arm_3DOF_lowdim(Env):
     """
 
     def __init__(self,num_steps = 1000,
-                theta_i = np.random.uniform(0.,2.,size = 3),
+                theta_i = np.array([0,np.pi,0]),#np.random.uniform(0.,2.,size = 3),
                 link_length = 30):
         """
         Initialize the environment by specifying the starting state and the location
@@ -72,11 +72,12 @@ class Planar_arm_3DOF_lowdim(Env):
         #scale the target location to get an observation
         scaled_target_obs = (self.target - 95.)/22.
         #add the action to the previous joint state to obtain the new state
-        self.cur_theta = np.mod(np.sum([self.cur_theta,action[0]/20],axis = 0),2.) #stack the target location and the joint angle state to obtain the obs
+        self.cur_theta = np.mod(np.sum([self.cur_theta,action[0]/20],axis = 0),2.) 
+        #stack the target location and the joint angle state to obtain the obs
         next_obs = np.concatenate([self.shift_theta_range(self.cur_theta),scaled_target_obs])
-    
+
         return np.copy(next_obs).astype('float64'),np.copy(reward),done,info
-    
+
     def get_end_effector_pos(self):
         """
         Use the link length and the current joint angle state
@@ -84,7 +85,7 @@ class Planar_arm_3DOF_lowdim(Env):
         """
         theta_1 = self.cur_theta[0]*np.pi
         theta_2 = self.cur_theta[1]*np.pi
-        theta_3 = self.cur_theta[3]*np.pi
+        theta_3 = self.cur_theta[2]*np.pi
         #specify the anchor point
         start_x = 63
         start_y = 63
@@ -110,7 +111,8 @@ class Planar_arm_3DOF_lowdim(Env):
         """
         
         #Reset the joint angle state randomly
-        self.cur_theta = np.random.uniform(0.,2.,size = 3)
+        #self.cur_theta = np.random.uniform(0.,2.,size = 3)
+        self.cur_theta = np.array([0,np.pi,0])
         #get the end effector position 
         end_effector = self.get_end_effector_pos()
         #let info record the image at the current timestep
@@ -138,8 +140,8 @@ class Planar_arm_3DOF_lowdim(Env):
         theta_2 = self.cur_theta[1]*np.pi
         theta_3 = self.cur_theta[2]*np.pi
         #specify the anchor point
-        start_x = 63.
-        start_y = 63.
+        start_x = 63
+        start_y = 63
         start_point = (start_x,start_y)
         #get positions of the end of each link by applying forward kinematics
         x_link_1 = np.round(np.cos(theta_1)*self.link_length + start_x)
@@ -152,6 +154,7 @@ class Planar_arm_3DOF_lowdim(Env):
         link1_end_point = (int(x_link_1),int(y_link_1))
         link2_end_point = (int(x_link_2),int(y_link_2))
         link3_end_point = (int(x_link_3),int(y_link_3))
+        #import IPython; IPython.embed()
         #get a list of positions that draw the intermediary points between the end effector positions
         pos_list = self.sp.draw_line(start_point,link1_end_point) + self.sp.draw_line(link1_end_point,link2_end_point) \
          + self.sp.draw_line(link2_end_point,link3_end_point)
