@@ -24,76 +24,39 @@ class Action_inference(tensorflow_graph):
     def add_placeholder_ops(self):
         #input should be two channel image
         #pixel values should be floats between 0 and 1
-        self.op_dict["x_image"] = tf.placeholder(tf.float32, \
-                                shape=[None,64,64,2],name ="Image")
-        #specify a state observations as well 
-        self.op_dict["x_state"] = tf.placeholder(tf.float32,\
-                                shape = [None,3],name ="state")
+        self.op_dict["x"] = tf.placeholder(tf.float32, \
+                                shape=[None,4])
         #output action should be in range -1 and 1
         #furthermore action should be of form [None,3]
         self.op_dict["y_"] = tf.placeholder(tf.float32, \
-                                shape=[None,3],name = "label")
-        self.op_dict["keep_prob"] = tf.placeholder(tf.float32,name = "dropout")
+                                shape=[None,2])
+        self.op_dict["keep_prob"] = tf.placeholder(tf.float32)
         return self.op_dict
 
     def add_model_ops(self):
-        #take the two channel image and add 3 conv layers
-        h_conv1,W_conv1,b_conv1 = self.gc.conv(\
-                            self.op_dict["x_image"],
-                            [5,5,2,16],
-                            "Conv_1",)
-        h_conv2,W_conv2,b_conv2 = self.gc.conv(\
-                            h_conv1,
-                            [5,5,16,8],
-                            "Conv_2",)
-        h_conv3,W_conv3,b_conv3 = self.gc.conv(\
-                            h_conv2,
-                            [5,5,8,1],
-                            "Conv_3",)
 
-
-        #now flatten the activations in anticipation of fc layers
-        h_conv3_flatten = tf.reshape(h_conv3, \
-                            shape = [-1,64])
-
-        #similarly encode the states
-        h_fc1_state,W_fc1_state,b_fc1_state = self.gc.fc_layer(\
-                            self.op_dict["x_state"],
-                            [3,300],
-                            "fc_1_state",
-                            non_linearity = tf.nn.relu)
-        h_fc1_state_dropout = tf.nn.dropout(h_fc1_state,self.op_dict["keep_prob"])
-        
-        h_fc2_state,W_fc2_state,b_fc2_state = self.gc.fc_layer(\
-                                    h_fc1_state_dropout,
-                                    [300,64],
-                                    "fc_2_state",
-                                    non_linearity = tf.nn.relu)
-
-        h_fc2_state_dropout = tf.nn.dropout(h_fc2_state,self.op_dict["keep_prob"])
-        #pass the flattened activations through some fc layers
-        h_combined = tf.concat(1,(h_conv3_flatten,h_fc2_state_dropout))
-
-        h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(h_combined, \
-                                    [128,200],
-                                    "fc_1_comb")
+        h_fc1,W_fc1,b_fc1 = self.gc.fc_layer(self.op_dict["x"], \
+                                    [4,200],
+                                    "fc_1",
+                                     non_linearity = tf.nn.relu)
 
         h_fc1_dropout = tf.nn.dropout(h_fc1,self.op_dict["keep_prob"])
 
         h_fc2,W_fc2,b_fc2 = self.gc.fc_layer(h_fc1_dropout, \
                                     [200,50],
-                                    "fc_2_comb")
+                                    "fc_2",
+                                    non_linearity = tf.nn.relu)
+
         h_fc2_dropout = tf.nn.dropout(h_fc2,self.op_dict["keep_prob"])
 
         self.op_dict["y"],W_fc3,b_fc3 = self.gc.fc_layer(h_fc2_dropout, \
-                                    [50,3],
+                                    [50,2],
                                     "Readout",
                                     non_linearity = tf.nn.tanh)
 
         #now collect all the variables into a list
-        var_list =[W_conv1,W_conv2,W_conv3,W_fc1,W_fc2,W_fc3,W_fc1_state,\
-         W_fc2_state,b_conv1,b_conv2,b_conv3,b_fc1,b_fc2,b_fc3,b_fc1_state,
-        b_fc2_state]
+        var_list = [W_fc1,W_fc2,W_fc3, \
+                    b_fc1,b_fc2,b_fc3]
 
         for var in var_list:
             self.var_dict[var.name] = var

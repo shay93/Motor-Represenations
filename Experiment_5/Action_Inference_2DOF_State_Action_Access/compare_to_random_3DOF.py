@@ -6,9 +6,11 @@ mlp.use("Agg")
 import matplotlib.pyplot as plt
 import os
 import sys
+from action_inference_model import Action_inference
 root_dir = os.path.dirname(os.path.dirname(\
                 os.getcwd()))
 sys.path.append(root_dir)
+
 #we also need the render arm util, so it is necessary
 #to add that to the path as well
 arm_util_path = root_dir + "/Data_Generation_Scripts/Experiment_5/"
@@ -16,6 +18,9 @@ sys.path.append(arm_util_path)
 import pickle
 import physics_util as phys
 
+#goal should be plot reward for the 2DOF arm learnt policy
+#random exploration for 3DOF arm
+#and guided exploration for 3DOF arm
 #create a directory for the graphs
 if not(os.path.exists("Graphs")):
     os.makedirs("Graphs")
@@ -28,11 +33,19 @@ link_length_3DOF = 30
 #dir from which to load data
 pool_data_dir = root_dir + "/Data/Experiment_5/Pool_Data/"
 learned_data_dir = root_dir + "/Data/Experiment_5/Learned_2DOF_Policy/"
+model_dir = "model/"
 
-#load 3DOF trajectory from this
-with open(pool_data_dir + "infer_end_effector_3DOF0.npy","rb") as f:
-    #shape should be [num_seq,100,2]
-    infer_end_effector = pickle.load(f)
+#now load the 3DOF inference model
+with tf.device('/gpu:1'):
+    #now build the graph in order to evaluate the inference
+    model_graph = Action_inference()
+
+#build the graph
+op_dict,sess = model_graph.build_graph()
+#initialize and load graph parameters
+model_graph.init_graph_vars(sess,op_dict["init_op"])
+model_graph.load_graph_vars(sess,op_dict["saver"],load_dir + "model.ckpt")
+
 
 #also load the target position for each of these episodes
 with open(Learned_2DOF_dir + "target_loc0.npy","rb") as f:

@@ -12,17 +12,17 @@ import pickle
 import png
 import results_handling as rh
 
-eval_set_size = 2500
+eval_set_size = 5000
 eval_batch_size = 50
 data_dir = parent_dir + "/Data/Experiment_5/Action_Inference_Constrained_Space/"
-log_dir = "tmp/lr_1e_4_100000_examples"
+log_dir = "tmp/1e-4_dropout"
 save_dir = "model/"
 output_dir = "Output_Images/"
 graph_dir = "Graphs/"
 ###model parameters
-learning_rate = 1e-3
+learning_rate = 1e-4
 Epochs = 1000
-batch_size = 500
+batch_size = 1000
 
 
 #check if the directories exist and create them if necessary
@@ -42,29 +42,36 @@ def load_data():
     #first load the 3DOF actions and rescale to range -1 to 1
     with open(data_dir + "actions_3DOF.npy","rb") as f:
         y = pickle.load(f)*20/np.pi
+
+    #try loading the 2DOF actions
+    with open(data_dir + "actions_2DOF.npy","rb") as f:
+        actions_2DOF = pickle.load(f)/np.pi
+
     #next load the rendered arm observations
-    with open(data_dir + "rendered_arm_obs.npy","rb") as f:
-        x_image = pickle.load(f)
-        #cast as float32 and then divide by 255
+    with open(data_dir + "stacked_states_2DOF.npy","rb") as f:
+        states_2DOF = pickle.load(f)/np.pi
+
+    #load the initial states of the 3DOF arm
     with open(data_dir + "states_3DOF.npy","rb") as f:
-        x_state = pickle.load(f)/np.pi
-    x_image = np.float32(x_image) / 255.
-    return x_image,x_state,y
+        states_3DOF = pickle.load(f)/np.pi
+
+    #now concatenate the 2DOF and 3DOF states
+    x = np.concatenate((states_2DOF[:,:2],actions_2DOF,states_3DOF),1)
+
+    print("Max of x is %f" % np.max(x))
+    print("Min of x is %f" % np.min(x))
+    print("Min of y is %f" % np.min(y))
+    print("Max of y is %f" % np.max(y))
+    return x,y
 
 
-x_image,x_state,y = load_data()
+x,y = load_data()
 #separate out the training test set data
-x_image_train = x_image[eval_set_size:,...]
-x_state_train = x_state[eval_set_size:,...]
+x_train = x[eval_set_size:,...]
 y_train = y[eval_set_size:,...]
 #separate out the eval set
-x_image_eval = x_image[:eval_set_size,...]
-x_state_eval = x_state[:eval_set_size,...]
+x_eval = x[:eval_set_size,...]
 y_eval = y[:eval_set_size,...]
-
-print(np.shape(x_image_train))
-print(np.shape(x_state_eval))
-print(np.shape(y_train))
 
 #now instantiate the model
 model_graph = Action_inference(learning_rate)
@@ -73,15 +80,13 @@ model_graph = Action_inference(learning_rate)
 op_dict,sess = model_graph.build_graph()
 
 placeholder_train_dict = {}
-placeholder_train_dict[op_dict["x_image"]] = x_image_train
-placeholder_train_dict[op_dict["x_state"]] = x_state_train
+placeholder_train_dict[op_dict["x"]] = x_train
 placeholder_train_dict[op_dict["y_"]] = y_train
-placeholder_train_dict[op_dict["keep_prob"]] = 0.5
+placeholder_train_dict[op_dict["keep_prob"]] = .5
 
 #form the placeholder eval dict
 placeholder_eval_dict = {}
-placeholder_eval_dict[op_dict["x_image"]] = x_image_eval
-placeholder_eval_dict[op_dict["x_state"]] = x_state_eval
+placeholder_eval_dict[op_dict["x"]] = x_eval
 placeholder_eval_dict[op_dict["y_"]] = y_eval
 placeholder_eval_dict[op_dict["keep_prob"]] = 1.
 model_graph.init_graph_vars(sess,op_dict["init_op"])
@@ -94,13 +99,13 @@ train_loss_array,test_loss_array = model_graph.train_graph(sess,Epochs,\
 
 model_graph.save_graph_vars(sess,op_dict["saver"],save_dir + "model.ckpt")
 
-predictions, _  = model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["y_"],loss_op = op_dict["loss"])
+predictions,_= model_graph.evaluate_graph(sess,eval_batch_size,placeholder_eval_dict,op_dict["y"],op_dict["y_"],loss_op = op_dict["loss"])
 
 #plot the test and training loss and save as graph
 fig = plt.figure()
 plt.plot(train_loss_array,label = "Train Loss")
 plt.plot(test_loss_array,label = "Test Loss")
-plt.ylabel("Mean Square Loss")
+plt.ylabel("L1 Loss")
 plt.xlabel("Train Step")
 plt.title("Loss Plot")
 plt.legend()

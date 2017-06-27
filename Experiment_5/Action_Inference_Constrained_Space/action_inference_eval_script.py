@@ -56,7 +56,6 @@ if not(os.path.exists(pool_data_dir)):
 with tf.device('/gpu:1'):
     #now build the graph in order to evaluate the inference
     model_graph = Action_inference()
-
 #build the graph
 op_dict,sess = model_graph.build_graph()
 #initialize and load graph parameters
