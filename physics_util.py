@@ -22,7 +22,7 @@ def Inverse_Kinematics_2DOF(end_effector,\
                              theta_2[...,np.newaxis]),axis = -1)
     #print(end_effector[:5,0])
     #print(forward_kinematics(states_2DOF,link_length)[:5,0])
-    assert (np.all(np.round(Forward_Kinematics(states_2DOF,link_length)) == np.round(end_effector))),\
+    #assert (np.all(np.round(Forward_Kinematics(states_2DOF,link_length)) == np.round(end_effector))),\
     "Inverse and Forward Kinematics dont line up"
     return states_2DOF
 

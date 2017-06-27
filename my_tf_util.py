@@ -2,26 +2,38 @@ from __future__ import division,print_function
 import os
 import numpy as np
 import tensorflow as tf
+import pickle
 
 class graph_construction_helper:
 
-    def conv(self,x,weight_shape, scope, stddev = 0.1,trainable = True, reuse_variables = False):
+    def conv(self,
+             x,
+             weight_shape,
+             scope,
+             stddev = 0.1,
+             trainable = True,
+             reuse_variables = False):
+
         """
         x should be the 4d tensor which is being convolved
         weight shape should be a list of the form [Kernel Width, Kernel Width, input channels, output channels]
         scope should be string specifying the scope of the variables in question
         """
+
         with tf.variable_scope(scope) as scope:
             if not(reuse_variables):
                 #initialize the weights for the convolutional layer
-                W = tf.get_variable("W_conv",weight_shape,tf.float32,tf.random_normal_initializer(0.0,stddev),trainable = trainable)
+                W = tf.get_variable("W_conv",weight_shape,\
+                        tf.float32,tf.random_normal_initializer(0.0,stddev),trainable = trainable)
                 #initiaize the biases
-                b = tf.get_variable("b_conv",weight_shape[-1],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
+                b = tf.get_variable("b_conv",weight_shape[-1],\
+                        tf.float32,tf.constant_initializer(0.1),trainable = trainable)
             else:
                 scope.reuse_variables()
                 W = tf.get_variable("W_conv")
                 b = tf.get_variable("b_conv")
-            #calculate the output from the convolution 
+            #calculate the output from the convolution
+            #import IPython; IPython.embed()
             conv = tf.nn.conv2d(x,W,strides = [1,2,2,1],padding = "SAME")
             #compute the activations
             h = tf.nn.relu(tf.nn.bias_add(conv,b), name = "activations_conv")
@@ -29,7 +41,14 @@ class graph_construction_helper:
         return h,W,b
 
 
-    def fc_layer(self,x,weight_shape,scope, stddev = 0.1,trainable = True, reuse_variables = False, non_linearity=tf.nn.relu):
+    def fc_layer(self,
+                 x,
+                 weight_shape,
+                 scope,
+                 stddev = 0.1,
+                 trainable = True,
+                 reuse_variables = False,
+                 non_linearity=tf.nn.relu):
         """
         Compute the activations of the fc layer
 
@@ -37,9 +56,12 @@ class graph_construction_helper:
         with tf.variable_scope(scope) as scope:
             if not(reuse_variables):
                 #initialize the weights for the fc layer
-                W = tf.get_variable("W_fc",weight_shape,tf.float32,tf.random_normal_initializer(0.0,stddev), trainable = trainable)
+                W = tf.get_variable("W_fc",weight_shape,\
+                        tf.float32,tf.random_normal_initializer(0.0,stddev),\
+                                    trainable = trainable)
                 #initiaize the biases
-                b = tf.get_variable("b_fc",weight_shape[-1],tf.float32,tf.constant_initializer(0.0),trainable = trainable)
+                b = tf.get_variable("b_fc",weight_shape[-1],\
+                        tf.float32,tf.constant_initializer(0.0),trainable = trainable)
             else:
                 scope.reuse_variables()
                 W = tf.get_variable("W_fc")
@@ -50,16 +72,27 @@ class graph_construction_helper:
         return h,W,b
 
 
-    def deconv(self,x,weight_shape,output_shape,scope,strides = [1,2,2,1], stddev = 0.1,trainable = True, reuse_variables = False,non_linearity = True):
+    def deconv(self,
+               x,
+               weight_shape,
+               output_shape,scope,
+               strides = [1,2,2,1],
+               stddev = 0.1,
+               trainable = True,
+               reuse_variables = False,
+               non_linearity = True):
         """
         generalizable deconv function
         """
         with tf.variable_scope(scope) as scope:
             if not(reuse_variables):
                 #initialize the weights for the deconv layer
-                W = tf.get_variable("W_deconv",weight_shape,tf.float32,tf.random_normal_initializer(0,stddev), trainable = trainable)
+                W = tf.get_variable("W_deconv",weight_shape,\
+                        tf.float32,tf.random_normal_initializer(0,stddev),\
+                                    trainable = trainable)
                 #initiaize the biases
-                b = tf.get_variable("b_deconv",weight_shape[-2],tf.float32,tf.constant_initializer(0.1),trainable = trainable)
+                b = tf.get_variable("b_deconv",weight_shape[-2],\
+                        tf.float32,tf.constant_initializer(0.1),trainable = trainable)
             else:
                 scope.reuse_variables()
                 W = tf.get_variable("W_deconv")
@@ -89,34 +122,63 @@ class tensorflow_graph:
         return sess
 
 
-    def train_graph(self,sess,Epochs,batch_size,placeholder_dict,train_op,loss_op, merge_summary_op = None,log_dir = None,summary_writer_freq = 20):
+    def train_graph(self,
+                    sess,
+                    Epochs,
+                    batch_size,
+                    placeholder_dict,
+                    train_op,
+                    loss_op,
+                    merge_summary_op = None,
+                    log_dir = None,
+                    summary_writer_freq = 20,
+                    eval_placeholder_dict = None,
+                    save_graph_vars_period = 1000,
+                    save_directory = None,
+                    save_op = None,
+                    eval_freq = 50):
         """
-        1)Epochs is the number determines the number of iterations and hence the number of times that parameter updates are made
-        2)placeholder dict holds the placholder ops of the graph and the data that needs to be passed into the graph in order to compute gradients and train parameters
-        3)placeholder dict is keyed by the tensorflow object and the dict holds the data set corresponding to the key
-        4)init_op is used to initialize the variables in the graph based on the shape and datatypes that have been specified prior
-        5)train_op is the training operation of the graph which is called upon when gradients are computed/applied
+        1)Epochs is the number determines the number of iterations and hence 
+        the number of times that parameter updates are made
+        2)placeholder dict holds the placholder ops of the graph and the data
+        that needs to be passed into the graph in order to compute gradients and train parameters
+        3)placeholder dict is keyed by the tensorflow object and the dict 
+        holds the data set corresponding to the key
+        4)init_op is used to initialize the variables in the graph based on the shape and 
+        datatypes that have been specified prior
+        5)train_op is the training operation of the graph which is called upon when
+        gradients are computed/applied
         """
         #first get the number of samples by getting finding the shape of the first data variable
         num_samples = np.shape(placeholder_dict[list(placeholder_dict.keys())[0]])[0]
         #if we have a merge summary op initialize a summary writer
-        if merge_summary_op is not(None):
+        if not(merge_summary_op==None):
             #initialize a summary writer and pass the graph to it
             summary_writer = tf.train.SummaryWriter(log_dir,sess.graph)
 
-
+        #initialize an array to store the training loss and test_loss
+        train_loss_array = np.ndarray(shape = round(((Epochs*num_samples) // \
+                                      batch_size) // eval_freq + 1))
+        test_loss_array = np.ndarray(shape = round(((Epochs*num_samples) // \
+                                     batch_size) // eval_freq + 1))
         #now loop through all the iterations compute,apply parameter updates and record values of interest
-        for step in range(int(Epochs * num_samples) // batch_size):
-            #first step is to get a random offset into the dataset
-            random_offset = np.random.randint(0,num_samples - batch_size)
+        for step in range(round((Epochs * num_samples) // batch_size)):
+            #first step is to get a random positions for the batch size
+            random_pos = np.random.randint(0,num_samples,size = batch_size)
             #initialize an empty feed_dict for each step
             feed_dict = {}
             for op in list(placeholder_dict.keys()):
-                #construct a dictionary that stores the spliced input batch data keyed by the tensor placeholders
-                feed_dict[op] = placeholder_dict[op][random_offset:random_offset + batch_size,...]
+                #construct a dictionary that stores the spliced input batch 
+                #data keyed by the tensor placeholders
+                if len(np.shape(placeholder_dict[op])) > 0:
+                    feed_dict[op] =placeholder_dict[op][random_pos,...]
+
+                else:
+                    feed_dict[op] = placeholder_dict[op]
             #every 20 steps record the outputs from the summary if a merge_summary_op is provided
-            if (step % summary_writer_freq == 0) and (merge_summary_op is not(None)):
-                _,merged_summary,l = sess.run([train_op,merge_summary_op,loss_op], feed_dict = feed_dict)
+            if (step % summary_writer_freq == 0) and (not(merge_summary_op==None)):
+                _,merged_summary,l =sess.run([train_op,merge_summary_op,loss_op],\
+                         feed_dict = feed_dict)
                 print(l,step)
                 #pass the summary to the writer to record in the log file
                 summary_writer.add_summary(merged_summary,step)
@@ -125,12 +187,28 @@ class tensorflow_graph:
                 _ ,l = sess.run([train_op,loss_op],feed_dict = feed_dict)
                 if (step % 20) == 0:
                     print(l,step)
+            #evaluate graph and record training loss if given
+            if (not(eval_placeholder_dict==None)) and (step % eval_freq == 0):
+                predictions,t_l = self.evaluate_graph(sess,
+                                                      batch_size,
+                                                      eval_placeholder_dict,
+                                                      self.op_dict["y"],
+                                                      self.op_dict["y_"],
+                                                      loss_op = loss_op)
+                print("Eval Loss %f" % (np.mean(t_l)))
+                train_loss_array[step // eval_freq] = l
+                test_loss_array[step // eval_freq] = np.mean(t_l)
+            #save graph variables at the given interval length if a save
+            #directory is provided
+            if not(save_directory == None) and not(save_op == None)\
+               and (step % save_graph_vars_period == 0):
+                self.save_graph_vars(sess,save_op,save_directory) 
+        return train_loss_array,test_loss_array
 
     def save_graph_vars(self,sess,save_op,save_directory):
         #save_directory = os.path.abspath(save_directory)
         save_op.save(sess,save_directory)
         print("Variables have been saved")
-
 
     def load_graph_vars(self,sess,save_op,load_path):
         load_path = os.path.abspath(load_path)
@@ -141,17 +219,25 @@ class tensorflow_graph:
         #initialize the variables in the graph
         sess.run(init_op)
         print("Variables have been initialized")
-    
-    def evaluate_graph(self,sess,eval_batch_size,placeholder_dict,y_op,y_label_op, output_shape = None, loss_op = None):
+
+    def evaluate_graph(self,
+                       sess,
+                       eval_batch_size,
+                       placeholder_dict,
+                       y_op,
+                       y_label_op = None,
+                       output_shape = None,
+                       loss_op = None):
         """
-        Pass in the eval set data to compute predictions, this function returns the predictions whatever those may be
+        Pass in the eval set data to compute predictions, 
+        this function returns the predictions whatever those may be
         """
-        #first get the number of samples by getting finding the shape of the first data variable
+        #first get the number of samples by
+        #finding the shape of the first data variable
         num_samples = np.shape(placeholder_dict[list(placeholder_dict.keys())[0]])[0]
         if num_samples < eval_batch_size:
             raise ValueError("batch size for evals larger than dataset: %d" %
-                             eval_batch_size)
-        
+                             eval_batch_size) 
         #initialize an empty array for predictions using the provided shape
         if (output_shape == None):
             predictions = np.ndarray(shape =
@@ -159,9 +245,9 @@ class tensorflow_graph:
                                      = np.float32)
         else:
             predictions = np.ndarray(shape = output_shape,dtype = np.float32)
-        
+
         #furthermore initialize a list to record the test set loss
-        test_loss_array = [0]*((num_samples // eval_batch_size) + 1)
+        test_loss_array = [0]*(int(np.ceil((num_samples / eval_batch_size))))
         #initialize a variable to record how many eval iterations have taken place
         step = 0
         #loop through all the eval data
@@ -171,17 +257,23 @@ class tensorflow_graph:
             #now construct the feed dict based whether a whole batch is available or not
             feed_dict = {}
             if end <= num_samples:
-                for op in list(placeholder_dict.keys()):
-                    feed_dict[op] = placeholder_dict[op][begin:end, ...]
+                for op in list(placeholder_dict.keys()): 
+                    if len(np.shape(placeholder_dict[op])) > 0:
+                        feed_dict[op] = placeholder_dict[op][begin:end, ...]
+                    else:
+                        feed_dict[op] = placeholder_dict[op]
                 if not(loss_op == None):
                     predictions[begin:end,...],l = \
                     sess.run([y_op,loss_op],feed_dict = feed_dict)
                 else:
-                    #import IPython; IPython.embed()
                     predictions[begin:end,...] = sess.run(y_op,feed_dict=feed_dict)
             else:
                 for op in list(placeholder_dict.keys()):
-                    feed_dict[op] = placeholder_dict[op][-eval_batch_size,...]
+                    if len(np.shape(placeholder_dict[op])) > 0:
+                           feed_dict[op] = \
+                                   placeholder_dict[op][-eval_batch_size:,...]
+                    else:
+                           feed_dict[op] = placeholder_dict[op]
                 if not(loss_op == None):
                     batch_predictions,l = sess.run([y_op,loss_op], feed_dict =
                                                    feed_dict)
@@ -214,3 +306,4 @@ class tensorflow_graph:
         self.add_auxillary_ops()
         #return the session environment in which the graph is defined and dictionary 
         return self.op_dict,self.create_session()
+
